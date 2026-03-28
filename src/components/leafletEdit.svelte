@@ -17,6 +17,9 @@
   import * as imageConversion from 'image-conversion';
 
   import type { User, Route, Routes, Course, Coordinates, ElevationResponse, Activities, Waypoints } from '$lib/types';
+  import { formatDistance, formatElevation } from '$lib/units';
+
+  $: unitPref = user?.unit_preference ?? 'metric';
 
   export let bounds: L.LatLngBoundsExpression | undefined = undefined;
   export let view: L.LatLngExpression | undefined = undefined;
@@ -545,14 +548,14 @@
     <div class="flex flex-col justify-center h-full w-[15%] border-e border-neutral-400 pl-1 md:pl-5">
       <span class="text-white text-xs md:text-sm">Distance</span>
       <span class="text-neutral-400 text-sm md:text-2xl font-semibold">
-        {#if distance}{(distance / 1000).toFixed(2)}{:else}0.00{/if} km
+        {#each [formatDistance(distance ? distance / 1000 : 0, unitPref)] as d}{d.value} {d.unit}{/each}
       </span>
     </div>
     <div class="flex flex-col justify-center h-full w-[15%] border-e border-neutral-400 pl-1 md:pl-5">
       <span class="text-white text-xs md:text-sm">Elevation Gain</span>
       <span class="text-neutral-400 text-sm md:text-2xl font-semibold">
         <!-- 0.6 because of free elevation api not being very accurate -->
-        {#if elevationGain}{(elevationGain*0.6).toFixed(2)}{:else}0.00{/if} m
+        {#each [formatElevation(elevationGain ? elevationGain * 0.6 : 0, unitPref)] as e}{e.value} {e.unit}{/each}
       </span>
     </div>
     <div class="flex flex-col justify-center h-full w-[15%] border-e border-neutral-400 pl-1 md:pl-5">
