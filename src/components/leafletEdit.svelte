@@ -253,7 +253,7 @@
     if (leafletRoutingDiv) {
       // Create a container for the reset button
       resetButtonContainer = document.createElement('div');
-      resetButtonContainer.classList.add('absolute', 'bottom-3', 'left-[6px]', 'z-50');
+      resetButtonContainer.classList.add('flex', 'flex-row', 'px-[6px]', 'pb-2', 'pt-1');
 
       // Create the reset button
       const resetButton = document.createElement('button');
@@ -529,66 +529,69 @@
   <button on:click={() => toggleNav()} id="showNav" style="display: none;" class="absolute top-[10px] right-[15px] z-50 w-[36px] h-[36px] bg-neutral-800 rounded-[4px] text-white flex items-center">
     <svg class="w-full" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke-linecap="round" stroke-linejoin="round"><path class="stroke-neutral-400 stroke-2" d="M8.835 14H5a1 1 0 0 0-.9.7l-2 6c-.1.1-.1.2-.1.3 0 .6.4 1 1 1h18c.6 0 1-.4 1-1 0-.1 0-.2-.1-.3l-2-6a1 1 0 0 0-.9-.7h-3.835"/><path class="fill-orange-500" d="M18 8c0 4.5-6 9-6 9s-6-4.5-6-9a6 6 0 0 1 12 0"/><circle class="fill-neutral-800" cx="12" cy="8" r="2"/></svg>
   </button>
-  <div class="w-full h-[90%]" bind:this={mapElement}>
+  <div class="w-full h-[80%] md:h-[90%]" bind:this={mapElement}>
     {#if map}
       <slot />
     {/if}
   </div>
-  <div class="flex flex-row w-full h-[10%] bg-neutral-800 border border-neutral-400">
-    <button on:click={handleClick} class="h-full w-[6%] border-e border-neutral-400 group">
-      <div class="flex flex-col h-full justify-center items-center  group-hover:bg-neutral-900">
-        <span class="text-white text-xs md:text-sm">Type</span>
-        {#if type == "cycling"}
-          <svg class="mt-1 text-neutral-400 group-hover:text-orange-600" xmlns="http://www.w3.org/2000/svg" width="25" height="25" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="18.5" cy="17.5" r="3.5"/><circle cx="5.5" cy="17.5" r="3.5"/><circle cx="15" cy="5" r="1"/><path d="M12 17.5V14l-3-3 4-3 2 3h2"/></svg>
-        {:else if type == "running"}
-          <svg class="mt-1 text-neutral-400 group-hover:text-orange-600" xmlns="http://www.w3.org/2000/svg" width="25" height="25" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 16v-2.38C4 11.5 2.97 10.5 3 8c.03-2.72 1.49-6 4.5-6C9.37 2 10 3.8 10 5.5c0 3.11-2 5.66-2 8.68V16a2 2 0 1 1-4 0Z"/><path d="M20 20v-2.38c0-2.12 1.03-3.12 1-5.62-.03-2.72-1.49-6-4.5-6C14.63 6 14 7.8 14 9.5c0 3.11 2 5.66 2 8.68V20a2 2 0 1 0 4 0Z"/><path d="M16 17h4"/><path d="M4 13h4"/></svg>
-        {/if}
+  <div class="flex flex-col md:flex-row w-full h-[20%] md:h-[10%] bg-neutral-800 border border-neutral-400">
+    <!-- Stats row (top on mobile, left portion on desktop) -->
+    <div class="flex flex-row h-1/2 md:h-full md:w-[51%]">
+      <button on:click={handleClick} class="h-full w-1/4 md:w-[12%] border-e border-neutral-400 group">
+        <div class="flex flex-col h-full justify-center items-center group-hover:bg-neutral-900">
+          <span class="text-white text-[10px] md:text-sm">Type</span>
+          {#if type == "cycling"}
+            <svg class="mt-1 text-neutral-400 group-hover:text-orange-600" xmlns="http://www.w3.org/2000/svg" width="25" height="25" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="18.5" cy="17.5" r="3.5"/><circle cx="5.5" cy="17.5" r="3.5"/><circle cx="15" cy="5" r="1"/><path d="M12 17.5V14l-3-3 4-3 2 3h2"/></svg>
+          {:else if type == "running"}
+            <svg class="mt-1 text-neutral-400 group-hover:text-orange-600" xmlns="http://www.w3.org/2000/svg" width="25" height="25" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 16v-2.38C4 11.5 2.97 10.5 3 8c.03-2.72 1.49-6 4.5-6C9.37 2 10 3.8 10 5.5c0 3.11-2 5.66-2 8.68V16a2 2 0 1 1-4 0Z"/><path d="M20 20v-2.38c0-2.12 1.03-3.12 1-5.62-.03-2.72-1.49-6-4.5-6C14.63 6 14 7.8 14 9.5c0 3.11 2 5.66 2 8.68V20a2 2 0 1 0 4 0Z"/><path d="M16 17h4"/><path d="M4 13h4"/></svg>
+          {/if}
+        </div>
+      </button>
+      <div class="flex flex-col justify-center h-full w-1/4 md:w-[29%] border-e border-neutral-400 pl-2 md:pl-5">
+        <span class="text-white text-[10px] md:text-sm"><span class="md:hidden">Dist</span><span class="hidden md:inline">Distance</span></span>
+        <span class="text-neutral-400 text-sm md:text-2xl font-semibold">
+          {#each [formatDistance(distance ? distance / 1000 : 0, unitPref)] as d}{d.value} {d.unit}{/each}
+        </span>
       </div>
-    </button>
-    <div class="flex flex-col justify-center h-full w-[15%] border-e border-neutral-400 pl-1 md:pl-5">
-      <span class="text-white text-xs md:text-sm">Distance</span>
-      <span class="text-neutral-400 text-sm md:text-2xl font-semibold">
-        {#each [formatDistance(distance ? distance / 1000 : 0, unitPref)] as d}{d.value} {d.unit}{/each}
-      </span>
+      <div class="flex flex-col justify-center h-full w-1/4 md:w-[29%] border-e border-neutral-400 pl-2 md:pl-5">
+        <span class="text-white text-[10px] md:text-sm"><span class="md:hidden">Elev</span><span class="hidden md:inline">Elevation Gain</span></span>
+        <span class="text-neutral-400 text-sm md:text-2xl font-semibold">
+          <!-- 0.6 because of free elevation api not being very accurate -->
+          {#each [formatElevation(elevationGain ? elevationGain * 0.6 : 0, unitPref)] as e}{e.value} {e.unit}{/each}
+        </span>
+      </div>
+      <div class="flex flex-col justify-center h-full w-1/4 md:w-[30%] pl-2 md:pl-5 md:border-e border-neutral-400">
+        <span class="text-white text-[10px] md:text-sm"><span class="md:hidden">Time</span><span class="hidden md:inline">Est. Moving Time</span></span>
+        <span class="text-neutral-400 text-sm md:text-2xl font-semibold">
+          {#if averageSpeed}{((distance/1000)/(averageSpeed) * 60).toFixed(0)}{/if} min.
+        </span>
+      </div>
     </div>
-    <div class="flex flex-col justify-center h-full w-[15%] border-e border-neutral-400 pl-1 md:pl-5">
-      <span class="text-white text-xs md:text-sm">Elevation Gain</span>
-      <span class="text-neutral-400 text-sm md:text-2xl font-semibold">
-        <!-- 0.6 because of free elevation api not being very accurate -->
-        {#each [formatElevation(elevationGain ? elevationGain * 0.6 : 0, unitPref)] as e}{e.value} {e.unit}{/each}
-      </span>
-    </div>
-    <div class="flex flex-col justify-center h-full w-[15%] border-e border-neutral-400 pl-1 md:pl-5">
-      <span class="text-white text-xs md:text-sm">Est. Moving Time</span>
-      <span class="text-neutral-400 text-sm md:text-2xl font-semibold">
-        {#if averageSpeed}{((distance/1000)/(averageSpeed) * 60).toFixed(0)}{/if} min.
-      </span>
-    </div>
-    <div class="flex flex-row w-[39%]">
-      <div class="w-[75.2%]">
+    <!-- Form + actions row (bottom on mobile, right portion on desktop) -->
+    <div class="flex flex-row h-1/2 md:h-full md:w-[49%] border-t md:border-t-0 border-neutral-400">
+      <div class="flex-1 overflow-hidden">
         {#if from == "new"}
-          <form id="input" method="POST" on:submit={handleSubmit} class="flex justify-center items-center h-full">
-            <div class="flex flex-col">
-              <span class="text-white -mt-2 text-sm">Course name:</span>
-              <input bind:value={courseName} type="text" name="title" class="bg-neutral-700 text-white text-md md:text-2xl border border-neutral-400 w-full" />
+          <form id="input" method="POST" on:submit={handleSubmit} class="flex justify-center items-center h-full px-2">
+            <div class="flex flex-col w-full">
+              <span class="text-white text-[10px] md:text-sm">Course name:</span>
+              <input bind:value={courseName} type="text" name="title" class="bg-neutral-700 text-white text-sm md:text-2xl border border-neutral-400 w-full" />
             </div>
           </form>
         {:else if from == "edit"}
-          <form id="input" method="POST" on:submit={handleUpdate} class="flex justify-center items-center h-full">
-            <div class="flex flex-col">
-              <span class="text-white -mt-2 text-sm">Course name:</span>
-              <input bind:value={courseName} type="text" name="title" class="bg-neutral-700 text-white text-md md:text-2xl border border-neutral-400 w-full" />
+          <form id="input" method="POST" on:submit={handleUpdate} class="flex justify-center items-center h-full px-2">
+            <div class="flex flex-col w-full">
+              <span class="text-white text-[10px] md:text-sm">Course name:</span>
+              <input bind:value={courseName} type="text" name="title" class="bg-neutral-700 text-white text-sm md:text-2xl border border-neutral-400 w-full" />
             </div>
           </form>
         {/if}
       </div>
-      <div class="flex justify-center items-center h-full w-[25.8%] border-s border-neutral-400" style="{courseName != '' && route != undefined ? '' : 'cursor: not-allowed;'}">
-        <button type="submit" form="input" class="text-white w-full h-full text-md md:text-2xl font-semibold hover:bg-neutral-900 hover:text-orange-600" style="{courseName != '' && route != undefined ? '' : 'pointer-events: none;' }">Save</button>
+      <div class="flex justify-center items-center h-full border-s border-neutral-400 min-w-[3.5rem] md:w-1/5" style="{courseName != '' && route != undefined ? '' : 'cursor: not-allowed;'}">
+        <button type="submit" form="input" class="text-white w-full h-full text-sm md:text-2xl font-semibold hover:bg-neutral-900 hover:text-orange-600" style="{courseName != '' && route != undefined ? '' : 'pointer-events: none;' }">Save</button>
       </div>
-    </div>
-
-    <div class="flex justify-center items-center h-full w-[10%] border-s border-neutral-400">
-      <button class="text-white w-full h-full text-md md:text-2xl font-semibold hover:bg-neutral-900 hover:text-orange-600" on:click={exportToGPX}>Export GPX</button>
+      <div class="flex justify-center items-center h-full border-s border-neutral-400 min-w-[4rem] md:w-1/5">
+        <button class="text-white w-full h-full text-sm md:text-2xl font-semibold hover:bg-neutral-900 hover:text-orange-600 px-1" on:click={exportToGPX}><span class="md:hidden">GPX</span><span class="hidden md:inline">Export GPX</span></button>
+      </div>
     </div>
   </div>
 </div>
