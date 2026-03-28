@@ -78,6 +78,7 @@ export interface User {
   username: string;
   verified: boolean;
   weight: number;
+  unit_preference: 'metric' | 'imperial';
 };
 
 export interface UserData {

@@ -2,6 +2,7 @@
 	import { formatDate } from "$lib/utils";
   import { env } from "$env/dynamic/public";
   import type { User } from "$lib/types";
+  import { formatDistance, formatSpeed, formatElevation } from "$lib/units";
 
   export let date: Date, name: string, id: string, distance: number, speed: number, elevation: number, time: number, collectionId: string, img: string, sport: string, user: User, location: string;
 
@@ -11,6 +12,11 @@
   } else {
     url = "http://127.0.0.1:8090"
   }
+
+  $: unitPref = user.unit_preference ?? 'metric';
+  $: distFmt = formatDistance(distance, unitPref);
+  $: speedFmt = formatSpeed(speed, unitPref);
+  $: elevFmt = formatElevation(elevation * 1000, unitPref);
 </script>
 
 <div class="mb-5 bg-neutral-800">
@@ -58,15 +64,15 @@
       <ul class="flex flex-wrap mt-5">
         <li class="flex flex-col w-1/2 md:w-1/4 pl-4 border-e border-neutral-500">
           <span class="text-neutral-500">Distance</span>
-          <span class="text-xl text-white">{distance.toFixed(2)}<span class="text-sm">&nbspkm</span></span>
+          <span class="text-xl text-white">{distFmt.value}<span class="text-sm">&nbsp{distFmt.unit}</span></span>
         </li>
         <li class="flex flex-col w-1/2 md:w-1/4 pl-4 md:border-e md:border-neutral-500">
           <span class="text-neutral-500">Speed</span>
-          <span class="text-xl text-white">{speed}<span class="text-sm">&nbspkm/h</span></span>
+          <span class="text-xl text-white">{speedFmt.value}<span class="text-sm">&nbsp{speedFmt.unit}</span></span>
         </li>
         <li class="hidden md:flex flex-col w-1/4 pl-4 border-e border-neutral-500">
           <span class="text-neutral-500">Elev Gain</span>
-          <span class="text-xl text-white">{elevation*1000}<span class="text-sm">m</span></span>
+          <span class="text-xl text-white">{elevFmt.value}<span class="text-sm">{elevFmt.unit}</span></span>
         </li>
         <li class="hidden md:flex flex-col w-1/4 pl-4">
           <span class="text-neutral-500">Time</span>

@@ -4,10 +4,12 @@
   import { userCookie } from "$lib/stores";
   import { env } from "$env/dynamic/public"
   import type { Course } from '$lib/types';
+  import { formatDistance, formatElevation } from "$lib/units";
 
   export let data: Course;
   let remove = false;
   let user = $userCookie.user
+  $: unitPref = user?.unit_preference ?? 'metric';
 
   let url: string;
   if (env.PUBLIC_DB_URL) {
@@ -86,14 +88,14 @@
           <td>
             <div class="mr-3 border-t border-neutral-500 flex flex-row py-2">
               <svg class="mt-1 mr-2" xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z"/><circle cx="12" cy="10" r="3"/></svg>
-              {(data.distance / 1000).toFixed(2)} km
+              {#each [formatDistance(data.distance / 1000, unitPref)] as d}{d.value} {d.unit}{/each}
             </div>
           </td>
           <td>
             <div class="border-t border-neutral-500 flex flex-row py-2">
               <!-- 0.6 because of free elevation api not being very accurate -->
               <svg class="mt-1 mr-2" xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m8 3 4 8 5-5 5 15H2L8 3z"/><path d="M4.14 15.08c2.62-1.57 5.24-1.43 7.86.42 2.74 1.94 5.49 2 8.23.19"/></svg>
-              {(data.elevation * 0.6).toFixed(0)} m
+              {#each [formatElevation(data.elevation * 0.6, unitPref)] as e}{e.value} {e.unit}{/each}
 
             </div>
           </td>

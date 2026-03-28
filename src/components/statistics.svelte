@@ -1,7 +1,10 @@
 <script lang="ts">
   import { formatSumTime } from "$lib/utils"
   import type { Exercises } from "$lib/types";
+  import { formatDistance, formatElevation, type UnitPreference } from "$lib/units";
   export let records: Exercises, month: Exercises, year: Exercises;
+  export let unitPreference: UnitPreference = 'metric';
+
   let currentYear = new Date().getFullYear()
   let activityType: string = "cycling";
 
@@ -25,6 +28,23 @@
         , filteredRecords[0])
       : { tot_elevation: 0 };
   }
+
+  // Last 4 weeks aggregates
+  $: monthActivities = month.filter(item => item.sport === activityType);
+  $: monthAvgDist = formatDistance(monthActivities.reduce((s, r) => s + r.tot_distance, 0) / 4, unitPreference);
+  $: monthAvgElev = formatElevation(monthActivities.reduce((s, r) => s + r.tot_elevation, 0) * 1000 / 4, unitPreference);
+
+  // Year aggregates
+  $: yearActivities = year.filter(item => item.sport === activityType);
+  $: yearDist = formatDistance(yearActivities.reduce((s, r) => s + r.tot_distance, 0), unitPreference);
+  $: yearElev = formatElevation(yearActivities.reduce((s, r) => s + r.tot_elevation, 0) * 1000, unitPreference);
+
+  // All-time aggregates
+  $: allActivities = records.filter(item => item.sport === activityType);
+  $: allDist = formatDistance(allActivities.reduce((s, r) => s + r.tot_distance, 0), unitPreference);
+  $: allElev = formatElevation(allActivities.reduce((s, r) => s + r.tot_elevation, 0) * 1000, unitPreference);
+  $: longestDist = formatDistance(maxDistanceActivity.tot_distance, unitPreference);
+  $: mostElev = formatElevation(maxElevationActivity.tot_elevation * 1000, unitPreference);
 </script>
 
 <div class="mt-12 bg-neutral-800 sticky top-32 left-0">
@@ -63,7 +83,7 @@
             Activities / Week
           </td>
           <td>
-            {Math.round((month.filter(item => item.sport === activityType).length / 4).toFixed(2))}
+            {Math.round((monthActivities.length / 4).toFixed(2))}
           </td>
         </tr>
         <tr class="border-b border-neutral-500">
@@ -71,7 +91,7 @@
             Avg Distance / Week
           </td>
           <td>
-            {(month.filter(item => item.sport === activityType).reduce((sum, month) => sum + month.tot_distance, 0) / 4).toFixed(2)} km
+            {monthAvgDist.value} {monthAvgDist.unit}
           </td>
         </tr>
         <tr class="border-b border-neutral-500">
@@ -79,7 +99,7 @@
             Elev Gain / Week
           </td>
           <td>
-            {(month.filter(item => item.sport === activityType).reduce((sum, month) => sum + month.tot_elevation, 0) * 1000 / 4).toFixed(2)} m
+            {monthAvgElev.value} {monthAvgElev.unit}
           </td>
         </tr>
         <tr class="border-b border-neutral-500">
@@ -87,7 +107,7 @@
             Avg Time / Week
           </td>
           <td>
-            {formatSumTime(month.filter(item => item.sport === activityType).reduce((sum, month) => sum + month.tot_time, 0))}
+            {formatSumTime(monthActivities.reduce((sum, month) => sum + month.tot_time, 0))}
           </td>
         </tr>
       </tbody>
@@ -110,7 +130,7 @@
             Distance
           </td>
           <td>
-            {(year.filter(item => item.sport === activityType).reduce((sum, year) => sum + year.tot_distance, 0)).toFixed(2)} km
+            {yearDist.value} {yearDist.unit}
           </td>
         </tr>
         <tr class="border-b border-neutral-500">
@@ -118,7 +138,7 @@
             Elev Gain
           </td>
           <td>
-            {(year.filter(item => item.sport === activityType).reduce((sum, year) => sum + year.tot_elevation, 0) * 1000).toFixed(2)} km
+            {yearElev.value} {yearElev.unit}
           </td>
         </tr>
         <tr class="border-b border-neutral-500">
@@ -126,7 +146,7 @@
             Time
           </td>
           <td>
-            {formatSumTime(year.filter(item => item.sport === activityType).reduce((sum, year) => sum + year.tot_time, 0))}
+            {formatSumTime(yearActivities.reduce((sum, year) => sum + year.tot_time, 0))}
           </td>
         </tr>
       </tbody>
@@ -141,8 +161,7 @@
             Activities
           </td>
           <td>
-
-            {records.filter(item => item.sport === activityType).length}
+            {allActivities.length}
           </td>
         </tr>
         <tr class="border-b border-neutral-500">
@@ -150,7 +169,7 @@
             Distance
           </td>
           <td>
-            {(records.filter(item => item.sport === activityType).reduce((sum, records) => sum + records.tot_distance, 0)).toFixed(2)} km
+            {allDist.value} {allDist.unit}
           </td>
         </tr>
         <tr class="border-b border-neutral-500">
@@ -158,7 +177,7 @@
             Elev Gain
           </td>
           <td>
-            {(records.filter(item => item.sport === activityType).reduce((sum, records) => sum + records.tot_elevation, 0) * 1000).toFixed(2)} m
+            {allElev.value} {allElev.unit}
           </td>
         </tr>
         <tr class="border-b border-neutral-500">
@@ -166,7 +185,7 @@
             Time
           </td>
           <td>
-            {formatSumTime(records.filter(item => item.sport === activityType).reduce((sum, records) => sum + records.tot_time, 0))}
+            {formatSumTime(allActivities.reduce((sum, records) => sum + records.tot_time, 0))}
           </td>
         </tr>
         <tr class="border-b border-neutral-500">
@@ -174,7 +193,7 @@
             Longest {#if activityType=="cycling"}<span>Ride</span>{:else if activityType=="running"}<span>Run</span>{:else if activityType=="swimming"}<span>Swim</span>{/if}
           </td>
           <td>
-            {maxDistanceActivity.tot_distance.toFixed(2)} km
+            {longestDist.value} {longestDist.unit}
           </td>
         </tr>
         <tr class="border-b border-neutral-500">
@@ -182,7 +201,7 @@
             Most Elevation
           </td>
           <td>
-            {(maxElevationActivity.tot_elevation * 1000)} m
+            {mostElev.value} {mostElev.unit}
           </td>
         </tr>
       </tbody>

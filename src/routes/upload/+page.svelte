@@ -4,8 +4,10 @@
 	import Leaflet from "$components/leafletView.svelte";
   import { env } from "$env/dynamic/public";
 	import type { UserData } from "$lib/types";
+  import { formatDistance, formatSpeed, formatElevation, toStoredDistance, toStoredElevation } from "$lib/units";
 
   export let data: UserData;
+  $: unitPref = data.user?.unit_preference ?? 'metric';
   let fileContent: any = null;
   let parsedData: any = null;
   let gpx: any = null;
@@ -188,14 +190,19 @@
       let duration = formData.get('elap_time')
       let elevation = formData.get('tot_elevation')
       let distance = formData.get('tot_distance')
+      // Convert imperial inputs to metric for storage
+      const distanceKm = toStoredDistance(Number(distance), unitPref);
+      const elevationM = toStoredElevation(Number(elevation), unitPref);
       formData.delete('start_time')
       formData.delete('elap_time')
       formData.delete('tot_elevation')
+      formData.delete('tot_distance')
       formData.append('start_time', formatTime(time))
       formData.append('elap_time', duration * 60)
       formData.append('tot_time', duration * 60)
-      formData.append('tot_elevation', elevation / 1000)
-      formData.append('avg_speed', (distance/(duration/60)).toFixed(2))
+      formData.append('tot_elevation', elevationM / 1000)
+      formData.append('tot_distance', distanceKm.toFixed(2))
+      formData.append('avg_speed', (distanceKm/(duration/60)).toFixed(2))
     };
 
     // create post or if error received, show error
@@ -292,7 +299,7 @@
                 <td class="w-1/3">
                   <span class="mr-3">Distance<span class="text-red-600">*</span>:</span>
                   <div class="flex flex-row mr-3">
-                    <input bind:value={distance} name="tot_distance" type="number" step="0.1" min="0" class="bg-neutral-800 border border-neutral-500 rounded-md text-white w-full placeholder-slate-300 placeholder-opacity-50 placeholder:italic p-1" rows="1" /><span class="mt-1">km</span>
+                    <input bind:value={distance} name="tot_distance" type="number" step="0.1" min="0" class="bg-neutral-800 border border-neutral-500 rounded-md text-white w-full placeholder-slate-300 placeholder-opacity-50 placeholder:italic p-1" rows="1" /><span class="mt-1">{unitPref === 'imperial' ? 'mi' : 'km'}</span>
                   </div>
                 </td>
                 <td class="w-1/3">
@@ -304,7 +311,7 @@
                 <td class="w-1/3">
                   <span class="ml-3">elevation:</span>
                   <div class="flex flex-row ml-3">
-                    <input name="tot_elevation" type="number" step="1" min="0" class="bg-neutral-800 border border-neutral-500 rounded-md text-white w-full placeholder-slate-300 placeholder-opacity-50 placeholder:italic p-1" rows="1" /><span class="mt-1">m</span>
+                    <input name="tot_elevation" type="number" step="1" min="0" class="bg-neutral-800 border border-neutral-500 rounded-md text-white w-full placeholder-slate-300 placeholder-opacity-50 placeholder:italic p-1" rows="1" /><span class="mt-1">{unitPref === 'imperial' ? 'ft' : 'm'}</span>
                   </div>
                 </td>
               </tr>
@@ -371,7 +378,7 @@
               <span>Total Distance:</span>
             </td>
             <td class="pl-2">
-              <span>{parsedData.activity.sessions[0].total_distance.toFixed(2)} km</span>
+              {#each [formatDistance(parsedData.activity.sessions[0].total_distance, unitPref)] as d}<span>{d.value} {d.unit}</span>{/each}
             </td>
           </tr>
         {/if}
@@ -381,7 +388,7 @@
               <span>Total Ascent:</span>
             </td>
             <td class="pl-2">
-              <span>{parsedData.activity.sessions[0].total_ascent * 1000} m</span>
+              {#each [formatElevation(parsedData.activity.sessions[0].total_ascent * 1000, unitPref)] as e}<span>{e.value} {e.unit}</span>{/each}
             </td>
           </tr>
         {/if}
@@ -402,9 +409,9 @@
             </td>
             <td class="pl-2">
             {#if parsedData.activity.sessions[0].avg_speed != undefined}
-              <span>{parsedData.activity.sessions[0].avg_speed.toFixed(2)} km/h</span>
+              {#each [formatSpeed(parsedData.activity.sessions[0].avg_speed, unitPref)] as s}<span>{s.value} {s.unit}</span>{/each}
             {:else}
-              <span>{parsedData.activity.sessions[0].enhanced_avg_speed.toFixed(2)} km/h</span>
+              {#each [formatSpeed(parsedData.activity.sessions[0].enhanced_avg_speed, unitPref)] as s}<span>{s.value} {s.unit}</span>{/each}
             {/if}
             </td>
           </tr>
@@ -446,9 +453,9 @@
             </td>
             <td class="pl-2">
               {#if parsedData.activity.sessions[0].max_speed != undefined}
-              <span>{parsedData.activity.sessions[0].max_speed.toFixed(2)} km/h</span>
+              {#each [formatSpeed(parsedData.activity.sessions[0].max_speed, unitPref)] as s}<span>{s.value} {s.unit}</span>{/each}
               {:else}
-                <span>{parsedData.activity.sessions[0].enhanced_max_speed.toFixed(2)} km/h</span>
+                {#each [formatSpeed(parsedData.activity.sessions[0].enhanced_max_speed, unitPref)] as s}<span>{s.value} {s.unit}</span>{/each}
               {/if}
             </td>
           </tr>

@@ -128,7 +128,7 @@
         {/if}
       </div>
         <div class="w-1/4 m-5 hidden lg:block">
-          <Statistics records={totals} month={month} year={year}/>
+          <Statistics records={totals} month={month} year={year} unitPreference={data.user?.unit_preference ?? 'metric'}/>
       </div>
     {/if}
   </div>

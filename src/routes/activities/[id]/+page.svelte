@@ -5,8 +5,10 @@
   import { pb } from "$lib/database";
   import { userCookie } from "$lib/stores";
   import { env } from "$env/dynamic/public";
+  import { formatDistance, formatSpeed, formatElevation } from "$lib/units";
 
   let user: UserData = $userCookie.user
+  $: unitPref = user?.unit_preference ?? 'metric';
   export let data: Exercise;
 
   let url: string;
@@ -149,7 +151,9 @@
             <div class="pb-5">
               <ul class="flex flex-wrap text-white">
                 <li class="pr-5">
-                  <span class="text-3xl">{(data.tot_distance).toFixed(2)}</span><span class="text-md">km</span><br>
+                  {#each [formatDistance(data.tot_distance, unitPref)] as d}
+                    <span class="text-3xl">{d.value}</span><span class="text-md">{d.unit}</span>
+                  {/each}<br>
                   <span class="text-sm text-neutral-500">Distance</span>
                 </li>
                 <li class="pr-5">
@@ -157,7 +161,9 @@
                   <span class="text-sm text-neutral-500">Moving Time</span>
                 </li>
                 <li>
-                  <span class="text-3xl">{data.tot_elevation * 1000}</span><span class="text-md">m</span><br>
+                  {#each [formatElevation(data.tot_elevation * 1000, unitPref)] as e}
+                    <span class="text-3xl">{e.value}</span><span class="text-md">{e.unit}</span>
+                  {/each}<br>
                   <span class="text-sm text-neutral-500">Elevation</span>
                 </li>
               </ul>
@@ -193,10 +199,10 @@
                 <tr>
                   <td>Speed</td>
                   {#if data.avg_speed}
-                    <td>{(data.avg_speed).toFixed(2)} km/h</td>
+                    {#each [formatSpeed(data.avg_speed, unitPref)] as s}<td>{s.value} {s.unit}</td>{/each}
                   {/if}
                   {#if data.max_speed}
-                    <td>{(data.max_speed).toFixed(2)} km/h</td>
+                    {#each [formatSpeed(data.max_speed, unitPref)] as s}<td>{s.value} {s.unit}</td>{/each}
                   {/if}
                 </tr>
                 {#if data.avg_hr || data.max_hr }

@@ -3,10 +3,12 @@
   import { pb } from '$lib/database';
   import { env } from '$env/dynamic/public';
   import type { Courses } from '$lib/types';
+  import { formatDistance, formatElevation } from "$lib/units";
 
   export let data;
   let ready: Boolean;
   let routes: Courses = [];
+  $: unitPref = data.user?.unit_preference ?? 'metric';
 
   let url: string;
   if (env.PUBLIC_DB_URL) {
@@ -75,7 +77,7 @@
               {:else if sport == "swimming"}
                 <svg class="mt-1" xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 6c.6.5 1.2 1 2.5 1C7 7 7 5 9.5 5c2.6 0 2.4 2 5 2 2.5 0 2.5-2 5-2 1.3 0 1.9.5 2.5 1"/><path d="M2 12c.6.5 1.2 1 2.5 1 2.5 0 2.5-2 5-2 2.6 0 2.4 2 5 2 2.5 0 2.5-2 5-2 1.3 0 1.9.5 2.5 1"/><path d="M2 18c.6.5 1.2 1 2.5 1 2.5 0 2.5-2 5-2 2.6 0 2.4 2 5 2 2.5 0 2.5-2 5-2 1.3 0 1.9.5 2.5 1"/></svg>
               {/if}
-              <span class="mt-1 pl-2 text-xs">{(distance / 1000).toFixed(2)} km</span>
+              <span class="mt-1 pl-2 text-xs">{formatDistance(distance / 1000, unitPref).value} {formatDistance(distance / 1000, unitPref).unit}</span>
             </div>
             <div class="flex flex-row w-1/3">
               <svg class="mt-1" xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
@@ -84,7 +86,7 @@
             <div class="flex flex-row w-1/3">
               <svg class="mt-1" xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m8 3 4 8 5-5 5 15H2L8 3z"/><path d="M4.14 15.08c2.62-1.57 5.24-1.43 7.86.42 2.74 1.94 5.49 2 8.23.19"/></svg>
               <!-- 0.6 because of free elevation api not being very accurate -->
-              <span class="mt-1 pl-2 text-xs">{(elevation * 0.6).toFixed(0)} m</span>
+              <span class="mt-1 pl-2 text-xs">{formatElevation(elevation * 0.6, unitPref).value} {formatElevation(elevation * 0.6, unitPref).unit}</span>
             </div>
           </div>
         </div>

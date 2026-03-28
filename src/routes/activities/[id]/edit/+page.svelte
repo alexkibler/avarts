@@ -2,9 +2,11 @@
 	import { formatDate } from '$lib/utils.js';
   import { userCookie } from "$lib/stores";
 	import type { Exercise } from '$lib/types';
+  import { formatDistance, formatElevation } from "$lib/units";
 
   export let data: Exercise;
   let user = $userCookie.user;
+  $: unitPref = user?.unit_preference ?? 'metric';
 
   if (user.id != data.user) {
     window.location.href = "/";
@@ -56,7 +58,7 @@
               Distance
             </td>
             <td>
-              {data.tot_distance.toFixed(2)} km
+              {#each [formatDistance(data.tot_distance, unitPref)] as d}{d.value} {d.unit}{/each}
             </td>
           </tr>
           <tr>
@@ -72,7 +74,7 @@
               Elevation Gain
             </td>
             <td class="pb-5">
-              {data.tot_elevation * 1000} m
+              {#each [formatElevation(data.tot_elevation * 1000, unitPref)] as e}{e.value} {e.unit}{/each}
             </td>
           </tr>
         </table>

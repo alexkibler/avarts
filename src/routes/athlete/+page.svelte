@@ -1,6 +1,7 @@
 <script lang="ts">
   import { env } from "$env/dynamic/public";
   import type { UserData } from "$lib/types";
+  import { formatWeight } from "$lib/units";
 
   export let data: UserData;
 
@@ -10,6 +11,9 @@
   let name: boolean = false;
   let weight: boolean = false;
   let formData;
+
+  $: unitPref = data.user.unit_preference ?? 'metric';
+  $: weightFormatted = formatWeight(data.user.weight, unitPref);
 
   let url: string;
   if (env.PUBLIC_DB_URL) {
@@ -138,13 +142,35 @@
             {#if edit == true && weight == true}
               <input type="number" step="0.1" min="0" name="weight" class="bg-neutral-600 border border-neutral-400 rounded-md w-16" bind:value={data.user.weight}/>
             {:else}
-              {data.user.weight}
+              {weightFormatted.value}
             {/if}
           </span>
           <span class="pl-1 pr-2">
-            kg
+            {weightFormatted.unit}
           </span>
           <svg class="hidden group-hover:block mt-1" xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/><path d="m15 5 4 4"/></svg>
+        </div>
+      </div>
+      <div class="flex flex-row border-b border-neutral-400 py-4 hover:bg-neutral-600">
+        <div class="w-1/4 text-right text-neutral-400">
+          <span>Units</span>
+        </div>
+        <div class="w-3/4 pl-4 text-neutral-100 flex flex-row gap-2">
+          <button
+            type="button"
+            on:click={() => { data.user.unit_preference = 'metric'; edit = true; }}
+            class="px-4 py-1 rounded-full border {unitPref === 'metric' ? 'bg-orange-600 border-orange-600 text-white' : 'border-neutral-400 text-neutral-400 hover:border-neutral-200 hover:text-neutral-100'}"
+          >
+            Metric
+          </button>
+          <button
+            type="button"
+            on:click={() => { data.user.unit_preference = 'imperial'; edit = true; }}
+            class="px-4 py-1 rounded-full border {unitPref === 'imperial' ? 'bg-orange-600 border-orange-600 text-white' : 'border-neutral-400 text-neutral-400 hover:border-neutral-200 hover:text-neutral-100'}"
+          >
+            Imperial
+          </button>
+          <input type="hidden" name="unit_preference" value={unitPref} />
         </div>
       </div>
     </form>

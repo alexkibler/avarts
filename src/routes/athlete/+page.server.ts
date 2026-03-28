@@ -6,10 +6,11 @@ export const actions = {
     const id = formData.get('id')
 
 		try {
-      const { name, avatar, weight } = await locals.pb.collection('users').update(id, formData);
+      const { name, avatar, weight, unit_preference } = await locals.pb.collection('users').update(id, formData);
       locals.user.name = name;
       locals.user.avatar = avatar;
-      locals.user.weight= weight;
+      locals.user.weight = weight;
+      locals.user.unit_preference = unit_preference;
 		} catch (err) {
       return error(500, 'Something went wrong');
 		};
