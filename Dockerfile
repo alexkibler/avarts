@@ -15,4 +15,4 @@ RUN npm install express
 
 ENV BODY_SIZE_LIMIT=5242880
 EXPOSE 8080 8090
-CMD ["sh", "-c", "node server.js & /app/db/pocketbase serve --http=0.0.0.0:8090"]
+CMD ["sh", "-c", "node server.js & /app/db/pocketbase serve --http=0.0.0.0:8090 --automigrate"]
