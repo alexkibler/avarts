@@ -1,0 +1,34 @@
+import typing
+from dataclasses import dataclass
+
+from Options import Choice, Range, OptionDict
+
+
+class CheckCount(Range):
+    """The number of intersections/locations to generate for this world."""
+
+    display_name = "Check Count"
+    range_start = 10
+    range_end = 1000
+    default = 100
+
+
+class GoalType(Choice):
+    """The goal required to complete the game."""
+
+    display_name = "Goal"
+    option_all_intersections = 0
+    option_percentage = 1
+    default = 0
+
+
+@dataclass
+class IRLCyclingOptions:
+    check_count: CheckCount
+    goal_type: GoalType
+
+
+irl_cycling_options: typing.Dict[str, type] = {
+    "check_count": CheckCount,
+    "goal_type": GoalType,
+}
