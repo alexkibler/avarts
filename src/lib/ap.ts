@@ -12,37 +12,63 @@ export interface ApConnectionOptions {
 }
 
 export async function connectToAp(options: ApConnectionOptions) {
-  try {
-    await apClient.login(
-      options.url,
-      options.name,
-      options.game,
-      {
-        password: options.password,
-        items: itemsHandlingFlags.all,
-      }
-    );
+  let urlsToTry = [options.url];
 
-    console.log('Successfully connected to Archipelago!');
-
-    // Process all items already queued on connect
-    await processReceivedItems(options.sessionId, apClient.items.received);
-
-    // Listen for new items during the session
-    apClient.items.on('itemsReceived', async () => {
-      await processReceivedItems(options.sessionId, apClient.items.received);
-    });
-
-    // Mirror AP chat/server messages to console
-    apClient.messages.on('message', ([text]: [string]) => {
-      console.log('[AP]', text);
-    });
-
-    return true;
-  } catch (error) {
-    console.error('Error connecting to Archipelago:', error);
-    return false;
+  // If the user didn't specify a protocol, archipelago.js's internal fallback is buggy.
+  // It tries wss://, which can hang forever if the server returns 101 but doesn't speak TLS (e.g. port 38281).
+  // We'll explicitly try wss:// first, then ws://, but with our own 5 second timeout to bypass the hang.
+  if (!/^wss?:\/\//i.test(options.url)) {
+    urlsToTry = [`wss://${options.url}`, `ws://${options.url}`];
   }
+
+  for (const url of urlsToTry) {
+    try {
+      // Disconnect any hanging attempts before trying the new one
+      apClient.socket.disconnect();
+
+      const loginPromise = apClient.login(
+        url,
+        options.name,
+        options.game,
+        {
+          password: options.password,
+          items: itemsHandlingFlags.all,
+        }
+      );
+
+      const timeoutPromise = new Promise((_, reject) => {
+        setTimeout(() => reject(new Error('Connection timed out')), 5000);
+      });
+
+      // Race the login attempt against a 5-second timeout
+      await Promise.race([loginPromise, timeoutPromise]);
+
+      console.log(`Successfully connected to Archipelago via ${url}!`);
+      options.url = url; // Update the options so the UI reflects the successful URL
+
+      // Process all items already queued on connect
+      await processReceivedItems(options.sessionId, apClient.items.received);
+
+      // Listen for new items during the session
+      apClient.items.on('itemsReceived', async () => {
+        await processReceivedItems(options.sessionId, apClient.items.received);
+      });
+
+      // Mirror AP chat/server messages to console
+      apClient.messages.on('message', ([text]: [string]) => {
+        console.log('[AP]', text);
+      });
+
+      return true;
+    } catch (error) {
+      console.error(`Failed to connect via ${url}:`, error);
+      // Ensure we clean up the hung socket so the next URL can try cleanly
+      apClient.socket.disconnect();
+    }
+  }
+
+  console.error('Error connecting to Archipelago: All URL attempts failed.');
+  return false;
 }
 
 /**
