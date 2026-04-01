@@ -21,7 +21,7 @@
   <div class="flex flex-col md:flex-row">
     <div class="flex items-center md:border-neutral-500 md:border-e-2 h-1/2 md:h-full">
       <a href="/">
-        <img class="px-5 text-orange-600 uppercase font-extrabold text-2xl h-5 w-32" src="/avarts.svg" alt="Avarts"/>
+        <img class="px-5 text-orange-600 uppercase font-extrabold text-2xl h-5 w-32" src="/bikeapelago.svg" alt="Bikeapelago"/>
       </a>
       <!-- <button class="pr-2">
         <svg xmlns="http://www.w3.org/2000/svg" width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="p-2 text-neutral-500 hover:text-neutral-200"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>

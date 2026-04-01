@@ -1,6 +1,6 @@
 <h1 align="center">
   <br>
-  <img src="/static/avarts.svg" alt="IRL Cycling" width="500">
+  <img src="/static/bikeapelago.svg" alt="Bikeapelago" width="500">
 </h1>
 
 <h4 align="center">An Archipelago multiworld client where real-world cycling intersections are your Locations.</h4>
@@ -18,7 +18,7 @@
 
 ---
 
-**IRL Cycling** is an [Archipelago](https://archipelago.gg) multiworld game where you play in the real world.
+**Bikeapelago** is an [Archipelago](https://archipelago.gg) multiworld game where you play in the real world.
 
 - **Locations** are real cycling intersections near you, sourced live from OpenStreetMap.
 - **Items** are **Node Unlocks** — each one reveals a new intersection on your map.
@@ -28,7 +28,7 @@
 
 ## How It Works
 
-1. Generate an Archipelago seed that includes `IRL Cycling` as one of the games.
+1. Generate an Archipelago seed that includes `Bikeapelago` as one of the games.
 2. Create a **Game Session** in the web client — pick a map center and radius, and the app fetches real cycling intersections from OSM and assigns them as your locations.
 3. Connect to the Archipelago server. As you receive **Node Unlock** items from the multiworld, intersections appear on your map.
 4. Ride to them IRL. Upload your `.fit` file to validate the check — the app runs a 30-metre Haversine proximity check against all available nodes.
@@ -48,34 +48,34 @@
 ### Run with Docker Compose
 
 ```bash
-git clone <this-repo> && cd avarts
+git clone <this-repo> && cd bikeapelago
 docker compose up -d
 ```
 
 The app is available at `http://localhost:8182`.  
-PocketBase admin UI is at `http://localhost:8090/_/` (default credentials: `admin@avarts.lan` / `adminadmin` — **change these immediately**).
+PocketBase admin UI is at `http://localhost:8090/_/` (default credentials: `admin@bikeapelago.lan` / `adminadmin` — **change these immediately**).
 
 ---
 
 ## apworld Setup
 
-The Archipelago world definition lives in `apworld/irl_cycling/`.
+The Archipelago world definition lives in `apworld/bikeapelago/`.
 
 ### Install
 
-1. Zip the `irl_cycling/` directory into `irl_cycling.apworld`:
+1. Zip the `bikeapelago/` directory into `bikeapelago.apworld`:
    ```bash
    cd apworld
-   zip -r irl_cycling.apworld irl_cycling/
+   zip -r bikeapelago.apworld bikeapelago/
    ```
-2. Place `irl_cycling.apworld` in your Archipelago `worlds/` directory.
+2. Place `bikeapelago.apworld` in your Archipelago `worlds/` directory.
 
 ### YAML Options
 
 ```yaml
-game: IRL Cycling
+game: Bikeapelago
 name: YourSlotName
-IRL Cycling:
+Bikeapelago:
   check_count: 50          # Number of intersections / locations (10–1000, default 100)
   goal_type: all_intersections  # all_intersections | percentage
 ```
@@ -96,7 +96,7 @@ IRL Cycling:
 
 ## PocketBase Setup
 
-IRL Cycling requires two custom PocketBase collections: `game_sessions` and `map_nodes`.
+Bikeapelago requires two custom PocketBase collections: `game_sessions` and `map_nodes`.
 
 ### Import via Admin UI
 
@@ -151,7 +151,7 @@ If you prefer to create the collections by hand:
    - **Slot Name** — your slot name in the generated seed
    - **Radius** — how large a play area to generate (metres)
    - **Check Count** — must match the `check_count` in your YAML
-3. Click the map to set your centre point.
+3. Set your centre point — type an address and click **Search**, click **Use My Location**, or click directly on the map.
 4. Click **Generate Session**.
 
 The app queries OpenStreetMap's Overpass API for cycling intersections inside your radius (only `residential`, `tertiary`, `unclassified`, `living_street`, `cycleway`, and `track` ways where `bicycle != no`), filters for real intersections (nodes belonging to 2+ differently named ways), shuffles them, and writes `check_count` nodes to PocketBase with `state: Hidden`.
@@ -202,38 +202,86 @@ When the goal condition is met (all intersections checked, or 70 % for `percenta
 
 | Variable | Default | Description |
 |----------|---------|-------------|
-| `PUBLIC_DB_URL` | `http://127.0.0.1:8090` | Public URL of the PocketBase API (required if hosting on the internet) |
+| `PUBLIC_DB_URL` | `http://127.0.0.1:8090` | Public URL of the PocketBase API (browser-facing — required for internet hosting) |
 | `PUBLIC_GRAPHHOPPER_URL` | — | URL of a self-hosted GraphHopper `/route` endpoint |
-| `PUBLIC_GRAPHHOPPER_API` | — | GraphHopper cloud API key (used if no self-hosted URL) |
+| `PUBLIC_GRAPHHOPPER_API` | — | GraphHopper cloud API key (used if no self-hosted URL is set) |
 | `PUBLIC_REGISTRATION` | `true` | Set to `false` to disable new user registration |
 | `BODY_SIZE_LIMIT` | `5242880` | Max upload size in bytes (default 20 MB in Docker Compose) |
 
 ### Docker Compose (recommended)
 
-```yaml
-services:
-  avarts:
-    build: ./avarts-src
-    ports:
-      - "8182:8080"   # SvelteKit frontend
-      - "8090:8090"   # PocketBase API + admin UI
-    volumes:
-      - pb_data:/app/db/pb_data
-    environment:
-      - PUBLIC_DB_URL=https://pb.yourdomain.com
-      - PUBLIC_GRAPHHOPPER_URL=https://routing.yourdomain.com/route
-      - PUBLIC_REGISTRATION=true
-      - BODY_SIZE_LIMIT=20971520
+The repo root contains a `docker-compose.yml` that builds and runs both the Bikeapelago app and GraphHopper.
+
+**1. Clone and configure**
+
+```bash
+git clone <this-repo> bikeapelago && cd bikeapelago
 ```
+
+Edit the `environment:` block in `docker-compose.yml` to set your public URLs:
+
+```yaml
+environment:
+  - PUBLIC_DB_URL=https://pb.yourdomain.com
+  - PUBLIC_GRAPHHOPPER_URL=https://routing.yourdomain.com/route
+  - PUBLIC_REGISTRATION=true
+  - BODY_SIZE_LIMIT=20971520
+```
+
+**2. Set up GraphHopper map data**
+
+Download a regional `.osm.pbf` extract from [Geofabrik](https://download.geofabrik.de/) and place it in `graphhopper/data/`. Update `PBF_FILE` in the compose file to match the filename.
+
+**3. Build and start**
+
+```bash
+docker compose build
+docker compose up -d
+```
+
+The Bikeapelago frontend is available at `http://localhost:8182`.  
+PocketBase admin UI is at `http://localhost:8090/_/`.
+
+> **First boot:** GraphHopper indexes the `.osm.pbf` on startup — this takes 20–40 minutes for large regions. Watch progress with `docker logs -f graphhopper`.
+
+**4. PocketBase first-time setup**
+
+1. Open the admin UI at `http://localhost:8090/_/` (or your public PocketBase URL).
+2. Create your admin account — change the default `admin@bikeapelago.lan` / `adminadmin` immediately.
+3. Go to **Settings → Import collections** and paste `pocketbase/pb_schema.json`.
+
+### Deploying Updates
+
+```bash
+git pull
+docker compose build bikeapelago && docker compose up -d bikeapelago
+```
+
+GraphHopper only needs a rebuild if its `Dockerfile` or `config.yml` changed.
+
+### Reverse Proxy
+
+The app exposes two ports that need public DNS:
+
+| Port | Service |
+|------|---------|
+| `8182` | SvelteKit frontend |
+| `8090` | PocketBase API + admin UI |
+
+Set `PUBLIC_DB_URL` to the public URL of port 8090 so the browser can reach PocketBase directly.
+
+For nginx-proxy-manager, add two proxy hosts pointing to `host.docker.internal` at each port and enable SSL.
 
 ### GraphHopper (self-hosted routing)
 
-GraphHopper is required for in-app route planning. See the `graphhopper/` directory for a Docker Compose setup. On first boot it indexes the `.osm.pbf` file — this can take 20–40 minutes for large regions.
+Self-hosted GraphHopper gives cycling-optimised routes from local OSM data. On first boot it indexes the `.osm.pbf` — this can take 20–40 minutes for large regions.
 
 1. Download a region `.osm.pbf` from [Geofabrik](https://download.geofabrik.de/) into `graphhopper/data/`.
-2. Set `PBF_FILE=your-region.osm.pbf` in the environment.
+2. Set `PBF_FILE=your-region.osm.pbf` in the `graphhopper` service environment.
 3. Run `docker compose up -d graphhopper`.
 4. Point the app at it with `PUBLIC_GRAPHHOPPER_URL=http://<host>:8989/route`.
+
+To update map data later: stop GraphHopper, replace the `.osm.pbf`, delete the cache files (`*.ghz`, `graph-cache/`), then rebuild and restart.
 
 ---
 
@@ -244,12 +292,12 @@ GraphHopper is required for in-app route planning. See the `graphhopper/` direct
 Since registration does not require an email address, password resets must be done via the PocketBase admin UI (`/users` collection) or via the CLI:
 
 ```bash
-./db/pocketbase admin update admin@avarts.lan
+./db/pocketbase admin update admin@bikeapelago.lan
 ```
 
 ### PocketBase Admin Credentials
 
-Default: `admin@avarts.lan` / `adminadmin`
+Default: `admin@bikeapelago.lan` / `adminadmin`
 
 Change these immediately after first deployment via the admin UI at `http://localhost:8090/_/`.
 

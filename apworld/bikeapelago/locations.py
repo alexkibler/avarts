@@ -7,8 +7,8 @@ class LocationData(NamedTuple):
     code: int
 
 
-class IRLCyclingLocation(Location):
-    game: str = "IRL Cycling"
+class BikeapelagoLocation(Location):
+    game: str = "Bikeapelago"
 
 
 # Similar to items, we need a static location_name_to_id mapping.

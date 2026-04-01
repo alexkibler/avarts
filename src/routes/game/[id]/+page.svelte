@@ -3,6 +3,7 @@
   import { pb } from '$lib/pb';
   import ApMap from '$components/apMap.svelte';
   import ApDropzone from '$components/apDropzone.svelte';
+  import { connectToAp, apClient } from '$lib/ap';
   import type { ApConnectionOptions } from '$lib/ap';
 
   export let data: { user: any; sessionId: string };
@@ -15,8 +16,9 @@
   let apSlot = '';
   let apPassword = '';
 
-  // Set once the user clicks "Connect & Play" — mounts the map
+  // Set once successfully connected — mounts the map
   let activeConnectionOptions: ApConnectionOptions | null = null;
+  let isConnected = false;
   let connecting = false;
   let connectionError = '';
 
@@ -26,7 +28,7 @@
   onMount(async () => {
     try {
       session = await pb.collection('game_sessions').getOne(data.sessionId);
-      apUrl = session.ap_server_url || 'archipelago.gg:38281';
+      apUrl = 'archipelago.gg:38281';
       apSlot = session.ap_slot_name || '';
       await refreshNodeStats();
     } catch (e: any) {
@@ -51,34 +53,58 @@
     if (!session) return;
     connecting = true;
     connectionError = '';
-    try {
-      activeConnectionOptions = {
-        url: apUrl.trim(),
-        game: 'IRL Cycling',
-        name: apSlot.trim(),
-        password: apPassword.trim() || undefined,
-        sessionId: session.id,
-      };
-    } catch (e: any) {
-      connectionError = e?.message ?? 'Connection failed.';
-      activeConnectionOptions = null;
-    } finally {
-      connecting = false;
+    const options: ApConnectionOptions = {
+      url: apUrl.trim(),
+      game: 'Bikeapelago',
+      name: apSlot.trim(),
+      password: apPassword.trim() || undefined,
+      sessionId: session.id,
+    };
+    const ok = await connectToAp(options);
+    if (ok) {
+      activeConnectionOptions = options;
+      isConnected = true;
+      // Save server URL back to session for convenience
+      await pb.collection('game_sessions').update(session.id, { ap_server_url: options.url });
+    } else {
+      connectionError = 'Could not connect. Check server URL, slot name, and password.';
     }
+    connecting = false;
   }
 
   function handleDisconnect() {
+    apClient.socket.disconnect();
     activeConnectionOptions = null;
+    isConnected = false;
   }
 
   // Refresh stats after dropzone validates a file
   async function handleValidated() {
     await refreshNodeStats();
   }
+
+  function downloadYaml() {
+    const totalChecks = nodeStats.hidden + nodeStats.available + nodeStats.checked;
+    const yaml = [
+      `game: Bikeapelago`,
+      `name: ${session.ap_slot_name}`,
+      ``,
+      `Bikeapelago:`,
+      `  check_count: ${totalChecks}`,
+      `  goal_type: all_intersections`,
+    ].join('\n');
+    const blob = new Blob([yaml], { type: 'text/yaml' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `${session.ap_slot_name}.yaml`;
+    a.click();
+    URL.revokeObjectURL(url);
+  }
 </script>
 
 <svelte:head>
-  <title>{session?.ap_seed_name ?? 'Loading…'} — IRL Cycling</title>
+  <title>{session?.ap_seed_name ?? 'Loading…'} — Bikeapelago</title>
 </svelte:head>
 
 {#if loadError}
@@ -96,10 +122,12 @@
       <span class="text-neutral-400">Seed: </span>
       <span class="text-white font-semibold">{session.ap_seed_name}</span>
     </div>
-    <div>
-      <span class="text-neutral-400">Server: </span>
-      <span class="text-white">{session.ap_server_url}</span>
-    </div>
+    {#if activeConnectionOptions}
+      <div>
+        <span class="text-neutral-400">Server: </span>
+        <span class="text-white">{activeConnectionOptions.url}</span>
+      </div>
+    {/if}
     <div>
       <span class="text-neutral-400">Slot: </span>
       <span class="text-white">{session.ap_slot_name}</span>
@@ -109,7 +137,7 @@
       <span class="text-orange-400">Available: <strong>{nodeStats.available}</strong></span>
       <span class="text-green-400">Checked: <strong>{nodeStats.checked}</strong></span>
     </div>
-    {#if activeConnectionOptions}
+    {#if isConnected}
       <button on:click={handleDisconnect} class="ml-2 text-xs text-red-400 hover:text-red-300 border border-red-800 rounded px-2 py-0.5">
         Disconnect
       </button>
@@ -146,6 +174,32 @@
             {connecting ? 'Connecting…' : 'Connect & Play'}
           </button>
         </form>
+
+        <div class="mt-6 pt-5 border-t border-neutral-600">
+          <p class="text-xs text-neutral-400 mb-3">Need to set up the Archipelago server first? Download these files:</p>
+          <div class="flex gap-3">
+            <button
+              type="button"
+              on:click={downloadYaml}
+              class="flex-1 flex items-center justify-center gap-2 bg-neutral-700 hover:bg-neutral-600 border border-neutral-600 text-white text-sm font-medium px-4 py-2 rounded transition"
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4 text-orange-400 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/>
+              </svg>
+              Player YAML
+            </button>
+            <a
+              href="/bikeapelago.apworld"
+              download="bikeapelago.apworld"
+              class="flex-1 flex items-center justify-center gap-2 bg-neutral-700 hover:bg-neutral-600 border border-neutral-600 text-white text-sm font-medium px-4 py-2 rounded transition"
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4 text-orange-400 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/>
+              </svg>
+              .apworld
+            </a>
+          </div>
+        </div>
       </div>
     </div>
   {:else}

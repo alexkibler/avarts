@@ -4,8 +4,8 @@
   import type { UserData } from "$lib/types";
 
   export let data: UserData
-  let latitude: number = 40.71;
-  let longitude: number = -74;
+  let latitude: number = 40.4406;
+  let longitude: number = -79.9959;
   let initialView = [latitude, longitude];
   let error = null;
 

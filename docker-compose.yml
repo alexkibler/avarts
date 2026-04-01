@@ -1,12 +1,12 @@
 version: '3'
 
 services:
-  avarts:
-    image: avarts:latest
+  bikeapelago:
+    image: bikeapelago:latest
     build:
       context: .
       dockerfile: Dockerfile
-    container_name: avarts
+    container_name: bikeapelago
     restart: always
     ports:
       - 8080:8080

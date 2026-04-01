@@ -8,8 +8,8 @@ class ItemData(NamedTuple):
     classification: ItemClassification
 
 
-class IRLCyclingItem(Item):
-    game: str = "IRL Cycling"
+class BikeapelagoItem(Item):
+    game: str = "Bikeapelago"
 
 
 # We will dynamically generate the items based on check_count, but we need a base mapping.

@@ -1,7 +1,7 @@
 import typing
 from dataclasses import dataclass
 
-from Options import Choice, Range, OptionDict
+from Options import Choice, Range, OptionDict, PerGameCommonOptions
 
 
 class CheckCount(Range):
@@ -23,12 +23,12 @@ class GoalType(Choice):
 
 
 @dataclass
-class IRLCyclingOptions:
+class BikeapelagoOptions(PerGameCommonOptions):
     check_count: CheckCount
     goal_type: GoalType
 
 
-irl_cycling_options: typing.Dict[str, type] = {
+bikeapelago_options: typing.Dict[str, type] = {
     "check_count": CheckCount,
     "goal_type": GoalType,
 }

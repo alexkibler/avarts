@@ -12,16 +12,71 @@
   let L: any;
 
   // Form Data
-  let centerLat = 50.8503; // Default Brussels
-  let centerLon = 4.3517;
+  let centerLat = 40.4406; // Default Pittsburgh
+  let centerLon = -79.9959;
   let radius = 5000;
   let checkCount = 10;
   let seedName = '';
   let slotName = '';
-  let serverUrl = 'archipelago.gg:38281';
 
   let isGenerating = false;
   let errorMsg = '';
+
+  // Address search
+  let addressQuery = '';
+  let isGeocoding = false;
+  let geocodeError = '';
+
+  // Geolocation
+  let isLocating = false;
+  let locationError = '';
+
+  async function searchAddress() {
+    if (!addressQuery.trim()) return;
+    isGeocoding = true;
+    geocodeError = '';
+    try {
+      const url = `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(addressQuery.trim())}`;
+      const res = await fetch(url, { headers: { 'Accept-Language': 'en' } });
+      if (!res.ok) throw new Error('Geocoding request failed.');
+      const results = await res.json();
+      if (!results || results.length === 0) {
+        geocodeError = 'No results found. Try a different address.';
+        return;
+      }
+      const { lat, lon } = results[0];
+      centerLat = parseFloat(lat);
+      centerLon = parseFloat(lon);
+      map.setView([centerLat, centerLon], 13);
+      updateMapPin(centerLat, centerLon);
+    } catch (err: any) {
+      geocodeError = err.message || 'Failed to geocode address.';
+    } finally {
+      isGeocoding = false;
+    }
+  }
+
+  function useMyLocation() {
+    if (!navigator.geolocation) {
+      locationError = 'Geolocation is not supported by your browser.';
+      return;
+    }
+    isLocating = true;
+    locationError = '';
+    navigator.geolocation.getCurrentPosition(
+      (pos) => {
+        centerLat = pos.coords.latitude;
+        centerLon = pos.coords.longitude;
+        map.setView([centerLat, centerLon], 13);
+        updateMapPin(centerLat, centerLon);
+        isLocating = false;
+      },
+      (err) => {
+        locationError = err.message || 'Could not retrieve your location.';
+        isLocating = false;
+      }
+    );
+  }
 
   onMount(async () => {
     L = await import('leaflet');
@@ -76,7 +131,6 @@
   async function generateSeed() {
     isGenerating = true;
     errorMsg = '';
-    successMsg = '';
 
     try {
       // 1. Fetch Intersections from OSM Overpass
@@ -99,7 +153,6 @@
       const sessionRecord = await pb.collection('game_sessions').create({
         user: userId,
         ap_seed_name: seedName,
-        ap_server_url: serverUrl,
         ap_slot_name: slotName,
         center_lat: centerLat,
         center_lon: centerLon,
@@ -117,7 +170,7 @@
           lat: node.lat,
           lon: node.lon,
           state: 'Hidden'
-        });
+        }, { requestKey: `map_node_${index}` });
       });
 
       await Promise.all(createPromises);
@@ -125,7 +178,16 @@
       window.location.href = `/game/${sessionRecord.id}`;
 
     } catch (err: any) {
-      errorMsg = err.message || 'An error occurred during generation.';
+      console.error('[GenerateSession Error]', err);
+      if (err.response?.data) {
+        const data = err.response.data;
+        const details = Object.entries(data)
+          .map(([key, val]: [string, any]) => `${key}: ${val.message || JSON.stringify(val)}`)
+          .join(', ');
+        errorMsg = `Validation failed: ${details}`;
+      } else {
+        errorMsg = err.message || 'An error occurred during generation.';
+      }
     } finally {
       isGenerating = false;
     }
@@ -133,7 +195,7 @@
 </script>
 
 <svelte:head>
-  <title>New IRL Cycling Game</title>
+  <title>New Bikeapelago Game</title>
 </svelte:head>
 
 <div class="p-6 text-white max-w-6xl mx-auto grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -146,15 +208,9 @@
         <input id="seedName" bind:value={seedName} required class="w-full bg-neutral-700 border border-neutral-600 rounded px-3 py-2 text-white focus:outline-none focus:border-orange-500" />
       </div>
 
-      <div class="grid grid-cols-2 gap-4">
-        <div>
-          <label class="block text-sm font-medium mb-1" for="serverUrl">Archipelago Server</label>
-          <input id="serverUrl" bind:value={serverUrl} required class="w-full bg-neutral-700 border border-neutral-600 rounded px-3 py-2 text-white focus:outline-none focus:border-orange-500" />
-        </div>
-        <div>
-          <label class="block text-sm font-medium mb-1" for="slotName">Slot Name</label>
-          <input id="slotName" bind:value={slotName} required class="w-full bg-neutral-700 border border-neutral-600 rounded px-3 py-2 text-white focus:outline-none focus:border-orange-500" />
-        </div>
+      <div>
+        <label class="block text-sm font-medium mb-1" for="slotName">Slot Name</label>
+        <input id="slotName" bind:value={slotName} required class="w-full bg-neutral-700 border border-neutral-600 rounded px-3 py-2 text-white focus:outline-none focus:border-orange-500" />
       </div>
 
       <div class="grid grid-cols-2 gap-4">
@@ -166,6 +222,50 @@
           <label class="block text-sm font-medium mb-1" for="checkCount">Check Count</label>
           <input id="checkCount" type="number" bind:value={checkCount} required min="1" max="1000" class="w-full bg-neutral-700 border border-neutral-600 rounded px-3 py-2 text-white focus:outline-none focus:border-orange-500" />
         </div>
+      </div>
+
+      <div>
+        <label class="block text-sm font-medium mb-2">Center Point</label>
+
+        <div class="flex gap-2">
+          <input
+            type="text"
+            placeholder="Search address or place…"
+            bind:value={addressQuery}
+            on:keydown={(e) => e.key === 'Enter' && (e.preventDefault(), searchAddress())}
+            disabled={isGeocoding}
+            class="flex-1 bg-neutral-700 border border-neutral-600 rounded px-3 py-2 text-white placeholder-neutral-400 focus:outline-none focus:border-orange-500 disabled:opacity-50"
+          />
+          <button
+            type="button"
+            on:click={searchAddress}
+            disabled={isGeocoding || !addressQuery.trim()}
+            class="bg-neutral-700 hover:bg-neutral-600 border border-neutral-600 text-white font-medium px-4 py-2 rounded transition disabled:opacity-50 whitespace-nowrap"
+          >
+            {isGeocoding ? 'Searching…' : 'Search'}
+          </button>
+        </div>
+
+        {#if geocodeError}
+          <p class="mt-1 text-xs text-red-400">{geocodeError}</p>
+        {/if}
+
+        <button
+          type="button"
+          on:click={useMyLocation}
+          disabled={isLocating}
+          class="mt-2 flex items-center gap-2 bg-neutral-700 hover:bg-neutral-600 border border-neutral-600 text-white text-sm font-medium px-4 py-2 rounded transition disabled:opacity-50"
+        >
+          <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4 text-orange-400 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="12" cy="12" r="3"/>
+            <path d="M12 2v3M12 19v3M2 12h3M19 12h3"/>
+          </svg>
+          {isLocating ? 'Locating…' : 'Use My Location'}
+        </button>
+
+        {#if locationError}
+          <p class="mt-1 text-xs text-red-400">{locationError}</p>
+        {/if}
       </div>
 
       <p class="text-xs text-neutral-400">Click on the map to set the center point for node generation.</p>

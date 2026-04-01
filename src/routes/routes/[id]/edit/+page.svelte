@@ -3,9 +3,9 @@
 	import type { Course } from "$lib/types";
 	import { onMount } from "svelte";
 
-  export let data: Course;
-  let latitude: number = 40.71;
-  let longitude: number = -74;
+  export let data: RouteData
+  let latitude: number = 40.4406;
+  let longitude: number = -79.9959;
   let initialView = [latitude, longitude];
   let error = null;
 

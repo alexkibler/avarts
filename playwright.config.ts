@@ -1,11 +1,11 @@
 import { defineConfig, devices } from '@playwright/test';
 
 /**
- * E2E test configuration for Avarts.
+ * E2E test configuration for Bikeapelago.
  *
  * Prerequisites:
  * - PocketBase must be running at http://127.0.0.1:8090
- * - Default admin credentials: admin@avarts.lan / adminadmin
+ * - Default admin credentials: admin@bikeapelago.lan / adminadmin
  * - PUBLIC_REGISTRATION must be set to "true"
  *
  * The test suite will:

@@ -166,7 +166,7 @@ describe('register action', () => {
 
 		// Verify that the email field was auto-generated (since no email is entered)
 		const callArgs = collectionMethods.create.mock.calls[0][0];
-		expect(callArgs.get('email')).toMatch(/@avarts\.com$/);
+		expect(callArgs.get('email')).toMatch(/@bikeapelago\.com$/);
 	});
 
 	/**

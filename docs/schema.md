@@ -1,6 +1,6 @@
-# PocketBase Schema for IRL Cycling
+# PocketBase Schema for Bikeapelago
 
-The following collections must be created in PocketBase to support the IRL Cycling Archipelago client.
+The following collections must be created in PocketBase to support the Bikeapelago Archipelago client.
 
 ## Collection: `game_sessions`
 Stores the overarching Archipelago game sessions.

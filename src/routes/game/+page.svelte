@@ -28,7 +28,7 @@
 </script>
 
 <svelte:head>
-  <title>My Sessions — IRL Cycling</title>
+  <title>My Sessions — Bikeapelago</title>
 </svelte:head>
 
 <div class="max-w-4xl mx-auto px-4 py-8">

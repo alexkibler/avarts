@@ -2,39 +2,39 @@ from BaseClasses import Region
 from worlds.AutoWorld import WebWorld, World
 from worlds.generic.Rules import set_rule
 
-from .items import IRLCyclingItem, item_table, MAX_CHECKS
-from .locations import IRLCyclingLocation, location_table
-from .options import IRLCyclingOptions
+from .items import BikeapelagoItem, item_table, MAX_CHECKS
+from .locations import BikeapelagoLocation, location_table
+from .options import BikeapelagoOptions
 
 
-class IRLCyclingWeb(WebWorld):
+class BikeapelagoWeb(WebWorld):
     theme = "ocean"
     setup_en = """
-# IRL Cycling Archipelago Setup
+# Bikeapelago Archipelago Setup
 
-1. Place `irl_cycling.apworld` in your Archipelago `worlds/` directory.
+1. Place `bikeapelago.apworld` in your Archipelago `worlds/` directory.
 2. Create a YAML for your slot:
    ```yaml
-   game: IRL Cycling
+   game: Bikeapelago
    name: YourSlotName
-   IRL Cycling:
+   Bikeapelago:
      check_count: 50
      goal_type: all_intersections
    ```
 3. Generate a multiworld seed on the Archipelago website.
-4. Deploy the IRL Cycling web client, create a game session, and connect.
+4. Deploy the Bikeapelago web client, create a game session, and connect.
 """
 
 
-class IRLCyclingWorld(World):
+class BikeapelagoWorld(World):
     """
-    IRL Cycling is a web client that uses real-world cycling intersections as Archipelago
+    Bikeapelago is a web client that uses real-world cycling intersections as Archipelago
     Locations. Players receive Node Unlock items that reveal new intersections on the map.
     Complete intersections by riding to them IRL and uploading a FIT file.
     """
 
-    game = "IRL Cycling"
-    web = IRLCyclingWeb()
+    game = "Bikeapelago"
+    web = BikeapelagoWeb()
 
     # Static ID mappings — exclude event locations (code=None) and Victory from location map
     item_name_to_id = {
@@ -53,7 +53,7 @@ class IRLCyclingWorld(World):
         "Node Unlock": {f"Node Unlock {i}" for i in range(1, MAX_CHECKS + 1)},
     }
 
-    options_dataclass = IRLCyclingOptions
+    options_dataclass = BikeapelagoOptions
 
     def create_items(self) -> None:
         check_count = self.options.check_count.value
@@ -72,13 +72,13 @@ class IRLCyclingWorld(World):
 
         for i in range(1, check_count + 1):
             loc_name = f"Intersection {i}"
-            loc = IRLCyclingLocation(
+            loc = BikeapelagoLocation(
                 self.player, loc_name, self.location_name_to_id[loc_name], map_region
             )
             map_region.locations.append(loc)
 
         # Goal is an event location (code=None); Victory item will be locked here
-        goal_loc = IRLCyclingLocation(self.player, "Goal", None, map_region)
+        goal_loc = BikeapelagoLocation(self.player, "Goal", None, map_region)
         map_region.locations.append(goal_loc)
 
     def set_rules(self) -> None:
@@ -105,8 +105,8 @@ class IRLCyclingWorld(World):
         goal_loc = self.multiworld.get_location("Goal", self.player)
         goal_loc.place_locked_item(self.create_item("Victory"))
 
-    def create_item(self, name: str) -> IRLCyclingItem:
+    def create_item(self, name: str) -> BikeapelagoItem:
         item_data = item_table[name]
-        return IRLCyclingItem(
+        return BikeapelagoItem(
             name, item_data.classification, item_data.code, self.player
         )
