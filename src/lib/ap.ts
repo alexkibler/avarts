@@ -14,11 +14,21 @@ export interface ApConnectionOptions {
 export async function connectToAp(options: ApConnectionOptions) {
   let urlsToTry = [options.url];
 
-  // If the user didn't specify a protocol, archipelago.js's internal fallback is buggy.
-  // It tries wss://, which can hang forever if the server returns 101 but doesn't speak TLS (e.g. port 38281).
-  // We'll explicitly try wss:// first, then ws://, but with our own 5 second timeout to bypass the hang.
-  if (!/^wss?:\/\//i.test(options.url)) {
-    urlsToTry = [`wss://${options.url}`, `ws://${options.url}`];
+  if (typeof window !== 'undefined') {
+    // We are running in the browser, so we need to use the local proxy to bypass mixed content rules
+    // The Express server (running on the same origin) will proxy the connection for us
+    const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+    // Remove protocol from target URL if it exists
+    const targetUrl = options.url.replace(/^wss?:\/\//i, '');
+    const proxyUrl = `${protocol}//${window.location.host}/ap-proxy?target=${encodeURIComponent(targetUrl)}`;
+    urlsToTry = [proxyUrl];
+  } else {
+    // If the user didn't specify a protocol, archipelago.js's internal fallback is buggy.
+    // It tries wss://, which can hang forever if the server returns 101 but doesn't speak TLS (e.g. port 38281).
+    // We'll explicitly try wss:// first, then ws://, but with our own 5 second timeout to bypass the hang.
+    if (!/^wss?:\/\//i.test(options.url)) {
+      urlsToTry = [`wss://${options.url}`, `ws://${options.url}`];
+    }
   }
 
   for (const url of urlsToTry) {
