@@ -1,11 +1,45 @@
 <script lang="ts">
   import "../app.css";
+  import { onMount } from 'svelte';
+  import { browser } from '$app/environment';
   import Header from "./header.svelte";
   import { userCookie } from "$lib/stores"
+  import { pb } from "$lib/pb"
   import type { UserData } from "$lib/types";
 
   export let data: UserData;
-  $userCookie = data;
+
+  $: {
+    // Re-run whenever `data` changes to ensure auth state stays synced
+    $userCookie = data;
+    if (browser) {
+      pb.authStore.loadFromCookie(document.cookie);
+    }
+  }
+
+  function logError(level: 'error' | 'unhandledrejection', message: string, extra?: { source?: string; stack?: string }) {
+    pb.collection('client_errors').create({
+      level,
+      message,
+      source: extra?.source ?? '',
+      stack: extra?.stack ?? '',
+      page_url: window.location.href,
+      user: $userCookie?.user?.id ?? null,
+      user_agent: navigator.userAgent
+    }).catch(() => {/* swallow — don't recurse */});
+  }
+
+  onMount(() => {
+    window.addEventListener('error', (e) => {
+      console.error('[bikeapelago:error]', e.message, e.filename, e.lineno, e.colno, e.error);
+      logError('error', e.message, { source: `${e.filename}:${e.lineno}:${e.colno}`, stack: e.error?.stack });
+    });
+    window.addEventListener('unhandledrejection', (e) => {
+      const msg = e.reason instanceof Error ? e.reason.message : String(e.reason);
+      console.error('[bikeapelago:unhandledrejection]', e.reason);
+      logError('unhandledrejection', msg, { stack: e.reason instanceof Error ? e.reason.stack : undefined });
+    });
+  });
 </script>
 
 <div class="min-h-screen bg-neutral-700" data-sveltekit-prefetch>

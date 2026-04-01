@@ -33,7 +33,7 @@ export const actions = {
     if (env.PUBLIC_REGISTRATION == "true") {
       const formData = await request.formData();
       const randomString = generateRandomString();
-      formData.set('email', `${randomString}@avarts.com`)
+      formData.set('email', `${randomString}@bikeapelago.com`)
 
       try {
         await locals.pb.collection('users').create(formData);

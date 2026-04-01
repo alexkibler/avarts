@@ -1,5 +1,5 @@
 /**
- * E2E test helpers for Avarts.
+ * E2E test helpers for Bikeapelago.
  *
  * Provides direct PocketBase API access for test setup and cleanup,
  * so that test data created by the UI can be reliably deleted after
@@ -10,7 +10,7 @@ export const PB_URL = process.env.TEST_PB_URL || 'http://127.0.0.1:8090';
 export const APP_URL = process.env.TEST_BASE_URL || 'http://localhost:5173';
 
 /** Default admin credentials (see README / docker-compose.yml) */
-const ADMIN_EMAIL = process.env.TEST_ADMIN_EMAIL || 'admin@avarts.lan';
+const ADMIN_EMAIL = process.env.TEST_ADMIN_EMAIL || 'admin@bikeapelago.lan';
 const ADMIN_PASSWORD = process.env.TEST_ADMIN_PASSWORD || 'adminadmin';
 
 /** Authenticate as admin and return a bearer token. */
@@ -64,7 +64,7 @@ export async function createTestUser(
 			password: user.password,
 			passwordConfirm: user.password,
 			name: user.name,
-			email: `${randomSuffix}@avarts-test.local`,
+			email: `${randomSuffix}@bikeapelago-test.local`,
 			emailVisibility: false,
 		}),
 	});

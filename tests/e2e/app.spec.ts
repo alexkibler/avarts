@@ -1,5 +1,5 @@
 /**
- * End-to-end test suite for Avarts.
+ * End-to-end test suite for Bikeapelago.
  *
  * Test flow:
  *   1. Register a new test user via the registration form
@@ -28,7 +28,7 @@
  * Prerequisites:
  *   - App running at http://localhost:5173 (or TEST_BASE_URL env var)
  *   - PocketBase running at http://127.0.0.1:8090 (or TEST_PB_URL env var)
- *   - PocketBase admin: admin@avarts.lan / adminadmin (or TEST_ADMIN_* env vars)
+ *   - PocketBase admin: admin@bikeapelago.lan / adminadmin (or TEST_ADMIN_* env vars)
  *   - PUBLIC_REGISTRATION=true
  */
 import { test, expect, type Page, type BrowserContext } from '@playwright/test';
@@ -602,13 +602,13 @@ test.describe('Navigation', () => {
 		expect(url.endsWith('/') || hasLoginForm).toBe(true);
 	});
 
-	test('avarts logo links to the home page', async ({ page }) => {
+	test('bikeapelago logo links to the home page', async ({ page }) => {
 		if (!testUserId) {
 			testUserId = await createTestUser(adminToken, testCreds);
 		}
 		await loginViaForm(page, testCreds.username, testCreds.password);
 		await page.goto('/upload');
-		await page.click('a img[alt="Avarts"]');
+		await page.click('a img[alt="Bikeapelago"]');
 		await page.waitForURL('/');
 	});
 
