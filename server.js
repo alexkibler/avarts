@@ -25,19 +25,29 @@ const apProxy = createProxyMiddleware({
       target = url.searchParams.get('target');
     }
     if (target) {
-      // Basic SSRF mitigation: block local/private IP ranges
-      const host = target.split(':')[0].toLowerCase();
-      const isLocalhost = host === 'localhost' || host === '127.0.0.1' || host === '::1';
-      const isPrivateIP = /^10\./.test(host) ||
-                          /^192\.168\./.test(host) ||
-                          /^172\.(1[6-9]|2[0-9]|3[0-1])\./.test(host) ||
-                          /^169\.254\./.test(host);
+      // Extract hostname for SSRF mitigation (handle optional protocol prefix)
+      let hostname;
+      try {
+        hostname = new URL(target.includes('://') ? target : `wss://${target}`).hostname.toLowerCase();
+      } catch {
+        hostname = target.split(':')[0].toLowerCase();
+      }
+      const isLocalhost = hostname === 'localhost' || hostname === '127.0.0.1' || hostname === '::1';
+      const isPrivateIP = /^10\./.test(hostname) ||
+                          /^192\.168\./.test(hostname) ||
+                          /^172\.(1[6-9]|2[0-9]|3[0-1])\./.test(hostname) ||
+                          /^169\.254\./.test(hostname);
 
       if (isLocalhost || isPrivateIP) {
         console.warn(`Blocked proxy attempt to private/local target: ${target}`);
         return undefined; // Will fallback to dummy target and likely fail, which is safer
       }
-      return `ws://${target}`;
+      // Use the protocol from the target if explicitly specified, otherwise default to wss://
+      // (archipelago.gg hosted rooms require wss; self-hosted plain-ws users can prefix ws://)
+      if (/^wss?:\/\//i.test(target)) {
+        return target;
+      }
+      return `wss://${target}`;
     }
     return undefined;
   },

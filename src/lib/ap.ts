@@ -18,9 +18,9 @@ export async function connectToAp(options: ApConnectionOptions) {
     // We are running in the browser, so we need to use the local proxy to bypass mixed content rules
     // The Express server (running on the same origin) will proxy the connection for us
     const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-    // Remove protocol from target URL if it exists
-    const targetUrl = options.url.replace(/^wss?:\/\//i, '');
-    const proxyUrl = `${protocol}//${window.location.host}/ap-proxy?target=${encodeURIComponent(targetUrl)}`;
+    // Preserve the protocol prefix if the user specified one (ws:// for plain, wss:// for TLS).
+    // Without a prefix, the proxy defaults to wss:// (required by archipelago.gg hosted rooms).
+    const proxyUrl = `${protocol}//${window.location.host}/ap-proxy?target=${encodeURIComponent(options.url)}`;
     urlsToTry = [proxyUrl];
   } else {
     // If the user didn't specify a protocol, archipelago.js's internal fallback is buggy.
@@ -65,7 +65,7 @@ export async function connectToAp(options: ApConnectionOptions) {
       });
 
       // Mirror AP chat/server messages to console
-      apClient.messages.on('message', ([text]: [string]) => {
+      apClient.messages.on('message', (text: string) => {
         console.log('[AP]', text);
       });
 
