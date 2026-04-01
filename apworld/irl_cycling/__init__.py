@@ -1,59 +1,70 @@
-from typing import Any, Dict
-
-from BaseClasses import ItemClassification
+from BaseClasses import Region
 from worlds.AutoWorld import WebWorld, World
 from worlds.generic.Rules import set_rule
 
-from .items import IRLCyclingItem, item_table, ItemData
-from .locations import IRLCyclingLocation, location_table, LocationData
+from .items import IRLCyclingItem, item_table, MAX_CHECKS
+from .locations import IRLCyclingLocation, location_table
+from .options import IRLCyclingOptions
 
 
 class IRLCyclingWeb(WebWorld):
     theme = "ocean"
     setup_en = """
-    # IRL Cycling Archipelago Setup
+# IRL Cycling Archipelago Setup
 
-    1. Install the Archipelago client.
-    2. Connect to the Archipelago server.
-    3. Generate a seed using the Archipelago website.
-    4. Play the game!
-    """
+1. Place `irl_cycling.apworld` in your Archipelago `worlds/` directory.
+2. Create a YAML for your slot:
+   ```yaml
+   game: IRL Cycling
+   name: YourSlotName
+   IRL Cycling:
+     check_count: 50
+     goal_type: all_intersections
+   ```
+3. Generate a multiworld seed on the Archipelago website.
+4. Deploy the IRL Cycling web client, create a game session, and connect.
+"""
 
 
 class IRLCyclingWorld(World):
     """
-    IRL Cycling is a web client that uses real-world intersections as Archipelago Locations,
-    and players unlock new intersections as Items.
+    IRL Cycling is a web client that uses real-world cycling intersections as Archipelago
+    Locations. Players receive Node Unlock items that reveal new intersections on the map.
+    Complete intersections by riding to them IRL and uploading a FIT file.
     """
 
     game = "IRL Cycling"
     web = IRLCyclingWeb()
 
-    item_name_to_id = {name: data.code for name, data in item_table.items()}
-    location_name_to_id = {name: data.code for name, data in location_table.items()}
+    # Static ID mappings — exclude event locations (code=None) and Victory from location map
+    item_name_to_id = {
+        name: data.code
+        for name, data in item_table.items()
+        if data.code is not None and name != "Victory"
+    }
+    location_name_to_id = {
+        name: data.code
+        for name, data in location_table.items()
+        if data.code is not None
+    }
 
-    from .options import irl_cycling_options
-    options_dataclass = irl_cycling_options
-    options_dict = irl_cycling_options
+    # Allows set_rules to count any "Node Unlock X" item with has_group()
+    item_name_groups = {
+        "Node Unlock": {f"Node Unlock {i}" for i in range(1, MAX_CHECKS + 1)},
+    }
+
+    options_dataclass = IRLCyclingOptions
 
     def create_items(self) -> None:
         check_count = self.options.check_count.value
-        item_pool = []
-
         for i in range(1, check_count + 1):
-            item_name = f"Node Unlock {i}"
-            item = self.create_item(item_name)
-            item_pool.append(item)
-
-        self.multiworld.itempool += item_pool
+            self.multiworld.itempool.append(self.create_item(f"Node Unlock {i}"))
 
     def create_regions(self) -> None:
         check_count = self.options.check_count.value
 
-        from BaseClasses import Region
-
         menu_region = Region("Menu", self.player, self.multiworld)
-        self.multiworld.get_region("Menu", self.player) if self.multiworld.has_region("Menu", self.player) else self.multiworld.regions.append(menu_region)
+        self.multiworld.regions.append(menu_region)
 
         map_region = Region("Map", self.player, self.multiworld)
         menu_region.connect(map_region)
@@ -66,12 +77,33 @@ class IRLCyclingWorld(World):
             )
             map_region.locations.append(loc)
 
+        # Goal is an event location (code=None); Victory item will be locked here
+        goal_loc = IRLCyclingLocation(self.player, "Goal", None, map_region)
+        map_region.locations.append(goal_loc)
+
     def set_rules(self) -> None:
-        # All unlocked nodes are physically routable.
-        pass
+        check_count = self.options.check_count.value
+        goal_type = self.options.goal_type.value
+
+        if goal_type == 0:  # all_intersections
+            required = check_count
+        else:  # percentage — require 70 % of checks
+            required = max(1, int(check_count * 0.7))
+
+        goal_loc = self.multiworld.get_location("Goal", self.player)
+        set_rule(
+            goal_loc,
+            lambda state: state.has_group("Node Unlock", self.player, required),
+        )
+
+        self.multiworld.completion_condition[self.player] = (
+            lambda state: state.has("Victory", self.player)
+        )
 
     def generate_basic(self) -> None:
-        pass
+        # Place the locked Victory item at the Goal event location
+        goal_loc = self.multiworld.get_location("Goal", self.player)
+        goal_loc.place_locked_item(self.create_item("Victory"))
 
     def create_item(self, name: str) -> IRLCyclingItem:
         item_data = item_table[name]

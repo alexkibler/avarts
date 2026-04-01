@@ -71,7 +71,7 @@ export async function validateFitFile(file: File, sessionId: string): Promise<st
 
           // Fetch all available nodes for this session
           const availableNodes = await pb.collection('map_nodes').getFullList({
-            filter: \`session = "\${sessionId}" && state = "Available"\`,
+            filter: `session = "${sessionId}" && state = "Available"`,
           });
 
           if (availableNodes.length === 0) {
@@ -92,7 +92,7 @@ export async function validateFitFile(file: File, sessionId: string): Promise<st
             if (isWithinRadius) {
               newlyCheckedNodeIds.push(node.id);
               apLocationIdsToCheck.push(node.ap_location_id);
-              messages.push(\`Unlocked Location \${node.ap_location_id} at [\${node.lat}, \${node.lon}]!\`);
+              messages.push(`Unlocked Location ${node.ap_location_id} at [${node.lat}, ${node.lon}]!`);
             }
           }
 
@@ -106,7 +106,7 @@ export async function validateFitFile(file: File, sessionId: string): Promise<st
 
             // Send AP check
             sendLocationChecks(apLocationIdsToCheck);
-            messages.push(\`Successfully validated \${newlyCheckedNodeIds.length} location(s) and notified Archipelago.\`);
+            messages.push(`Successfully validated ${newlyCheckedNodeIds.length} location(s) and notified Archipelago.`);
           } else {
             messages.push('No available locations were reached in this ride.');
           }

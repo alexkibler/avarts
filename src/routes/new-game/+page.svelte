@@ -22,7 +22,6 @@
 
   let isGenerating = false;
   let errorMsg = '';
-  let successMsg = '';
 
   onMount(async () => {
     L = await import('leaflet');
@@ -123,9 +122,7 @@
 
       await Promise.all(createPromises);
 
-      successMsg = 'Game session and map nodes successfully generated!';
-      // Optional: Redirect to the map view
-      // window.location.href = '/map';
+      window.location.href = `/game/${sessionRecord.id}`;
 
     } catch (err: any) {
       errorMsg = err.message || 'An error occurred during generation.';
@@ -185,11 +182,6 @@
         </div>
       {/if}
 
-      {#if successMsg}
-        <div class="mt-4 p-3 bg-green-900/50 border border-green-500 text-green-200 rounded">
-          {successMsg}
-        </div>
-      {/if}
     </form>
   </div>
 

@@ -1,282 +1,270 @@
 <h1 align="center">
   <br>
-  <img src="/static/avarts.svg" alt="Avarts" width="500">
+  <img src="/static/avarts.svg" alt="IRL Cycling" width="500">
 </h1>
 
-<h4 align="center">A self-hosted fitness activity tracker.</h4>
+<h4 align="center">An Archipelago multiworld client where real-world cycling intersections are your Locations.</h4>
 
 <p align="center">
-  <a href="#features">Features</a> •
+  <a href="#how-it-works">How It Works</a> •
+  <a href="#quick-start">Quick Start</a> •
+  <a href="#apworld-setup">apworld Setup</a> •
+  <a href="#pocketbase-setup">PocketBase Setup</a> •
+  <a href="#creating-a-session">Creating a Session</a> •
+  <a href="#playing">Playing</a> •
   <a href="#deployment">Deployment</a> •
-  <a href="#configuration">Configuration</a> •
-  <a href="#images">Images</a> •
-  <a href="#FAQ">FAQ</a> •
-  <a href="#TODO">To Do</a>
+  <a href="#configuration">Configuration</a>
 </p>
 
 ---
 
-<b>Avarts</b> is a self-hosted application designed for athletes seeking to monitor and analyze their fitness activities.\
-It offers a <b>private alternative</b> to mainstream activity tracking platforms, and will store your <b>activities, routes, and overall statistics</b>.\
-For now, the platform is mainly focused on running, cycling and swimming.
-</td></tr></table>
+**IRL Cycling** is an [Archipelago](https://archipelago.gg) multiworld game where you play in the real world.
 
-## Features
-- Activity Logger for cycling, running and swimming
-- Activity Analyser
-- Statistics Tracker
-- Route Builder
-- Route Database
+- **Locations** are real cycling intersections near you, sourced live from OpenStreetMap.
+- **Items** are **Node Unlocks** — each one reveals a new intersection on your map.
+- **Checks** are completed by riding to an unlocked intersection and uploading the `.fit` file from your GPS device.
+
+---
+
+## How It Works
+
+1. Generate an Archipelago seed that includes `IRL Cycling` as one of the games.
+2. Create a **Game Session** in the web client — pick a map center and radius, and the app fetches real cycling intersections from OSM and assigns them as your locations.
+3. Connect to the Archipelago server. As you receive **Node Unlock** items from the multiworld, intersections appear on your map.
+4. Ride to them IRL. Upload your `.fit` file to validate the check — the app runs a 30-metre Haversine proximity check against all available nodes.
+5. Validated checks are sent to the Archipelago server as `LocationChecks`.
+
+---
+
+## Quick Start
+
+### Prerequisites
+
+- [Docker](https://www.docker.com/) and Docker Compose
+- A self-hosted or cloud [Archipelago](https://archipelago.gg) server
+- A cycling GPS device that produces `.fit` files (Garmin, Wahoo, etc.)
+- A self-hosted [GraphHopper](https://www.graphhopper.com/) routing server (or a GraphHopper API key) for route planning
+
+### Run with Docker Compose
+
+```bash
+git clone <this-repo> && cd avarts
+docker compose up -d
+```
+
+The app is available at `http://localhost:8182`.  
+PocketBase admin UI is at `http://localhost:8090/_/` (default credentials: `admin@avarts.lan` / `adminadmin` — **change these immediately**).
+
+---
+
+## apworld Setup
+
+The Archipelago world definition lives in `apworld/irl_cycling/`.
+
+### Install
+
+1. Zip the `irl_cycling/` directory into `irl_cycling.apworld`:
+   ```bash
+   cd apworld
+   zip -r irl_cycling.apworld irl_cycling/
+   ```
+2. Place `irl_cycling.apworld` in your Archipelago `worlds/` directory.
+
+### YAML Options
+
+```yaml
+game: IRL Cycling
+name: YourSlotName
+IRL Cycling:
+  check_count: 50          # Number of intersections / locations (10–1000, default 100)
+  goal_type: all_intersections  # all_intersections | percentage
+```
+
+| Option | Values | Description |
+|--------|--------|-------------|
+| `check_count` | 10 – 1000 | How many intersection locations to generate |
+| `goal_type` | `all_intersections` | Win by checking every location |
+| | `percentage` | Win by checking 70 % of locations |
+
+### Items & Locations
+
+- **Items:** `Node Unlock 1` … `Node Unlock N` — each unlocks one intersection on the map.
+- **Locations:** `Intersection 1` … `Intersection N` — completed by riding to that node IRL.
+- **Goal:** A locked `Victory` item is placed at the `Goal` event location, accessible once the required number of checks are complete.
+
+---
+
+## PocketBase Setup
+
+IRL Cycling requires two custom PocketBase collections: `game_sessions` and `map_nodes`.
+
+### Import via Admin UI
+
+1. Open the PocketBase Admin UI at `http://localhost:8090/_/`.
+2. Go to **Settings → Import collections**.
+3. Paste the contents of `pocketbase/pb_schema.json` and click **Import**.
+
+### Manual Collection Definitions
+
+If you prefer to create the collections by hand:
+
+#### `game_sessions`
+
+| Field | Type | Required | Notes |
+|-------|------|----------|-------|
+| `user` | Relation → `users` | ✓ | cascade delete |
+| `ap_seed_name` | Text | ✓ | human-readable label |
+| `ap_server_url` | Text | ✓ | e.g. `archipelago.gg:38281` |
+| `ap_slot_name` | Text | ✓ | your slot name in the multiworld |
+| `center_lat` | Number | ✓ | latitude of the play area centre |
+| `center_lon` | Number | ✓ | longitude of the play area centre |
+| `radius` | Number | ✓ | radius in metres |
+| `status` | Select | ✓ | `Active` \| `Completed` |
+
+**API Rules** (recommended):
+- List / View / Update / Delete: `@request.auth.id = user.id`
+- Create: `@request.auth.id != ""`
+
+#### `map_nodes`
+
+| Field | Type | Required | Notes |
+|-------|------|----------|-------|
+| `session` | Relation → `game_sessions` | ✓ | cascade delete |
+| `ap_location_id` | Number | ✓ | Archipelago location ID (e.g. 800001) |
+| `osm_node_id` | Text | ✓ | OpenStreetMap node ID |
+| `lat` | Number | ✓ | |
+| `lon` | Number | ✓ | |
+| `state` | Select | ✓ | `Hidden` \| `Available` \| `Checked` |
+
+**API Rules** (recommended):
+- List / View / Update / Delete: `@request.auth.id = session.user.id`
+- Create: `@request.auth.id != ""`
+
+---
+
+## Creating a Session
+
+1. Log in to the web client and click **Play → + New Session** (or navigate to `/new-game`).
+2. Fill in the form:
+   - **Seed Name** — a label for this session (e.g. `Summer 2025 Multiworld`)
+   - **Archipelago Server** — hostname and port (e.g. `archipelago.gg:38281`)
+   - **Slot Name** — your slot name in the generated seed
+   - **Radius** — how large a play area to generate (metres)
+   - **Check Count** — must match the `check_count` in your YAML
+3. Click the map to set your centre point.
+4. Click **Generate Session**.
+
+The app queries OpenStreetMap's Overpass API for cycling intersections inside your radius (only `residential`, `tertiary`, `unclassified`, `living_street`, `cycleway`, and `track` ways where `bicycle != no`), filters for real intersections (nodes belonging to 2+ differently named ways), shuffles them, and writes `check_count` nodes to PocketBase with `state: Hidden`.
+
+You are then redirected to the game page automatically.
+
+---
+
+## Playing
+
+### Connect to Archipelago
+
+On the game page (`/game/<id>`), confirm or edit the connection details and click **Connect & Play**.
+
+The client connects via WebSocket using `archipelago.js`. On connection:
+- All already-received **Node Unlock** items are processed — the corresponding nodes flip from `Hidden` → `Available` and appear on the map.
+- New items received during the session are processed in real time.
+
+### The Map
+
+- **Orange markers** — Available intersections you can ride to.
+- **Green markers** — Checked (completed) intersections.
+- Click an available marker to add it as a routing waypoint.
+- Use **Export GPX** to download the planned route to your device.
+
+### Validating a Check
+
+1. Ride to one or more available intersections IRL.
+2. Save the activity as a `.fit` file and transfer it to your computer.
+3. Drag and drop (or click to upload) the `.fit` file into the **Validate Check(s)** panel on the game page.
+4. Click **Validate**.
+
+The app parses the GPS track, runs a **30-metre Haversine proximity check** against every available node, and for each match:
+- Updates the node's `state` to `Checked` in PocketBase.
+- Sends a `LocationChecks` packet to the Archipelago server.
+
+Results are shown inline. The node stats counter in the header updates automatically.
+
+### Winning
+
+When the goal condition is met (all intersections checked, or 70 % for `percentage` mode), the Archipelago server will send the `Victory` item to your slot, completing your game.
+
+---
 
 ## Deployment
 
-There are multiple ways to deploy Avarts.\
-Here are a couple options you can choose from to get started.\
-More configuration options are available below.
+### Environment Variables
 
-First clone the repository: `git clone https://github.com/matthiasbenaets/avarts && cd avarts`
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `PUBLIC_DB_URL` | `http://127.0.0.1:8090` | Public URL of the PocketBase API (required if hosting on the internet) |
+| `PUBLIC_GRAPHHOPPER_URL` | — | URL of a self-hosted GraphHopper `/route` endpoint |
+| `PUBLIC_GRAPHHOPPER_API` | — | GraphHopper cloud API key (used if no self-hosted URL) |
+| `PUBLIC_REGISTRATION` | `true` | Set to `false` to disable new user registration |
+| `BODY_SIZE_LIMIT` | `5242880` | Max upload size in bytes (default 20 MB in Docker Compose) |
 
-1. node: Build the website and start node `npm run build && node build`.\
-   Then start Pocketbase `./pb/pocketbase serve --http=0.0.0.0:8090`.
-2. docker: Just run `docker build . -t avarts ; docker run -p 8080:8080 -p 8090:8090 -v avarts:/app/db/pb_data avarts:latest`.
-3. docker-compose: Just run `docker-compose up -d`.
-4. npm: Mainly for development start the page `npm run dev`.\
-   Then start Pocketbase `./pb/pocketbase serve --http=0.0.0.0:8090`.
+### Docker Compose (recommended)
 
-> [!TIP]
-> It's recommended to go through the configuration information provided below.
+```yaml
+services:
+  avarts:
+    build: ./avarts-src
+    ports:
+      - "8182:8080"   # SvelteKit frontend
+      - "8090:8090"   # PocketBase API + admin UI
+    volumes:
+      - pb_data:/app/db/pb_data
+    environment:
+      - PUBLIC_DB_URL=https://pb.yourdomain.com
+      - PUBLIC_GRAPHHOPPER_URL=https://routing.yourdomain.com/route
+      - PUBLIC_REGISTRATION=true
+      - BODY_SIZE_LIMIT=20971520
+```
+
+### GraphHopper (self-hosted routing)
+
+GraphHopper is required for in-app route planning. See the `graphhopper/` directory for a Docker Compose setup. On first boot it indexes the `.osm.pbf` file — this can take 20–40 minutes for large regions.
+
+1. Download a region `.osm.pbf` from [Geofabrik](https://download.geofabrik.de/) into `graphhopper/data/`.
+2. Set `PBF_FILE=your-region.osm.pbf` in the environment.
+3. Run `docker compose up -d graphhopper`.
+4. Point the app at it with `PUBLIC_GRAPHHOPPER_URL=http://<host>:8989/route`.
+
+---
 
 ## Configuration
 
-### Variables
-Avarts is mostly configured with environmental variables.
+### Resetting Passwords
 
-Depending on how you have deployed it, you can pass along some environmental variables.\
-As an example, let's use `PUBLIC_REGISTRATION` in:
-
-- npm: add `PUBLIC_REGISTRATION=false` to the `.env` file in the root of the repository.
-- node: `PUBLIC_REGISTRATION=false node build`.
-- docker: `docker run -e PUBLIC_REGISTRATION=false -p 8080:8080 -p 8090:8090 -v avarts_data:/app/db/pb_data avarts:latest`.
-- docker-compose: add `PUBLIC_REGISTRATION=false` in the `environment` section.
-
-### Registration
-Registrations are enabled by default.\
-If you want to disable the option to register, set environmental variable `PUBLIC_REGISTRATION=false`.
-
-### Pocketbase
-Pocketbase is the database of choice for Avarts.\
-Mainly for ease of use, configuration options and for how easy it is to transfer and back-up data.
-
-A Pocketbase binary is provided in `/db` and can be started with `pocketbase serve`.\
-At the moment, Avarts is hardcoded to connect to localhost:8090, so it's recommended to keep the default settings for Pocketbase.\
-This might change in the future.
-
-Docker and docker-compose will automatically start Pocketbase.
-Don't forget to expose port 8090 and create a persistent volume when using Docker (see example under [variables](#variables)).\
-Otherwise your activities and routes will not be saved on restart.
-
-By default, Pocketbase sets a max file size of 5MB.\
-If this is not enough, variable `BODY_SIZE_LIMIT` can be set. This has to be a value in bytes.\
-Since 5MB is often not enough for GPX or FIT files, these limit are raised to 20MB.\
-If this is still not enough for your use case, it can manually be changed on Pocketbase.
-
-The Pocketbase dashboard can be accessed on `http://localhost:8090/_/`.\
-Here you can also tweak the database if you want to.\
-An admin account is available. Log in using the credentials below.\
-It's recommended you change these as soon as possible if you want to make everything publicly available.
-```
-login:      admin@avarts.lan
-password:   adminadmin
-```
-
-Since Avarts does not require you to register with an email address, it can be tricky to reset passwords if one has forgot theirs.
-It's recommended to just reset this via the Pocketbase interface in the `users` collection.
-If you also no longer have access to your Pocketbase admin login, use `./pocketbase admin` with `create` or `update`.
-
-### Routing
-
-**Default:**\
-For planning your next adventure, Avarts provides you with a route builder.\
-By default, it uses the demo server of Open Source Routing Machine (OSRM).\
-This is a valid option, but might not be recommended for some.
-> [!NOTE]
-> The OSRM demo server will only route with type 'car', which is not ideal for running and cycling.
-> If this is an issue for you, take a look at some other options below.
-
-If a `PUBLIC_OSRM_URL`, `PUBLIC_GRAPHHOPPER_URL` or `PUBLIC_GRAPHHOPPER_API` environmental variable is set, Avarts will use the demo routing machines instead.
-
-**Self-hosted OSRM Server**:\
-It is possible to host your own OSRM server.
-This will work pretty much the same as the default demo server, however, you now have the option to pick cycling or running as a navigation type.
-The only downside at the moment is that you will be limited to one routing type. This might change in the future.
-
-Before starting your own OSRM server, a few prerequisites:
-
-1. Go to https://download.geofabrik.de/ and download the region you want for routing.
-    - Alternatively use the command line
-2. Place the file(s) inside the cloned repository in the `osrm` directory
-```bash
-# (via cmd line) inside the root of the cloned repository
-cd osrm
-wget http://download.geofabrik.de/europe/belgium-latest.osm.pbf
-```
-3. Afterwards, process the file. Either pick `car.lua`, `bicycle.lua` or `foot.lua` for your routing engine.
-
-> [!NOTE]
-> To extract and process the file(s), about 5x the initial `.osm.pbf` file size is needed in RAM.\
-> For example, a 1GB file will require 5GB of RAM.
-> Keep this in mind when using large region files. It will crash out if not enough RAM is available.
+Since registration does not require an email address, password resets must be done via the PocketBase admin UI (`/users` collection) or via the CLI:
 
 ```bash
-docker run -t -v "${PWD}:/data" osrm/osrm-backend osrm-extract -p /opt/bicycle.lua /data/belgium-latest.osm.pbf
-docker run -t -v "${PWD}:/data" osrm/osrm-backend osrm-partition /data/belgium-latest.osrm
-docker run -t -v "${PWD}:/data" osrm/osrm-backend osrm-customize /data/belgium-latest.osrm
-```
-You should now have all the required `*.osrm` files to host your own routing machine.
-If you host Avarts via npm, node, or docker run `docker run -t -i -p 5000:5000 -v "${PWD}:/data" osrm/osrm-backend osrm-routed --algorithm mld /data/belgium-latest.osrm` in the `osrm` directory.\
-For docker-compose, uncomment the `osrm/osrm-backend` section.
-
-Whenever the routing machine is deploy, don't forget to set the `PUBLIC_OSRM_URL` environment.\
-By default use `PUBLIC_OSRM_URL=http://0.0.0.0:5000/route/v1`.
-
-The URLs mentioned can be adapted depending on your network and hosting needs.
-
-If you want multiple counties for routing, but are not interested in using one of the giant region due to hardware restrictions, you can use a package like `osmium` to merge files:
-```bash
-osmium merge belgium-latest.osm.pbf netherlands-latest.osm.pbf luxembourg-latest.osm.pbf -o benelux.osm.pbf
+./db/pocketbase admin update admin@avarts.lan
 ```
 
-**GraphHopper:**
+### PocketBase Admin Credentials
 
-GraphHopper is another open source alternative.\
-You can host a server yourself, or use their paid service.\
-Unlike OSRM, it will have routing for cycling and running if you follow the steps below.
+Default: `admin@avarts.lan` / `adminadmin`
 
-You can register on their website at https://www.graphhopper.com/. \
-They will provide you with an API key that can be used for routing.\
-It can be passed as a variable using `PUBLIC_GRAPHHOPPER_API`.
+Change these immediately after first deployment via the admin UI at `http://localhost:8090/_/`.
 
-If you like to keep everything local, you can follow the guide on https://github.com/graphhopper/graphhopper.
-Here's a quick setup guide using the example config:
-
-1. Install a JVM (>= Java 17) and get the needed files for hosting.\
-Either download them manually from the links below (and via [geofabrik](https://download.geofabrik.de)) or use the CLI.\
-If you plan on using `docker-compose.yml`, it's best to place these files inside the `graphhopper` directory of the cloned repository.
-```bash
-# Optional for docker-compose (inside root of repo)
-cd graphhopper
-# Get files
-wget https://repo1.maven.org/maven2/com/graphhopper/graphhopper-web/8.0/graphhopper-web-8.0.jar https://raw.githubusercontent.com/graphhopper/graphhopper/8.x/config-example.yml http://download.geofabrik.de/europe/belgium-latest.osm.pbf
-```
-2. Create your own `config.yml` file or adapt the existing `config-example.yml`.\
-Here are a couple of tweaks you can make. This will set up a routing server that will work for cycling and running.\
-A `config-example.yml` file can be found inside `/graphhopper`.
-```yml
-profiles:
-- name: bike
-  vehicle: bike
-  custom_model:
-      distance_influence: null
-      heading_penalty: null
-  areas: []
-- name: foot
-  vehicle: foot
-  custom_model:
-      distance_influence: null
-      heading_penalty: null
-  areas: []
-
-profiles_ch:
-  - profile: bike
-  - profile: foot
-
-# import.osm.ignored_highways: footway,cycleway,path,pedestrian,steps # typically useful for motorized-only routing
-import.osm.ignored_highways: motorway,trunk # typically useful for non-motorized routing
-
-server:
-  application_connectors:
-  - type: http
-    port: 8989
-    # bind_host: localhost
-    bind_host: 0.0.0.0
-```
-
-3. Afterwards, run the command below. It will process the file and start the server on port 8989.\
-If you are using docker compose, you can also just uncomment the GraphHopper section. (this will automatically run the command inside an OpenJDK Java environment)\
-You can still run this command before deploying with docker-compose, to make the initial deployment take less time.
-```bash
-# command for node and docker
-java -D"dw.graphhopper.datareader.file=belgium.osm.pbf" -jar graphhopper*.jar server config-example.yml
-```
-> [!NOTE]
-> Just like OSRM, it will use a lot of RAM to generate the initial cache files.
-> Keep this in mind when selecting large region files.
-> On first startup, when there is no `graph-cache` directory, it can take a fairly long while before the server if fully deployed.
-
-Don't forget to set the environment variable to the routing machine with `PUBLIC_GRAPHHOPPER_URL`.\
-If you followed the steps above, use `http://0.0.0.0:8989/route`.
-
-If you want to use multiple regions, just like with osrm, use a package like `osmium` to merge regions.
-
-### Location
-Avarts uses the start coordinates of your activity to determine the location of your activity.\
-Unfortunately FIT files do no provide this information in its data, only longitude and latitude.\
-To determine the location, a location API is used from https://geocode.maps.co/.\
-My Maps is very generous with their API and allows 1000000 requests per month.\
-This is plenty, so feel free to use the API key provided in this repo, just don't abuse it.\
-Now if you want to use your own API key, you can request one via the link above.\
-This key can be passed as a variable `PUBLIC_LOCATION_API`.
-
-### Database URL
-At the moment, not all requests to the database run server side.
-Therefore if you plan on hosting your Avarts instance on the internet, a URL needs to exist to communicate with the database.
-By default this URL is `http://127.0.0.1:8090` but if it needs to be publicly available, set the variable `PUBLIC_DB_URL`.
-It recommended to not use any trailing slashes.
-
-## Images
-
-**Home Page**
-<br/>
-<img src="/static/home.png" alt="Avarts Home Page" width="500">
-<br/>
-**Route Builder**
-<br/>
-<img src="/static/builder.png" alt="Avarts Route Builder" width="500">
-<br/>
-**Activity Viewer**
-<br/>
-<img src="/static/activity.png" alt="Avarts Activity Viewer" width="500">
-<br/>
-**Course List**
-<br/>
-<img src="/static/routes.png" alt="Avarts Course List" width="500">
-<br/>
-**Route Viewer**
-<br/>
-<img src="/static/route.png" alt="Avarts Route Viewer" width="500">
-<br/>
-**Activity Uploader**
-<br/>
-<img src="/static/upload.png" alt="Avarts Activity Uploader" width="500">
-<br/>
+---
 
 ## FAQ
 
-<b>Q:</b> Why is the elevation map so jumpy/stuttery?\
-<b>A:</b> Since not all routing engines provide elevation data (and those that have, are not very accurate), a decision was made to use a general free elevation API.
+**Q: What GPS file format is supported for validation?**  
+A: Only `.fit` files (Garmin FIT format) are currently supported. Most modern cycling computers and smartwatches export this format natively.
 
-<b>Q:</b> What routing server do you recommend?\
-<b>A:</b> GraphHopper self-hosted > OSRM self-hosted > GraphHopper API > OSRM demo server
+**Q: How accurate is the proximity check?**  
+A: 30 metres by default. This is calculated using the Haversine formula against every GPS point in your ride track.
 
-<b>Q:</b> I changes routing engines. My saved routes appear different now upon editing.\
-<b>A:</b> Routes are loaded in using the original waypoint set by yourself. If the active route engine uses other routing criteria, it will generate another route between the waypoints.
+**Q: What routing engine is recommended?**  
+A: Self-hosted GraphHopper with a local OSM extract gives the best cycling-specific routes.
 
-<b>Q:</b> How is this project build?\
-<b>A:</b> Gratitude goes out to these amazing projects and their maintainers: Sveltekit, Pocketbase, Leaflet, leaflet-control-geocoder, leaflet-routing-machine, leaflet-simple-map-screenshoter, @raruto/leaflet-elevation, lrm-graphhopper, fit-file-parser, @sports-alliance/sports-lib, image-conversion, OSRM, Graphhopper and express
-
-## TODO
-- Server side only database
-- Track equipment
-- Allow following other users
-- Custom charts for gpx using d3 - Analysis and Laps per activity if interactivity possible
-- Complete rewrite
+**Q: Can I play multiple multiworlds at once?**  
+A: Yes — each game session is independent. Use the **Play** page to switch between sessions.

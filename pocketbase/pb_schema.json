@@ -1,0 +1,128 @@
+[
+  {
+    "name": "game_sessions",
+    "type": "base",
+    "system": false,
+    "schema": [
+      {
+        "name": "user",
+        "type": "relation",
+        "required": true,
+        "options": {
+          "collectionId": "_pb_users_auth_",
+          "cascadeDelete": true,
+          "minSelect": null,
+          "maxSelect": 1,
+          "displayFields": null
+        }
+      },
+      {
+        "name": "ap_seed_name",
+        "type": "text",
+        "required": true,
+        "options": { "min": null, "max": null, "pattern": "" }
+      },
+      {
+        "name": "ap_server_url",
+        "type": "text",
+        "required": true,
+        "options": { "min": null, "max": null, "pattern": "" }
+      },
+      {
+        "name": "ap_slot_name",
+        "type": "text",
+        "required": true,
+        "options": { "min": null, "max": null, "pattern": "" }
+      },
+      {
+        "name": "center_lat",
+        "type": "number",
+        "required": true,
+        "options": { "min": -90, "max": 90 }
+      },
+      {
+        "name": "center_lon",
+        "type": "number",
+        "required": true,
+        "options": { "min": -180, "max": 180 }
+      },
+      {
+        "name": "radius",
+        "type": "number",
+        "required": true,
+        "options": { "min": 100, "max": 50000 }
+      },
+      {
+        "name": "status",
+        "type": "select",
+        "required": true,
+        "options": {
+          "maxSelect": 1,
+          "values": ["Active", "Completed"]
+        }
+      }
+    ],
+    "listRule": "@request.auth.id = user.id",
+    "viewRule": "@request.auth.id = user.id",
+    "createRule": "@request.auth.id != ''",
+    "updateRule": "@request.auth.id = user.id",
+    "deleteRule": "@request.auth.id = user.id"
+  },
+  {
+    "name": "map_nodes",
+    "type": "base",
+    "system": false,
+    "schema": [
+      {
+        "name": "session",
+        "type": "relation",
+        "required": true,
+        "options": {
+          "collectionId": "game_sessions",
+          "cascadeDelete": true,
+          "minSelect": null,
+          "maxSelect": 1,
+          "displayFields": null
+        }
+      },
+      {
+        "name": "ap_location_id",
+        "type": "number",
+        "required": true,
+        "options": { "min": null, "max": null }
+      },
+      {
+        "name": "osm_node_id",
+        "type": "text",
+        "required": true,
+        "options": { "min": null, "max": null, "pattern": "" }
+      },
+      {
+        "name": "lat",
+        "type": "number",
+        "required": true,
+        "options": { "min": -90, "max": 90 }
+      },
+      {
+        "name": "lon",
+        "type": "number",
+        "required": true,
+        "options": { "min": -180, "max": 180 }
+      },
+      {
+        "name": "state",
+        "type": "select",
+        "required": true,
+        "options": {
+          "maxSelect": 1,
+          "values": ["Hidden", "Available", "Checked"]
+        }
+      }
+    ],
+    "listRule": "@request.auth.id = session.user.id",
+    "viewRule": "@request.auth.id = session.user.id",
+    "createRule": "@request.auth.id != ''",
+    "updateRule": "@request.auth.id = session.user.id",
+    "deleteRule": "@request.auth.id = session.user.id"
+  }
+]
