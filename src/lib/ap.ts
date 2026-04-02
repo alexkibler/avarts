@@ -12,16 +12,40 @@ export interface ApConnectionOptions {
 }
 
 export async function connectToAp(options: ApConnectionOptions) {
-  let urlsToTry = [options.url];
+  let urlsToTry: Array<string | URL> = [options.url];
 
   if (typeof window !== 'undefined') {
-    // We are running in the browser, so we need to use the local proxy to bypass mixed content rules
-    // The Express server (running on the same origin) will proxy the connection for us
-    const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-    // Preserve the protocol prefix if the user specified one (ws:// for plain, wss:// for TLS).
-    // Without a prefix, the proxy defaults to wss:// (required by archipelago.gg hosted rooms).
-    const proxyUrl = `${protocol}//${window.location.host}/ap-proxy?target=${encodeURIComponent(options.url)}`;
-    urlsToTry = [proxyUrl];
+    // Strategy: try direct connection first, then fall back to proxy.
+    //
+    // Direct: pass the raw user URL — archipelago.js tries wss:// first, then ws://.
+    // wss:// hosted rooms (e.g. archipelago.gg) work directly from the browser (no
+    // mixed-content issue). Plain ws:// servers will fail (blocked by the browser from
+    // HTTPS), so we fall through to the proxy.
+    //
+    // Proxy: needed for plain ws:// servers (mixed-content) and for servers that are
+    // reachable from our backend but not directly from the user's browser.
+    //
+    // PROXY PORT BUG: archipelago.js v2 does `url.port = url.port || "38281"`. For a
+    // wss:// URL, port 443 is the default and the JS URL API normalizes it to "", so the
+    // || fires and clobbers the port to 38281.
+    //
+    // Fix: use a URL subclass with the port getter/setter overridden. Unlike a JS Proxy,
+    // a subclass IS a real URL (instanceof URL === true), so the native browser WebSocket
+    // constructor accepts it. Our JS getter returns "443" (truthy), preventing the ||
+    // fallback; our JS setter is a no-op, keeping the underlying href clean (port 443
+    // implicit). When the browser calls toString()/href to open the socket, it gets the
+    // correct wss://hostname/ap-proxy?... URL.
+    class ProxyUrl extends URL {
+      override get port(): string { return '443'; }
+      override set port(_v: string) { /* prevent archipelago.js from clobbering */ }
+    }
+
+    const wsProto = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+    const proxyHref = `${wsProto}//${window.location.host}/ap-proxy?target=${encodeURIComponent(options.url)}`;
+    const proxyUrl = new ProxyUrl(proxyHref);
+
+    console.log('[AP] Browser mode — direct URL:', options.url, '| proxy fallback:', proxyHref);
+    urlsToTry = [options.url, proxyUrl];
   } else {
     // If the user didn't specify a protocol, archipelago.js's internal fallback is buggy.
     // It tries wss://, which can hang forever if the server returns 101 but doesn't speak TLS (e.g. port 38281).
@@ -32,6 +56,7 @@ export async function connectToAp(options: ApConnectionOptions) {
   }
 
   for (const url of urlsToTry) {
+    console.log(`[AP] Attempting connection to: ${url}`);
     try {
       // Disconnect any hanging attempts before trying the new one
       apClient.socket.disconnect();
@@ -47,14 +72,15 @@ export async function connectToAp(options: ApConnectionOptions) {
       );
 
       const timeoutPromise = new Promise((_, reject) => {
-        setTimeout(() => reject(new Error('Connection timed out')), 5000);
+        setTimeout(() => reject(new Error('Connection timed out after 10s')), 10000);
       });
 
-      // Race the login attempt against a 5-second timeout
+      // Race the login attempt against a timeout
       await Promise.race([loginPromise, timeoutPromise]);
 
-      console.log(`Successfully connected to Archipelago via ${url}!`);
-      options.url = url; // Update the options so the UI reflects the successful URL
+      console.log(`[AP] Successfully connected via ${url}`);
+      // Keep the human-readable target URL in options, not the internal proxy href
+      if (typeof url === 'string') options.url = url;
 
       // Process all items already queued on connect
       await processReceivedItems(options.sessionId, apClient.items.received);
@@ -70,14 +96,14 @@ export async function connectToAp(options: ApConnectionOptions) {
       });
 
       return true;
-    } catch (error) {
-      console.error(`Failed to connect via ${url}:`, error);
+    } catch (error: any) {
+      console.error(`[AP] Failed to connect via ${url}:`, error?.message ?? error);
       // Ensure we clean up the hung socket so the next URL can try cleanly
       apClient.socket.disconnect();
     }
   }
 
-  console.error('Error connecting to Archipelago: All URL attempts failed.');
+  console.error('[AP] All connection attempts failed. URLs tried:', urlsToTry);
   return false;
 }
 
