@@ -58,7 +58,7 @@
       bind:value={input}
       on:keydown={onKeydown}
       placeholder="Chat or /command…"
-      class="flex-1 bg-neutral-700 border border-neutral-600 rounded px-2 py-1.5 text-sm text-white placeholder-neutral-500 focus:outline-none focus:border-orange-500"
+      class="flex-1 min-w-0 bg-neutral-700 border border-neutral-600 rounded px-2 py-1.5 text-sm text-white placeholder-neutral-500 focus:outline-none focus:border-orange-500"
     />
     <button
       on:click={send}

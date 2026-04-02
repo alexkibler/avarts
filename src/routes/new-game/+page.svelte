@@ -79,7 +79,9 @@
   }
 
   onMount(async () => {
-    L = await import('leaflet');
+    const leafletMod = await import('leaflet');
+    L = leafletMod.default ?? leafletMod;
+    window.L = L;
     map = L.map(mapElement).setView([centerLat, centerLon], 12);
 
     L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {

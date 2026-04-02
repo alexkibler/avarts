@@ -1,27 +1,24 @@
 <script lang="ts">
   import { onMount, onDestroy, setContext, createEventDispatcher, tick } from 'svelte';
-  import L from 'leaflet';
   import 'leaflet/dist/leaflet.css';
-
-  import '@raruto/leaflet-elevation/src/index.js';
   import '@raruto/leaflet-elevation/src/index.css';
-
-  import 'leaflet-simple-map-screenshoter';
   import * as imageConversion from 'image-conversion';
 
-  export let bounds: L.LatLngBoundsExpression | undefined = undefined;
-  export let view: L.LatLngExpression | undefined = undefined;
+  let L: any;
+
+  export let bounds: any | undefined = undefined;
+  export let view: any | undefined = undefined;
   export let zoom: number | undefined = undefined;
   export let gpx: string , from: string;
 
   const dispatch = createEventDispatcher();
 
-  let map: L.Map | undefined;
+  let map: any | undefined;
   let mapElement: HTMLElement;
 
-  let elevationControl: L.elevationControl | undefined;
+  let elevationControl: any | undefined;
 
-  let simpleMapScreenshoter: L.simpleMapScreenshoter | undefined;
+  let simpleMapScreenshoter: any | undefined;
   let screenshotOptions = {
     cropImageByInnerWH: true,
     hidden: true,
@@ -30,14 +27,20 @@
     mimeType: 'image/png',
   }
 
-  onMount(() => {
+  onMount(async () => {
+    const leafletMod = await import('leaflet');
+    L = leafletMod.default ?? leafletMod;
+    window.L = L;
+    await import('@raruto/leaflet-elevation/src/index.js');
+    await import('leaflet-simple-map-screenshoter');
+
     if (!bounds && (!view || !zoom)) {
       throw new Error('Must set either bounds, or view and zoom.');
     }
 
     map = L.map(mapElement)
       .on('zoom', (e: MouseEvent) => dispatch('zoom', e))
-      .on('popupopen', async (e: L.map) => {
+      .on('popupopen', async (e: any) => {
         await tick();
         e.popup.update();
       });

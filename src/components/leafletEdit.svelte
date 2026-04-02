@@ -1,25 +1,18 @@
 <script lang="ts">
   import { onMount, onDestroy, setContext, createEventDispatcher, tick } from 'svelte';
-  import L from 'leaflet';
   import 'leaflet/dist/leaflet.css';
   import { env } from '$env/dynamic/public';
   import { pb } from '$lib/database';
   import { userCookie } from '$lib/stores';
-  import 'leaflet-routing-machine';
   import 'leaflet-routing-machine/dist/leaflet-routing-machine.css';
-  import 'leaflet-control-geocoder';
-  import 'lrm-graphhopper'
-
-  import '@raruto/leaflet-elevation/src/index.js';
   import '@raruto/leaflet-elevation/src/index.css';
 
-  import 'leaflet-simple-map-screenshoter';
-  import * as imageConversion from 'image-conversion';
+  let L: any;
 
   import type { User, Route, Routes, Course, Coordinates, ElevationResponse, Activities, Waypoints } from '$lib/types';
 
-  export let bounds: L.LatLngBoundsExpression | undefined = undefined;
-  export let view: L.LatLngExpression | undefined = undefined;
+  export let bounds: any | undefined = undefined;
+  export let view: any | undefined = undefined;
   export let zoom: number | undefined = undefined;
   export let user: User;
   export let from: string;
@@ -27,14 +20,14 @@
 
   const dispatch = createEventDispatcher();
 
-  let map: L.Map | undefined;
+  let map: any | undefined;
   let mapElement: HTMLElement;
 
-  let waypoints: L.LatLng[] = [];
-  let routingControl: L.Routing.Control | undefined;
+  let waypoints: any[] = [];
+  let routingControl: any | undefined;
   let route: Route
   let courseName: string = ""
-  let elevationControl: L.elevationControl | undefined;
+  let elevationControl: any | undefined;
   let allowMapInteraction = true;
   let resetButtonContainer: HTMLElement | null = null;
   let visibleNav: boolean = true;
@@ -49,7 +42,7 @@
 
   let formData: any;
 
-  let simpleMapScreenshoter: L.simpleMapScreenshoter | undefined;
+  let simpleMapScreenshoter: any | undefined;
   let screenshotBlob: Blob
   let screenshotOptions = {
     cropImageByInnerWH: true,
@@ -69,13 +62,22 @@
       graphApi = PUBLIC_GRAPHHOPPER_API;
     }
 
+    const leafletMod = await import('leaflet');
+    L = leafletMod.default ?? leafletMod;
+    window.L = L;
+    await import('leaflet-routing-machine');
+    await import('leaflet-control-geocoder');
+    await import('lrm-graphhopper');
+    await import('@raruto/leaflet-elevation/src/index.js');
+    await import('leaflet-simple-map-screenshoter');
+
     if (!bounds && (!view || !zoom)) {
       throw new Error('Must set either bounds, or view and zoom.');
     }
 
     map = L.map(mapElement)
       .on('zoom', (e: MouseEvent) => dispatch('zoom', e))
-      .on('popupopen', async (e: L.map) => {
+      .on('popupopen', async (e: any) => {
         await tick();
         e.popup.update();
       })
@@ -289,7 +291,7 @@
     }
   }
 
-  function handleMapClick(event: L.LeafletMouseEvent) {
+  function handleMapClick(event: any) {
     if (allowMapInteraction) {
       const { lat, lng } = event.latlng;
       const waypoint = L.latLng(lat, lng);
