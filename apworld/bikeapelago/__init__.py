@@ -20,6 +20,7 @@ class BikeapelagoWeb(WebWorld):
    Bikeapelago:
      check_count: 50
      goal_type: all_intersections
+     starting_nodes: 3
    ```
 3. Generate a multiworld seed on the Archipelago website.
 4. Deploy the Bikeapelago web client, create a game session, and connect.
@@ -57,8 +58,15 @@ class BikeapelagoWorld(World):
 
     def create_items(self) -> None:
         check_count = self.options.check_count.value
-        for i in range(1, check_count + 1):
+        starting_nodes = self.options.starting_nodes.value
+        for i in range(1, starting_nodes + 1):
+            self.multiworld.push_precollected(self.create_item(f"Node Unlock {i}"))
+        # Pool must cover all check_count locations; starting_nodes slots are filled with
+        # duplicates of the last unlock so the counts balance (they'll act as filler).
+        for i in range(starting_nodes + 1, check_count + 1):
             self.multiworld.itempool.append(self.create_item(f"Node Unlock {i}"))
+        for _ in range(starting_nodes):
+            self.multiworld.itempool.append(self.create_item("Wheel Patch Kit"))
 
     def create_regions(self) -> None:
         check_count = self.options.check_count.value
@@ -104,6 +112,9 @@ class BikeapelagoWorld(World):
         # Place the locked Victory item at the Goal event location
         goal_loc = self.multiworld.get_location("Goal", self.player)
         goal_loc.place_locked_item(self.create_item("Victory"))
+
+    def get_filler_item_name(self) -> str:
+        return "Wheel Patch Kit"
 
     def create_item(self, name: str) -> BikeapelagoItem:
         item_data = item_table[name]

@@ -3,6 +3,7 @@
   import { pb } from '$lib/pb';
   import ApMap from '$components/apMap.svelte';
   import ApDropzone from '$components/apDropzone.svelte';
+  import ChatClient from '$components/ChatClient.svelte';
   import { connectToAp, apClient } from '$lib/ap';
   import type { ApConnectionOptions } from '$lib/ap';
 
@@ -21,6 +22,13 @@
   let isConnected = false;
   let connecting = false;
   let connectionError = '';
+
+  // Sidebar tab
+  let activeTab: 'chat' | 'upload' | 'route' = 'chat';
+
+  // Route planner stats
+  let routeDistance = 0;
+  let apMapRef: any;
 
   // Node stats for the HUD
   let nodeStats = { hidden: 0, available: 0, checked: 0 };
@@ -64,7 +72,6 @@
     if (ok) {
       activeConnectionOptions = options;
       isConnected = true;
-      // Save server URL back to session for convenience
       await pb.collection('game_sessions').update(session.id, { ap_server_url: options.url });
     } else {
       connectionError = 'Could not connect. Check server URL, slot name, and password.';
@@ -78,7 +85,6 @@
     isConnected = false;
   }
 
-  // Refresh stats after dropzone validates a file
   async function handleValidated() {
     await refreshNodeStats();
   }
@@ -203,23 +209,88 @@
       </div>
     </div>
   {:else}
-    <!-- ── Game layout: map + dropzone ──────────────────────────────── -->
-    <div class="flex flex-col" style="height: calc(100vh - 96px);">
-      <!-- Map (takes ~65% of remaining height) -->
-      <div class="flex-1 min-h-0">
+    <!-- ── Game layout: map (left) + sidebar (right) ─────────────────── -->
+    <div class="flex" style="height: calc(100vh - 96px);">
+
+      <!-- Map panel — takes all remaining width -->
+      <div class="flex-1 min-w-0">
         <ApMap
-          view={[session.center_lat, session.center_lon]}
-          zoom={14}
-          from="game"
-          user={data.user}
+          bind:this={apMapRef}
           sessionId={session.id}
-          apConnectionOptions={activeConnectionOptions}
+          centerLat={session.center_lat}
+          centerLon={session.center_lon}
+          radius={session.radius}
+          on:routeStats={(e) => { routeDistance = e.detail.distance; }}
         />
       </div>
 
-      <!-- Dropzone panel (fixed height) -->
-      <div class="h-56 overflow-y-auto bg-neutral-900 border-t border-neutral-600 p-4">
-        <ApDropzone sessionId={session.id} on:validated={handleValidated} />
+      <!-- Sidebar -->
+      <div class="w-80 shrink-0 flex flex-col bg-neutral-900 border-l border-neutral-600">
+
+        <!-- Tab bar -->
+        <div class="shrink-0 flex border-b border-neutral-600">
+          <button
+            on:click={() => activeTab = 'chat'}
+            class="flex-1 py-2 text-sm font-medium transition-colors
+              {activeTab === 'chat'
+                ? 'text-orange-400 border-b-2 border-orange-500 bg-neutral-800'
+                : 'text-neutral-400 hover:text-neutral-200'}"
+          >
+            Chat
+          </button>
+          <button
+            on:click={() => { activeTab = 'upload'; refreshNodeStats(); }}
+            class="flex-1 py-2 text-sm font-medium transition-colors
+              {activeTab === 'upload'
+                ? 'text-orange-400 border-b-2 border-orange-500 bg-neutral-800'
+                : 'text-neutral-400 hover:text-neutral-200'}"
+          >
+            Upload
+          </button>
+          <button
+            on:click={() => activeTab = 'route'}
+            class="flex-1 py-2 text-sm font-medium transition-colors
+              {activeTab === 'route'
+                ? 'text-orange-400 border-b-2 border-orange-500 bg-neutral-800'
+                : 'text-neutral-400 hover:text-neutral-200'}"
+          >
+            Route
+          </button>
+        </div>
+
+        <!-- Tab content -->
+        <div class="flex-1 min-h-0 overflow-hidden">
+          {#if activeTab === 'chat'}
+            <ChatClient />
+          {:else if activeTab === 'upload'}
+            <div class="p-3 h-full overflow-y-auto">
+              <ApDropzone sessionId={session.id} on:validated={handleValidated} />
+            </div>
+          {:else}
+            <!-- Route tab -->
+            <div class="p-4 flex flex-col gap-4">
+              <div>
+                <p class="text-xs text-neutral-400 mb-1">Distance</p>
+                <p class="text-2xl font-semibold text-white">
+                  {routeDistance > 0 ? (routeDistance / 1000).toFixed(2) : '—'} <span class="text-sm text-neutral-400">km</span>
+                </p>
+              </div>
+              <div class="text-xs text-neutral-400 space-y-1 border border-neutral-700 rounded p-3 bg-neutral-800">
+                <p class="font-medium text-neutral-300 mb-2">How to plan a route</p>
+                <p>1. Click <strong class="text-orange-400">My Location</strong> (the crosshair button next to the Start field on the map) to set your start.</p>
+                <p>2. Click any <strong class="text-orange-400">orange</strong> or <strong class="text-green-400">green</strong> node pin on the map to add it as a waypoint.</p>
+                <p>3. Drag waypoint markers to adjust.</p>
+              </div>
+              <button
+                on:click={() => apMapRef?.clearRoute()}
+                class="w-full bg-neutral-700 hover:bg-neutral-600 border border-neutral-600 text-white text-sm font-medium py-2 rounded transition"
+              >
+                Clear Route
+              </button>
+            </div>
+          {/if}
+        </div>
+
       </div>
     </div>
   {/if}

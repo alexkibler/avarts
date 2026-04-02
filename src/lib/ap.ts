@@ -1,7 +1,46 @@
 import { Client } from '@airbreather/archipelago.js';
 import { pb } from '$lib/pb';
+import { writable } from 'svelte/store';
 
 export const apClient = new Client();
+
+export type ChatMessageType = 'chat' | 'item' | 'system' | 'server';
+export interface ChatMessage {
+  id: number;
+  text: string;
+  type: ChatMessageType;
+}
+
+export const chatMessages = writable<ChatMessage[]>([]);
+
+let _msgId = 0;
+let _hooksRegistered = false;
+let _pendingType: ChatMessageType = 'server';
+
+/**
+ * Register message event hooks on the singleton apClient once.
+ * Specific events fire before the generic "message" event (MessageManager emits them first),
+ * so we set _pendingType in the specific handler and consume it in the generic one.
+ */
+function setupMessageHooks() {
+  if (_hooksRegistered) return;
+  _hooksRegistered = true;
+
+  apClient.messages.on('itemSent',    () => { _pendingType = 'item'; });
+  apClient.messages.on('itemCheated', () => { _pendingType = 'item'; });
+  apClient.messages.on('itemHinted',  () => { _pendingType = 'item'; });
+  apClient.messages.on('chat',        () => { _pendingType = 'chat'; });
+  apClient.messages.on('connected',   () => { _pendingType = 'system'; });
+  apClient.messages.on('disconnected',() => { _pendingType = 'system'; });
+  apClient.messages.on('goaled',      () => { _pendingType = 'system'; });
+  apClient.messages.on('released',    () => { _pendingType = 'system'; });
+  apClient.messages.on('collected',   () => { _pendingType = 'system'; });
+
+  apClient.messages.on('message', (text: string) => {
+    chatMessages.update(msgs => [...msgs, { id: ++_msgId, text, type: _pendingType }]);
+    _pendingType = 'server';
+  });
+}
 
 export interface ApConnectionOptions {
   url: string;      // e.g. "archipelago.gg:64962"
@@ -12,6 +51,8 @@ export interface ApConnectionOptions {
 }
 
 export async function connectToAp(options: ApConnectionOptions) {
+  setupMessageHooks();
+
   const connectionOptions: any = {
     slotData: true,
     version: {
@@ -43,10 +84,6 @@ export async function connectToAp(options: ApConnectionOptions) {
 
     apClient.items.on('itemsReceived', async () => {
       await processReceivedItems(options.sessionId, apClient.items.received);
-    });
-
-    apClient.messages.on('message', (text: string) => {
-      console.log('[AP]', text);
     });
 
     return true;

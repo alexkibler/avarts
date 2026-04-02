@@ -25,3 +25,4 @@ item_table: Dict[str, ItemData] = {
     for i in range(1, MAX_CHECKS + 1)
 }
 item_table["Victory"] = ItemData(START_ID + MAX_CHECKS + 1, ItemClassification.progression)
+item_table["Wheel Patch Kit"] = ItemData(START_ID + MAX_CHECKS + 2, ItemClassification.filler)

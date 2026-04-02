@@ -22,13 +22,25 @@ class GoalType(Choice):
     default = 0
 
 
+class StartingNodes(Range):
+    """The number of Node Unlock items placed into the player's starting inventory.
+    These nodes are immediately available at the start of the game."""
+
+    display_name = "Starting Nodes"
+    range_start = 1
+    range_end = 50
+    default = 3
+
+
 @dataclass
 class BikeapelagoOptions(PerGameCommonOptions):
     check_count: CheckCount
     goal_type: GoalType
+    starting_nodes: StartingNodes
 
 
 bikeapelago_options: typing.Dict[str, type] = {
     "check_count": CheckCount,
     "goal_type": GoalType,
+    "starting_nodes": StartingNodes,
 }

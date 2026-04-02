@@ -1,6 +1,8 @@
 FROM node:18-alpine as builder
+RUN apk add --no-cache zip
 WORKDIR /kit
 COPY . .
+RUN cd apworld && zip -r ../static/bikeapelago.apworld bikeapelago/
 RUN npm install
 RUN npm run build && npm prune --production
 
