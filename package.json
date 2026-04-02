@@ -19,6 +19,7 @@
 		"test:all": "npm run test && npm run test:e2e"
 	},
 	"devDependencies": {
+		"@markw65/fit-file-writer": "^0.1.9",
 		"@playwright/test": "^1.58.2",
 		"@sveltejs/adapter-auto": "^3.0.0",
 		"@sveltejs/kit": "^2.0.0",
@@ -30,6 +31,7 @@
 		"eslint": "^8.28.0",
 		"eslint-config-prettier": "^9.1.0",
 		"eslint-plugin-svelte": "^2.30.0",
+		"gpxparser": "^3.0.8",
 		"postcss": "^8.4.32",
 		"prettier": "^3.1.1",
 		"prettier-plugin-svelte": "^3.1.2",

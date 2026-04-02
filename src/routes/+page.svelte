@@ -171,6 +171,14 @@
       {:else}
         <form action="?/register" method="POST" class="flex flex-col items-center w-full">
           <!-- if form exist and and email is true -->
+          {#if form?.email}
+            <div class="flex w-full items-center justify-center mb-2 text-center flex-col">
+              <p class="text-red-600">Registration failed.</p>
+              {#if form?.error}
+                <p class="text-red-500 text-sm">{form.error}</p>
+              {/if}
+            </div>
+          {/if}
           <div class="w-full mb-5">
             <label for="username" class="pb-1 text-white">
               <span>Username</span>

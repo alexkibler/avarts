@@ -2,20 +2,10 @@ import { defineConfig, devices } from '@playwright/test';
 
 /**
  * E2E test configuration for Bikeapelago.
- *
- * Prerequisites:
- * - PocketBase must be running at http://127.0.0.1:8090
- * - Default admin credentials: admin@bikeapelago.lan / adminadmin
- * - PUBLIC_REGISTRATION must be set to "true"
- *
- * The test suite will:
- *   1. Register a new test user account via the UI
- *   2. Test all app features end-to-end
- *   3. Clean up all created test data via the PocketBase admin API
  */
 export default defineConfig({
 	testDir: './tests/e2e',
-	fullyParallel: false, // tests must run in order (setup -> features -> teardown)
+	fullyParallel: false,
 	forbidOnly: !!process.env.CI,
 	retries: 0,
 	workers: 1,
@@ -31,11 +21,25 @@ export default defineConfig({
 			name: 'chromium',
 			use: { ...devices['Desktop Chrome'] },
 		},
+		{
+			name: 'mobile',
+			use: {
+				viewport: { width: 402, height: 874 },
+				deviceScaleFactor: 3,
+				isMobile: true,
+				hasTouch: true,
+				userAgent: 'Mozilla/5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/18.0 Mobile/15E148 Safari/604.1',
+			},
+		},
 	],
 	webServer: {
 		command: 'npm run dev',
 		url: 'http://localhost:5173',
 		reuseExistingServer: true,
 		timeout: 120 * 1000,
+		env: {
+			PUBLIC_GRAPHHOPPER_URL: 'https://routing.alexkibler.com/route',
+			PUBLIC_DB_URL: 'https://pb.bikeapelago.alexkibler.com',
+		},
 	},
 });

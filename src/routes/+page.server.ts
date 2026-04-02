@@ -10,16 +10,19 @@ export const actions = {
   login: async ({ request, locals }) => {
     // get data from form
 		const formData = Object.fromEntries(await request.formData());
+    const username = formData.username?.toString() || '';
+    const password = formData.password?.toString() || '';
 
 		try {
       // try to log in
-			await locals.pb.collection('users').authWithPassword(formData.username, formData.password);
+			await locals.pb.collection('users').authWithPassword(username, password);
 		} catch (err: any) {
       // if error returned, send prop with email = true (will show message on screen)
       if (err.status === 400 || err.status === 401) {
-        console.log('Error: ', err);
+        console.log('Login Error: ', err.response?.message || err);
         return {
           login: true,
+          error: err.response?.message || 'Invalid username or password'
         };
       } else {
 			  return error(500, 'Something went wrong logging in');
@@ -33,19 +36,27 @@ export const actions = {
     if (env.PUBLIC_REGISTRATION == "true") {
       const formData = await request.formData();
       const randomString = generateRandomString();
-      formData.set('email', `${randomString}@bikeapelago.com`)
+      formData.set('email', `${randomString}@bikeapelago.com`);
+
+      // Convert FormData to plain object for PB (prevents serialization issues with SSR)
+      const payload = Object.fromEntries(formData);
 
       try {
-        await locals.pb.collection('users').create(formData);
+        await locals.pb.collection('users').create(payload);
+        
+        // Auto-login the user into their session after creation
+        const username = payload.username?.toString() || '';
+        const password = payload.password?.toString() || '';
+        await locals.pb.collection('users').authWithPassword(username, password);
       } catch (err: any) {
-        // if error returned, send prop with email = true (will show message on screen)
         if (err.status === 400 || err.status === 401) {
-          console.log('Error: ', err);
+          console.log('Registration Error: ', err.response?.message || err);
           return {
             email: true,
+            error: err.response?.message || 'Error creating account. Make sure username is valid and passwords match.'
           };
         } else {
-          return error(500, 'Something went wrong logging in');
+          return error(500, 'Something went wrong registering');
         };
       };
 

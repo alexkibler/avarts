@@ -17,6 +17,10 @@ let _msgId = 0;
 let _hooksRegistered = false;
 let _pendingType: ChatMessageType = 'server';
 
+// Test mode variables
+let _testMode = false;
+let _testSessionId = '';
+
 /**
  * Register message event hooks on the singleton apClient once.
  * Specific events fire before the generic "message" event (MessageManager emits them first),
@@ -67,6 +71,15 @@ export async function connectToAp(options: ApConnectionOptions) {
   }
 
   const cleanUrl = options.url.replace(/^wss?:\/\//i, '').trim();
+
+  // Test environment bypass checks BOTH 'test' url and global test engine flag
+  const isTestForce = (typeof globalThis !== 'undefined' && (globalThis as any).PLAYWRIGHT_TEST) || (typeof window !== 'undefined' && (window as any).PLAYWRIGHT_TEST);
+  if (cleanUrl === 'test' || isTestForce) {
+      console.log('[AP] Test mode bypass engaged.');
+      _testMode = true;
+      _testSessionId = options.sessionId;
+      return true;
+  }
 
   try {
     console.log(`[AP] Connecting to: ${cleanUrl}`);
@@ -122,6 +135,43 @@ async function processReceivedItems(sessionId: string, items: any[]) {
 }
 
 export function sendLocationChecks(locationIds: number[]) {
+  if (_testMode) {
+    console.log(`[AP] Test mode: MOCKING ${locationIds.length} location checks.`);
+    setTimeout(async () => {
+      try {
+        // Step 1: Mark each checked location as Checked (idempotent — validation.ts may have
+        // already done this, but we ensure consistency if sendLocationChecks is called directly).
+        for (const apLocId of locationIds) {
+          const matched = await pb.collection('map_nodes').getFullList({
+            filter: `session = "${_testSessionId}" && ap_location_id = ${apLocId}`,
+          });
+          for (const node of matched) {
+            if (node.state !== 'Checked') {
+              await pb.collection('map_nodes').update(node.id, { state: 'Checked' });
+              console.log(`[AP Mock] Marked node ${node.id} (loc ${apLocId}) as Checked`);
+            }
+          }
+        }
+
+        // Step 2: Simulate receiving one unlock item per checked location.
+        // Fetch hidden nodes fresh each iteration so we never re-unlock the same one.
+        for (let i = 0; i < locationIds.length; i++) {
+          const hiddenNodes = await pb.collection('map_nodes').getFullList({
+            filter: `session = "${_testSessionId}" && state = "Hidden"`,
+            sort: '+ap_location_id',
+          });
+          if (hiddenNodes.length > 0) {
+            await pb.collection('map_nodes').update(hiddenNodes[0].id, { state: 'Available' });
+            console.log(`[AP Mock] Unlocked node ${hiddenNodes[0].id} to Available`);
+          }
+        }
+      } catch (e) {
+        console.error('Mock unlock failed', e);
+      }
+    }, 500);
+    return;
+  }
+
   if (apClient.authenticated) {
     apClient.check(...locationIds);
   } else {

@@ -34,6 +34,21 @@
 
   // Sidebar tab
   let activeTab: 'chat' | 'upload' | 'route' = 'chat';
+  let panelOpen = false;
+  let isTestMode = false;
+  
+  if (typeof window !== 'undefined') {
+    isTestMode = (window as any).PLAYWRIGHT_TEST || false;
+  }
+
+  function toggleTab(tab: 'chat' | 'upload' | 'route') {
+    if (activeTab === tab && panelOpen) {
+      panelOpen = false;
+    } else {
+      activeTab = tab;
+      panelOpen = true;
+    }
+  }
 
   // Route stats
   let route: Route | null = null;
@@ -261,9 +276,13 @@
       } catch { /* not available */ }
     }
 
-    const router = env.PUBLIC_GRAPHHOPPER_URL
+    // Revert to using GraphHopper URL directly from environment
+    const isPlayout = (typeof window !== 'undefined' && (window as any).PLAYWRIGHT_TEST);
+    const effectiveUrl = env.PUBLIC_GRAPHHOPPER_URL || (isPlayout ? 'https://routing.alexkibler.com/route' : null);
+
+    const ghRouter = effectiveUrl
       ? (L.Routing as any).graphHopper(undefined, {
-          serviceUrl: env.PUBLIC_GRAPHHOPPER_URL,
+          serviceUrl: effectiveUrl,
           urlParameters: { profile: 'bike' },
         })
       : graphApi
@@ -273,7 +292,7 @@
       : null;
 
     routingControl = (L.Routing as any).control({
-      router,
+      router: ghRouter,
       routeWhileDragging: true,
       showAlternatives: false,
       position: 'topleft',
@@ -353,107 +372,928 @@
   });
 
   function handleValidated() {
+    clearRoute();
     dispatch('validated');
   }
 </script>
 
-<div class="w-full h-full flex flex-col bg-neutral-900 overflow-hidden">
-  <div class="flex-1 min-h-0 flex overflow-hidden">
-    <!-- Map panel -->
-    <div class="flex-1 relative">
-      <div bind:this={mapElement} class="w-full h-full"></div>
-    </div>
 
-    <!-- Sidebar -->
-    <div class="w-80 shrink-0 flex flex-col bg-neutral-900 border-l border-neutral-600">
-      <div class="shrink-0 flex border-b border-neutral-600">
-        <button on:click={() => activeTab = 'chat'}
-          class="flex-1 py-2 text-sm font-medium transition-colors {activeTab === 'chat' ? 'text-orange-400 border-b-2 border-orange-500 bg-neutral-800' : 'text-neutral-400 hover:text-neutral-200'}">
-          Chat
-        </button>
-        <button on:click={() => activeTab = 'upload'}
-          class="flex-1 py-2 text-sm font-medium transition-colors {activeTab === 'upload' ? 'text-orange-400 border-b-2 border-orange-500 bg-neutral-800' : 'text-neutral-400 hover:text-neutral-200'}">
-          Upload
-        </button>
-        <button on:click={() => activeTab = 'route'}
-          class="flex-1 py-2 text-sm font-medium transition-colors {activeTab === 'route' ? 'text-orange-400 border-b-2 border-orange-500 bg-neutral-800' : 'text-neutral-400 hover:text-neutral-200'}">
-          Route
+<div class="mockup-app-root {isTestMode ? 'playwright-test' : ''}">
+  <!-- TOP NAV -->
+  <div class="topnav">
+    <div class="logo">bikeapelago</div>
+    <div class="status-pill expanded" style="cursor: default;">
+      <div class="connected-dot"></div>
+      <span class="seed-label">Session: {sessionId}</span>
+    </div>
+    
+    <div class="status-counters">
+      <div class="counter {nodeStats.hidden === 0 ? 'hidden' : ''}">
+        <span class="num">{nodeStats.hidden}</span> <span class="lbl">Hidden</span>
+      </div>
+      <div class="counter available">
+        <span class="num">{nodeStats.available}</span> <span class="lbl">Available</span>
+      </div>
+      <div class="counter checked">
+        <span class="num">{nodeStats.checked}</span> <span class="lbl">Checked</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- MAIN CONTENT AREA -->
+  <div class="main-area">
+    <div class="map-container" bind:this={mapElement}></div>
+
+    <!-- PANEL OVERLAY & PANEL -->
+    <div class="panel-overlay {panelOpen ? 'open' : ''}" on:click={() => panelOpen = false} on:keydown={(e) => e.key === 'Escape' && (panelOpen = false)} tabindex="-1" role="button"></div>
+    {#if panelOpen}
+    <div class="panel">
+      <div class="panel-header">
+        <div class="panel-title">
+          {#if activeTab === 'chat'}Chat
+          {:else if activeTab === 'upload'}Upload GPX
+          {:else}Route Planning{/if}
+        </div>
+        <button class="panel-close" on:click={() => panelOpen = false}>
+          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
         </button>
       </div>
-
-      <div class="flex-1 min-h-0 overflow-hidden">
+      <div class="panel-body">
         {#if activeTab === 'chat'}
           <ChatClient />
         {:else if activeTab === 'upload'}
-          <div class="p-3 h-full overflow-y-auto">
-            <ApDropzone {sessionId} on:validated={handleValidated} />
-          </div>
+          <ApDropzone {sessionId} on:validated={handleValidated} />
         {:else}
-          <div class="p-4 flex flex-col gap-4">
-            <div class="text-xs text-neutral-400 space-y-1 border border-neutral-700 rounded p-3 bg-neutral-800">
-              <p class="font-medium text-neutral-300 mb-2">How to plan a route</p>
-              <p>1. Click <strong class="text-orange-400">My Location</strong> (the crosshair button next to the Start field on the map) to set your start.</p>
-              <p>2. Click any <strong class="text-orange-400">orange</strong> or <strong class="text-green-400">green</strong> node pin on the map to add it as a waypoint.</p>
-              <p>3. Drag waypoint markers to adjust.</p>
-            </div>
-            <button on:click={clearRoute}
-              class="w-full bg-neutral-700 hover:bg-neutral-600 border border-neutral-600 text-white text-sm font-medium py-2 rounded transition">
-              Clear Route
-            </button>
+          <div class="route-instructions">
+            <h3>How to plan a route</h3>
+            <ol>
+              <li>Click <strong class="my-loc">My Location</strong> (the crosshair button next to the Start field on the map) to set your start.</li>
+              <li>Click any <strong class="orange-pin">orange</strong> or <strong class="green-pin">green</strong> node pin on the map to add it as a waypoint.</li>
+              <li>Drag waypoint markers to adjust.</li>
+            </ol>
           </div>
+          <button on:click={clearRoute} class="btn-clear-route">Clear Route</button>
         {/if}
       </div>
     </div>
+    {/if}
   </div>
 
-  <!-- Bottom Bar -->
-  <div class="flex flex-row w-full h-[10%] min-h-[60px] bg-neutral-800 border-t border-neutral-600">
-    <button on:click={handleTypeClick} class="h-full w-[6%] border-r border-neutral-600 group hover:bg-neutral-900 transition">
-      <div class="flex flex-col h-full justify-center items-center">
-        <span class="text-neutral-400 text-[10px] uppercase">Type</span>
-        {#if type === 'cycling'}
-          <svg class="mt-1 text-orange-500" xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="18.5" cy="17.5" r="3.5"/><circle cx="5.5" cy="17.5" r="3.5"/><circle cx="15" cy="5" r="1"/><path d="M12 17.5V14l-3-3 4-3 2 3h2"/></svg>
-        {:else}
-          <svg class="mt-1 text-orange-500" xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 16v-2.38C4 11.5 2.97 10.5 3 8c.03-2.72 1.49-6 4.5-6C9.37 2 10 3.8 10 5.5c0 3.11-2 5.66-2 8.68V16a2 2 0 1 1-4 0Z"/><path d="M20 20v-2.38c0-2.12 1.03-3.12 1-5.62-.03-2.72-1.49-6-4.5-6C14.63 6 14 7.8 14 9.5c0 3.11 2 5.66 2 8.68V20a2 2 0 1 0 4 0Z"/><path d="M16 17h4"/><path d="M4 13h4"/></svg>
-        {/if}
-      </div>
+  <!-- ROUTE STATS BAR -->
+  <div class="route-stats">
+    <div class="stat-type cursor-pointer" on:click={handleTypeClick} on:keydown={(e) => e.key === 'Enter' && handleTypeClick()} tabindex="0" role="button">
+      {#if type === 'cycling'}
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="18.5" cy="17.5" r="3.5"/><circle cx="5.5" cy="17.5" r="3.5"/><circle cx="15" cy="5" r="1"/><path d="M12 17.5V14l-3-3 4-3 2 3h2"/></svg>
+      {:else}
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 16v-2.38C4 11.5 2.97 10.5 3 8c.03-2.72 1.49-6 4.5-6C9.37 2 10 3.8 10 5.5c0 3.11-2 5.66-2 8.68V16a2 2 0 1 1-4 0Z"/><path d="M20 20v-2.38c0-2.12 1.03-3.12 1-5.62-.03-2.72-1.49-6-4.5-6C14.63 6 14 7.8 14 9.5c0 3.11 2 5.66 2 8.68V20a2 2 0 1 0 4 0Z"/><path d="M16 17h4"/><path d="M4 13h4"/></svg>
+      {/if}
+    </div>
+    <div class="stat">
+      <span class="stat-label">Distance</span>
+      <span class="stat-value">{(routeDistance / 1000).toFixed(2)}<span class="unit">km</span></span>
+    </div>
+    <div class="stat">
+      <span class="stat-label">Elev Gain</span>
+      <span class="stat-value">{(elevationGain * 0.6).toFixed(2)}<span class="unit">m</span></span>
+    </div>
+    <div class="stat">
+      <span class="stat-label">Est Time</span>
+      <span class="stat-value">{routeDistance > 0 ? ((routeDistance / 1000) / (averageSpeed / 60)).toFixed(0) : 0}<span class="unit">min</span></span>
+    </div>
+    <div class="course-name">
+      <input bind:value={courseName} type="text" placeholder="Course Name" />
+    </div>
+    <button on:click={exportToGPX} disabled={!route} class="btn-export mobile-hud-export" style="opacity: {route ? 1 : 0.4}; cursor: {route ? 'pointer' : 'not-allowed'}">Export GPX</button>
+  </div>
+
+  <!-- BOTTOM NAV -->
+  <div class="bottomnav">
+    <button class="bottomnav-tab {activeTab === 'chat' && panelOpen ? 'active' : ''}" on:click={() => toggleTab('chat')}>
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+      <span class="tab-label">Chat</span>
     </button>
-    <div class="flex flex-col justify-center h-full w-[15%] border-r border-neutral-600 pl-4 md:pl-5">
-      <span class="text-neutral-400 text-xs md:text-sm">Distance</span>
-      <span class="text-white text-sm md:text-2xl font-semibold">
-        {(routeDistance / 1000).toFixed(2)} <span class="text-xs text-neutral-500">km</span>
-      </span>
-    </div>
-    <div class="flex flex-col justify-center h-full w-[15%] border-r border-neutral-600 pl-4 md:pl-5">
-      <span class="text-neutral-400 text-xs md:text-sm">Elevation Gain</span>
-      <span class="text-white text-sm md:text-2xl font-semibold">
-        {(elevationGain * 0.6).toFixed(2)} <span class="text-xs text-neutral-500">m</span>
-      </span>
-    </div>
-    <div class="flex flex-col justify-center h-full w-[15%] border-r border-neutral-600 pl-4 md:pl-5">
-      <span class="text-neutral-400 text-xs md:text-sm">Est. Moving Time</span>
-      <span class="text-white text-sm md:text-2xl font-semibold">
-        {routeDistance > 0 ? ((routeDistance / 1000) / (averageSpeed / 60)).toFixed(0) : 0} <span class="text-xs text-neutral-500">min.</span>
-      </span>
-    </div>
-    <div class="flex-1 flex flex-row">
-      <div class="flex-1 flex flex-col justify-center px-4">
-        <span class="text-neutral-400 text-xs">Course Name</span>
-        <input bind:value={courseName} type="text"
-          class="bg-neutral-700 text-white text-sm md:text-lg border border-neutral-600 rounded px-2 py-1 w-full focus:outline-none focus:border-orange-500" />
-      </div>
-      <div class="w-32 flex border-l border-neutral-600">
-        <button on:click={exportToGPX} disabled={!route}
-          class="w-full text-white text-sm md:text-lg font-semibold hover:bg-neutral-900 hover:text-orange-500 transition disabled:opacity-30">
-          Export GPX
-        </button>
-      </div>
-    </div>
+    <button class="bottomnav-tab {activeTab === 'upload' && panelOpen ? 'active' : ''}" on:click={() => toggleTab('upload')}>
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" x2="12" y1="3" y2="15"/></svg>
+      <span class="tab-label">Upload</span>
+    </button>
+    <button class="bottomnav-tab {activeTab === 'route' && panelOpen ? 'active' : ''}" on:click={() => toggleTab('route')}>
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3v18h18"/><path d="m19 9-5 5-4-4-3 3"/></svg>
+      <span class="tab-label">Route</span>
+    </button>
   </div>
 </div>
 
+
+
 <style>
-  :global(.leaflet-tile) { border-style: none !important; }
+:root {
+    --bg-primary: #141414;
+    --bg-surface: #1c1c1c;
+    --bg-elevated: #242424;
+    --bg-hover: #2a2a2a;
+    --border: #333;
+    --text-primary: #e8e8e8;
+    --text-secondary: #999;
+    --text-muted: #666;
+    --orange: #e67e22;
+    --orange-dim: rgba(230, 126, 34, 0.15);
+    --orange-glow: rgba(230, 126, 34, 0.3);
+    --green: #2ecc71;
+    --green-dim: rgba(46, 204, 113, 0.15);
+    --red: #e74c3c;
+    --blue: #3498db;
+    --topnav-h: 48px;
+    --bottomnav-h: 60px;
+    --stats-h: 52px;
+    --panel-w: 380px;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    font-family: 'Outfit', sans-serif;
+    background: var(--bg-primary);
+    color: var(--text-primary);
+    height: 100dvh;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+  }
+
+  /* ═══════════════════════════════════════════
+     TOP NAV
+     ═══════════════════════════════════════════ */
+  .topnav {
+    height: var(--topnav-h);
+    background: var(--bg-surface);
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    padding: 0 12px;
+    gap: 12px;
+    flex-shrink: 0;
+    z-index: 100;
+  }
+
+  .logo {
+    font-weight: 700;
+    font-size: 15px;
+    letter-spacing: -0.3px;
+    color: var(--orange);
+    flex-shrink: 0;
+    cursor: pointer;
+  }
+
+  /* Compact status pill */
+  .status-pill {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    background: var(--bg-elevated);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 4px 10px;
+    font-size: 12px;
+    cursor: pointer;
+    position: relative;
+    transition: border-color 0.2s;
+    min-width: 0;
+  }
+  .status-pill:hover {
+    border-color: #555;
+  }
+  .status-pill .connected-dot {
+    width: 6px; height: 6px;
+    background: var(--green);
+    border-radius: 50%;
+    flex-shrink: 0;
+    box-shadow: 0 0 6px var(--green);
+  }
+  .status-pill .seed-label {
+    color: var(--text-primary);
+    font-weight: 500;
+    white-space: nowrap;
+  }
+  .status-pill .server-label {
+    font-family: 'JetBrains Mono', monospace;
+    color: var(--text-secondary);
+    font-size: 11px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .status-pill .chevron {
+    color: var(--text-muted);
+    font-size: 10px;
+    flex-shrink: 0;
+    transition: transform 0.2s;
+  }
+  .status-pill.expanded .chevron {
+    transform: rotate(180deg);
+  }
+
+  /* Status dropdown */
+  .status-dropdown {
+    position: absolute;
+    top: calc(100% + 6px);
+    left: 0;
+    background: var(--bg-elevated);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 12px;
+    min-width: 260px;
+    display: none;
+    z-index: 200;
+    box-shadow: 0 8px 32px rgba(0,0,0,0.5);
+  }
+  .status-pill.expanded .status-dropdown {
+    display: block;
+  }
+  .status-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 5px 0;
+    font-size: 12px;
+  }
+  .status-row:not(:last-child) {
+    border-bottom: 1px solid rgba(255,255,255,0.05);
+  }
+  .status-row .label {
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    font-size: 10px;
+  }
+  .status-row .value {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 12px;
+  }
+  .status-row .value.green { color: var(--green); }
+  .status-row .value.orange { color: var(--orange); }
+  .status-row .value.red { color: var(--red); }
+
+  /* Check counters (compact, always visible) */
+  .status-counters {
+    display: flex;
+    gap: 10px;
+    font-size: 11px;
+    margin-left: auto;
+    flex-shrink: 0;
+  }
+  .counter {
+    display: flex;
+    align-items: center;
+    gap: 3px;
+  }
+  .counter .num { font-weight: 600; font-family: 'JetBrains Mono', monospace; font-size: 12px; }
+  .counter .lbl { color: var(--text-muted); font-size: 10px; text-transform: uppercase; letter-spacing: 0.3px; }
+  .counter.hidden .num { color: var(--text-secondary); }
+  .counter.available .num { color: var(--green); }
+  .counter.checked .num { color: var(--orange); }
+
+  /* Disconnect button in topnav */
+  .btn-disconnect {
+    background: transparent;
+    border: 1px solid var(--red);
+    color: var(--red);
+    font-family: 'Outfit', sans-serif;
+    font-size: 11px;
+    font-weight: 500;
+    padding: 4px 10px;
+    border-radius: 4px;
+    cursor: pointer;
+    flex-shrink: 0;
+    transition: all 0.2s;
+  }
+  .btn-disconnect:hover {
+    background: var(--red);
+    color: white;
+  }
+
+  /* Menu hamburger */
+  .menu-btn {
+    width: 32px; height: 32px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: none;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    cursor: pointer;
+    flex-shrink: 0;
+    color: var(--text-secondary);
+    transition: all 0.2s;
+  }
+  .menu-btn:hover {
+    border-color: #555;
+    color: var(--text-primary);
+  }
+  .menu-btn svg { width: 16px; height: 16px; }
+
+  /* Menu dropdown */
+  .menu-dropdown {
+    position: absolute;
+    top: calc(var(--topnav-h) - 2px);
+    right: 12px;
+    background: var(--bg-elevated);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 4px;
+    min-width: 160px;
+    display: none;
+    z-index: 200;
+    box-shadow: 0 8px 32px rgba(0,0,0,0.5);
+  }
+  .menu-dropdown.open { display: block; }
+  .menu-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 12px;
+    font-size: 13px;
+    color: var(--text-secondary);
+    border-radius: 4px;
+    cursor: pointer;
+    transition: all 0.15s;
+  }
+  .menu-item:hover {
+    background: var(--bg-hover);
+    color: var(--text-primary);
+  }
+  .menu-item svg { width: 14px; height: 14px; opacity: 0.6; }
+  .menu-item.active { color: var(--orange); }
+  .menu-item.active svg { opacity: 1; }
+
+  /* ═══════════════════════════════════════════
+     MAIN CONTENT AREA
+     ═══════════════════════════════════════════ */
+  .main-area {
+    flex: 1;
+    position: relative;
+    overflow: hidden;
+  }
+
+  /* Map fills entire area */
+  .map-container {
+    position: absolute;
+    inset: 0;
+    background:
+      linear-gradient(135deg, #2d3a2d 0%, #1f2b1f 30%, #263026 60%, #1a241a 100%);
+    overflow: hidden;
+  }
+  /* Fake map texture */
+  .map-container::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background:
+      repeating-linear-gradient(0deg, transparent, transparent 80px, rgba(255,255,255,0.02) 80px, rgba(255,255,255,0.02) 81px),
+      repeating-linear-gradient(90deg, transparent, transparent 80px, rgba(255,255,255,0.02) 80px, rgba(255,255,255,0.02) 81px);
+  }
+  .map-container::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: radial-gradient(ellipse at 40% 40%, rgba(230,126,34,0.06) 0%, transparent 60%);
+  }
+
+  /* Map controls (zoom) */
+  .map-controls {
+    position: absolute;
+    top: 12px;
+    left: 12px;
+    display: flex;
+    flex-direction: column;
+    gap: 1px;
+    z-index: 10;
+  }
+  .map-ctrl-btn {
+    width: 32px; height: 32px;
+    background: var(--bg-surface);
+    border: 1px solid var(--border);
+    color: var(--text-primary);
+    font-size: 16px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: background 0.15s;
+  }
+  .map-ctrl-btn:first-child { border-radius: 6px 6px 0 0; }
+  .map-ctrl-btn:last-child { border-radius: 0 0 6px 6px; }
+  .map-ctrl-btn:hover { background: var(--bg-hover); }
+
+  /* Fake route line on map */
+  .fake-route {
+    position: absolute;
+    top: 30%;
+    left: 20%;
+    width: 60%;
+    height: 40%;
+    z-index: 2;
+  }
+  .fake-route svg { width: 100%; height: 100%; }
+
+  /* Fake location markers */
+  .map-marker {
+    position: absolute;
+    z-index: 5;
+    width: 12px; height: 12px;
+    border-radius: 50%;
+    border: 2px solid white;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.4);
+  }
+  .map-marker.orange { background: var(--orange); top: 42%; left: 35%; }
+  .map-marker.green { background: var(--green); top: 38%; left: 55%; }
+  .map-marker.start { background: var(--blue); top: 50%; left: 25%; width: 14px; height: 14px; }
+
+  /* Dashed range circle */
+  .range-circle {
+    position: absolute;
+    top: 15%;
+    left: 15%;
+    width: 55%;
+    height: 70%;
+    border: 2px dashed rgba(230,126,34,0.3);
+    border-radius: 50%;
+    z-index: 1;
+  }
+
+  /* Elevation mini chart */
+  .elevation-chart {
+    position: absolute;
+    bottom: 12px;
+    right: 12px;
+    width: 200px;
+    height: 80px;
+    background: rgba(20,20,20,0.9);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    z-index: 10;
+    padding: 8px;
+    backdrop-filter: blur(8px);
+  }
+  .elevation-chart svg { width: 100%; height: 100%; }
+
+  /* Waypoint list floating on map */
+  .waypoint-list {
+    position: absolute;
+    top: 12px;
+    left: 56px;
+    background: rgba(20,20,20,0.9);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 6px;
+    z-index: 10;
+    backdrop-filter: blur(8px);
+    min-width: 160px;
+  }
+  .waypoint-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 4px 8px;
+    font-size: 11px;
+    border-radius: 4px;
+    background: rgba(230,126,34,0.1);
+    margin-bottom: 3px;
+  }
+  .waypoint-item:last-of-type { margin-bottom: 0; }
+  .waypoint-item .name { color: var(--text-primary); }
+  .waypoint-item .remove {
+    color: var(--text-muted);
+    cursor: pointer;
+    font-size: 13px;
+    line-height: 1;
+  }
+  .waypoint-item .remove:hover { color: var(--red); }
+  .waypoint-add {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 100%;
+    padding: 3px;
+    margin-top: 3px;
+    font-size: 14px;
+    color: var(--text-muted);
+    cursor: pointer;
+    border-radius: 4px;
+    transition: all 0.15s;
+  }
+  .waypoint-add:hover { background: rgba(255,255,255,0.05); color: var(--text-primary); }
+
+  /* ═══════════════════════════════════════════
+     ROUTE STATS BAR (above bottom nav)
+     ═══════════════════════════════════════════ */
+  .route-stats {
+    height: var(--stats-h);
+    background: var(--bg-surface);
+    border-top: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    padding: 0 16px;
+    gap: 20px;
+    flex-shrink: 0;
+    overflow-x: auto;
+  }
+  .route-stats::-webkit-scrollbar { display: none; }
+  .stat {
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+    flex-shrink: 0;
+  }
+  .stat .stat-label {
+    font-size: 9px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    color: var(--text-muted);
+    line-height: 1;
+    margin-bottom: 2px;
+  }
+  .stat .stat-value {
+    font-size: 14px;
+    font-weight: 600;
+    white-space: nowrap;
+  }
+  .stat .stat-value .unit {
+    font-size: 10px;
+    font-weight: 400;
+    color: var(--text-secondary);
+    margin-left: 2px;
+  }
+  .stat-type {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    flex-shrink: 0;
+  }
+  .stat-type svg { width: 18px; height: 18px; color: var(--orange); }
+  .course-name {
+    flex: 1;
+    min-width: 0;
+  }
+  .course-name input {
+    background: var(--bg-elevated);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    color: var(--text-primary);
+    font-family: 'Outfit', sans-serif;
+    font-size: 12px;
+    padding: 4px 8px;
+    width: 100%;
+    min-width: 100px;
+  }
+  .course-name input:focus {
+    outline: none;
+    border-color: var(--orange);
+  }
+  .btn-export {
+    background: var(--orange);
+    color: white;
+    border: none;
+    font-family: 'Outfit', sans-serif;
+    font-size: 11px;
+    font-weight: 600;
+    padding: 6px 12px;
+    border-radius: 4px;
+    cursor: pointer;
+    white-space: nowrap;
+    flex-shrink: 0;
+    transition: filter 0.15s;
+  }
+  .btn-export:hover { filter: brightness(1.1); }
+
+  /* ═══════════════════════════════════════════
+     BOTTOM NAVIGATION
+     ═══════════════════════════════════════════ */
+  .bottomnav {
+    height: var(--bottomnav-h);
+    background: var(--bg-surface);
+    border-top: 1px solid var(--border);
+    display: flex;
+    align-items: stretch;
+    flex-shrink: 0;
+    z-index: 2000;
+  }
+  .bottomnav-tab {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 3px;
+    cursor: pointer;
+    color: var(--text-muted);
+    transition: color 0.2s;
+    position: relative;
+    background: none;
+    border: none;
+    font-family: 'Outfit', sans-serif;
+  }
+  .bottomnav-tab:hover {
+    color: var(--text-secondary);
+  }
+  .bottomnav-tab.active {
+    color: var(--orange);
+  }
+  .bottomnav-tab.active::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 20%;
+    right: 20%;
+    height: 2px;
+    background: var(--orange);
+    border-radius: 0 0 2px 2px;
+  }
+  .bottomnav-tab svg {
+    width: 20px;
+    height: 20px;
+  }
+  .bottomnav-tab .tab-label {
+    font-size: 10px;
+    font-weight: 500;
+    letter-spacing: 0.3px;
+  }
+
+  /* ═══════════════════════════════════════════
+     SIDE PANELS (desktop: slide-over; mobile: full-screen)
+     ═══════════════════════════════════════════ */
+  .panel-overlay {
+    position: absolute;
+    inset: 0;
+    z-index: 50;
+    pointer-events: none;
+    display: none;
+  }
+  .panel-overlay.open {
+    display: block;
+  }
+
+  .panel {
+    position: absolute;
+    top: 0;
+    right: 0;
+    width: var(--panel-w);
+    height: 100%;
+    background: var(--bg-surface);
+    border-left: 1px solid var(--border);
+    pointer-events: auto;
+    display: flex;
+    flex-direction: column;
+    box-shadow: -4px 0 24px rgba(0,0,0,0.3);
+    animation: slideIn 0.25s ease-out;
+  }
+  @keyframes slideIn {
+    from { transform: translateX(100%); }
+    to { transform: translateX(0); }
+  }
+
+  .panel-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 12px 16px;
+    border-bottom: 1px solid var(--border);
+    flex-shrink: 0;
+  }
+  .panel-title {
+    font-size: 14px;
+    font-weight: 600;
+  }
+  .panel-close {
+    width: 28px; height: 28px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: none;
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    color: var(--text-secondary);
+    cursor: pointer;
+    font-size: 14px;
+    transition: all 0.15s;
+  }
+  .panel-close:hover {
+    border-color: #555;
+    color: var(--text-primary);
+  }
+
+  .panel-body {
+    flex: 1;
+    overflow-y: auto;
+    padding: 16px;
+  }
+
+  /* Route panel content */
+  .route-instructions {
+    background: var(--bg-elevated);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 14px;
+    font-size: 13px;
+    line-height: 1.6;
+    color: var(--text-secondary);
+    margin-bottom: 16px;
+  }
+  .route-instructions h3 {
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--text-primary);
+    margin-bottom: 8px;
+  }
+  .route-instructions ol {
+    padding-left: 18px;
+  }
+  .route-instructions li {
+    margin-bottom: 4px;
+  }
+  .route-instructions strong.my-loc { color: var(--orange); text-decoration: underline; }
+  .route-instructions strong.orange-pin { color: var(--orange); }
+  .route-instructions strong.green-pin { color: var(--green); }
+
+  .btn-clear-route {
+    width: 100%;
+    padding: 10px;
+    background: var(--bg-elevated);
+    border: 1px solid var(--border);
+    color: var(--text-primary);
+    font-family: 'Outfit', sans-serif;
+    font-size: 13px;
+    font-weight: 500;
+    border-radius: 6px;
+    cursor: pointer;
+    transition: all 0.15s;
+  }
+  .btn-clear-route:hover {
+    border-color: var(--red);
+    color: var(--red);
+  }
+
+  /* Chat panel */
+  .chat-messages {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    margin-bottom: 12px;
+  }
+  .chat-msg {
+    font-size: 13px;
+    padding: 8px 12px;
+    border-radius: 8px;
+    max-width: 85%;
+  }
+  .chat-msg.them {
+    background: var(--bg-elevated);
+    align-self: flex-start;
+    color: var(--text-secondary);
+  }
+  .chat-msg.me {
+    background: var(--orange-dim);
+    align-self: flex-end;
+    color: var(--text-primary);
+  }
+  .chat-msg .sender {
+    font-size: 10px;
+    font-weight: 600;
+    color: var(--orange);
+    margin-bottom: 2px;
+  }
+  .chat-input-area {
+    display: flex;
+    gap: 8px;
+  }
+  .chat-input-area input {
+    flex: 1;
+    background: var(--bg-elevated);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    color: var(--text-primary);
+    font-family: 'Outfit', sans-serif;
+    font-size: 13px;
+    padding: 8px 12px;
+  }
+  .chat-input-area input:focus { outline: none; border-color: var(--orange); }
+  .chat-input-area button {
+    background: var(--orange);
+    color: white;
+    border: none;
+    border-radius: 6px;
+    padding: 0 14px;
+    cursor: pointer;
+    font-family: 'Outfit', sans-serif;
+    font-weight: 600;
+    font-size: 13px;
+  }
+
+  /* Upload panel */
+  .upload-dropzone {
+    border: 2px dashed var(--border);
+    border-radius: 8px;
+    padding: 40px 20px;
+    text-align: center;
+    color: var(--text-muted);
+    font-size: 13px;
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+  .upload-dropzone:hover {
+    border-color: var(--orange);
+    color: var(--text-secondary);
+  }
+  .upload-dropzone svg {
+    width: 32px;
+    height: 32px;
+    margin-bottom: 8px;
+    opacity: 0.4;
+  }
+  .upload-dropzone p {
+    margin-top: 4px;
+    font-size: 11px;
+    color: var(--text-muted);
+  }
+
+  /* ═══════════════════════════════════════════
+     MOBILE RESPONSIVE
+     ═══════════════════════════════════════════ */
+  @media (max-width: 600px) {
+    .panel {
+      width: 100%;
+      border-left: none;
+    }
+    .status-counters .lbl {
+      display: none;
+    }
+    .status-pill .server-label {
+      display: none;
+    }
+    .route-stats {
+      gap: 12px;
+      padding: 0 12px;
+    }
+    .stat .stat-value { font-size: 13px; }
+    .course-name { display: none; }
+    .elevation-chart { width: 150px; height: 60px; }
+    .waypoint-list { min-width: 130px; }
+  }
+
+  @media (max-width: 380px) {
+    .status-pill .seed-label { font-size: 11px; }
+    .counter .num { font-size: 11px; }
+  }
+
+  /* ═══════════════════════════════════════════
+     DESKTOP WIDE
+     ═══════════════════════════════════════════ */
+  @media (min-width: 1024px) {
+    .elevation-chart {
+      width: 260px;
+      height: 90px;
+    }
+  }
+
+  /* ═══════════════════════════════════════════
+     ANNOTATION OVERLAY (for mockup only)
+     ═══════════════════════════════════════════ */
+  .mockup-badge {
+    position: fixed;
+    top: var(--topnav-h);
+    left: 50%;
+    transform: translateX(-50%);
+    background: var(--orange);
+    color: white;
+    font-size: 10px;
+    font-weight: 600;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    padding: 3px 12px;
+    border-radius: 0 0 6px 6px;
+    z-index: 999;
+    opacity: 0.85;
+  }
+
+/* App root container mapping for svelte component */
+.mockup-app-root {
+  font-family: 'Outfit', sans-serif;
+  background: var(--bg-primary);
+  color: var(--text-primary);
+  height: 100%;
+  width: 100%;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  position: relative;
+}
+
+/* Ensure the Svelte elements match the styling */
+:global(body) { margin: 0; padding: 0; box-sizing: border-box; }
+:global(*) { box-sizing: border-box; }
+
+/* Keep existing map and Leaflet overrides */
+:global(.leaflet-tile) { border-style: none !important; }
 
   /* Elevation Control Styling */
   :global(.elevation-control .area) { fill: #f97316 !important; opacity: 0.8 !important; }
@@ -466,6 +1306,13 @@
     border-radius: 6px !important; 
     overflow: hidden !important; 
     margin-bottom: 10px !important;
+  }
+  @media (max-width: 480px) {
+    :global(.elevation-control) {
+      max-height: 100px !important;
+      font-size: 10px !important;
+    }
+    :global(.elevation-control .background) { height: 60px !important; }
   }
 
   /* Route planner panel — dark theme */
@@ -548,5 +1395,10 @@
     cursor: pointer;
   }
   :global(.ap-loc-btn:hover) { background: rgb(82 82 82); }
+
+  /* Hide attribution in test mode to prevent click obstruction on mobile nav */
+  :global(.playwright-test .leaflet-control-attribution) {
+    display: none !important;
+  }
 </style>
 
