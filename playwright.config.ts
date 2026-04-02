@@ -1,5 +1,7 @@
 import { defineConfig, devices } from '@playwright/test';
 
+const baseURL = process.env.BASE_URL || process.env.TEST_BASE_URL || 'http://localhost:5173';
+
 /**
  * E2E test configuration for Bikeapelago.
  */
@@ -11,7 +13,7 @@ export default defineConfig({
 	workers: 1,
 	reporter: [['html', { outputFolder: 'playwright-report' }], ['list']],
 	use: {
-		baseURL: process.env.TEST_BASE_URL || 'http://localhost:5173',
+		baseURL,
 		trace: 'on-first-retry',
 		screenshot: 'only-on-failure',
 		video: 'off',
@@ -32,7 +34,8 @@ export default defineConfig({
 			},
 		},
 	],
-	webServer: {
+	// Only run a local webserver if the target is localhost
+	webServer: baseURL.includes('localhost') ? {
 		command: 'npm run dev',
 		url: 'http://localhost:5173',
 		reuseExistingServer: true,
@@ -41,5 +44,5 @@ export default defineConfig({
 			PUBLIC_GRAPHHOPPER_URL: 'https://routing.alexkibler.com/route',
 			PUBLIC_DB_URL: 'https://pb.bikeapelago.alexkibler.com',
 		},
-	},
+	} : undefined,
 });

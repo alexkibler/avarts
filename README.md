@@ -13,6 +13,7 @@
   <a href="#creating-a-session">Creating a Session</a> •
   <a href="#playing">Playing</a> •
   <a href="#deployment">Deployment</a> •
+  <a href="#testing">Testing</a> •
   <a href="#configuration">Configuration</a>
 </p>
 
@@ -196,6 +197,35 @@ When the goal condition is met (all intersections checked, or 70 % for `percenta
 
 ---
 
+## Testing
+
+Bikeapelago uses [Playwright](https://playwright.dev/) for end-to-end (E2E) testing. The suite validates the full gameplay loop from session creation to FIT file upload.
+
+### Running Tests
+
+Execute the suite from the `bikeapelago-src` directory:
+
+```bash
+# Run all tests (desktop & mobile)
+npx playwright test
+
+# Run specifically for mobile (iPhone 16 Pro configuration)
+npx playwright test --project=mobile
+
+# Run specifically for desktop chromium
+npx playwright test --project=chromium
+```
+
+### Automated Screenshots
+Tests generate visual walkthroughs in the `test-screenshots/` directory. 
+- **Mobile Screenshots**: Use `fullPage: true` to capture the entire layout.
+- **The Fold**: Mobile captures include a **red horizontal line** at `874px` to indicate the initial device viewport (at the fold).
+
+### Routing Verification
+The E2E suite requires a running GraphHopper instance (configured via `playwright.config.ts`) to verify road-snapped routing.
+
+---
+
 ## Deployment
 
 ### Environment Variables
@@ -203,7 +233,7 @@ When the goal condition is met (all intersections checked, or 70 % for `percenta
 | Variable | Default | Description |
 |----------|---------|-------------|
 | `PUBLIC_DB_URL` | `http://127.0.0.1:8090` | Public URL of the PocketBase API (browser-facing — required for internet hosting) |
-| `PUBLIC_GRAPHHOPPER_URL` | — | URL of a self-hosted GraphHopper `/route` endpoint |
+| `PUBLIC_GRAPHHOPPER_URL` | — | **Recommended:** URL of a self-hosted GraphHopper `/route` endpoint (e.g., `http://localhost:8989/route`) |
 | `PUBLIC_GRAPHHOPPER_API` | — | GraphHopper cloud API key (used if no self-hosted URL is set) |
 | `PUBLIC_REGISTRATION` | `true` | Set to `false` to disable new user registration |
 | `BODY_SIZE_LIMIT` | `5242880` | Max upload size in bytes (default 20 MB in Docker Compose) |

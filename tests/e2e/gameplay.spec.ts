@@ -161,7 +161,9 @@ async function takeScreenshot(page: any, name: string) {
 test.describe('Gameplay flow', () => {
 	// Reset nodes to 3 Available · 7 Hidden · 0 Checked before every test
 	test.beforeEach(async () => {
-		await resetGameDb('testuser', BASELINE_AVAILABLE);
+		if (process.env.SKIP_DB_RESET !== 'true') {
+			await resetGameDb('testuser', BASELINE_AVAILABLE);
+		}
 	});
 
 	test('full gameplay: login → session → route → export GPX → upload FIT → verify HUD', async ({ page, context }) => {
