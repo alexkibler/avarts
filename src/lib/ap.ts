@@ -1,5 +1,6 @@
 import { Client } from '@airbreather/archipelago.js';
 import { pb } from '$lib/pb';
+import { checksStore, chatStore } from '$lib/stores';
 
 export const apClient = new Client();
 
@@ -47,6 +48,7 @@ export async function connectToAp(options: ApConnectionOptions) {
 
     apClient.messages.on('message', (text: string) => {
       console.log('[AP]', text);
+      chatStore.update(msgs => [...msgs, text]);
     });
 
     return true;
@@ -64,24 +66,40 @@ async function processReceivedItems(sessionId: string, items: any[]) {
   // Items in our range: START_ID 800001 – 801000
   const unlockItemsCount = items.filter((i: any) => i.id > 800000 && i.id <= 801000).length;
 
-  if (unlockItemsCount === 0) return;
-
   const nodes = await pb.collection('map_nodes').getFullList({
     filter: `session = "${sessionId}"`,
     sort: '+ap_location_id',
   });
 
+  const STARTING_CHECKS = 3;
+  const targetUnlocked = STARTING_CHECKS + unlockItemsCount;
+
   let unlockedCount = nodes.filter(
     (n: any) => n.state === 'Available' || n.state === 'Checked'
   ).length;
 
+  const apCheckedLocations = new Set(apClient.locations.checked);
+
   for (const node of nodes) {
-    if (unlockedCount >= unlockItemsCount) break;
-    if (node.state === 'Hidden') {
+    let updated = false;
+
+    // Cross-reference with apClient.locations.checked
+    if (apCheckedLocations.has(node.ap_location_id) && node.state !== 'Checked') {
+      await pb.collection('map_nodes').update(node.id, { state: 'Checked' });
+      node.state = 'Checked';
+      updated = true;
+    }
+
+    if (node.state === 'Hidden' && unlockedCount < targetUnlocked) {
       await pb.collection('map_nodes').update(node.id, { state: 'Available' });
+      node.state = 'Available';
       unlockedCount++;
+      updated = true;
     }
   }
+
+  // Populate the store so the map reactivity updates
+  checksStore.set(nodes);
 }
 
 export function sendLocationChecks(locationIds: number[]) {

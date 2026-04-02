@@ -3,6 +3,7 @@
   import { pb } from '$lib/pb';
   import ApMap from '$components/apMap.svelte';
   import ApDropzone from '$components/apDropzone.svelte';
+  import ChatClient from '$components/chatClient.svelte';
   import { connectToAp, apClient } from '$lib/ap';
   import type { ApConnectionOptions } from '$lib/ap';
 
@@ -203,23 +204,27 @@
       </div>
     </div>
   {:else}
-    <!-- ── Game layout: map + dropzone ──────────────────────────────── -->
-    <div class="flex flex-col" style="height: calc(100vh - 96px);">
-      <!-- Map (takes ~65% of remaining height) -->
-      <div class="flex-1 min-h-0">
+    <!-- ── Game layout: map + right panel (chat & dropzone) ─────────── -->
+    <div class="flex flex-row" style="height: calc(100vh - 96px);">
+      <!-- Left: Map (flex-1 so it takes remaining width) -->
+      <div class="flex-1 min-w-0">
         <ApMap
           view={[session.center_lat, session.center_lon]}
-          zoom={14}
-          from="game"
-          user={data.user}
-          sessionId={session.id}
-          apConnectionOptions={activeConnectionOptions}
+          radius={session.radius}
         />
       </div>
 
-      <!-- Dropzone panel (fixed height) -->
-      <div class="h-56 overflow-y-auto bg-neutral-900 border-t border-neutral-600 p-4">
-        <ApDropzone sessionId={session.id} on:validated={handleValidated} />
+      <!-- Right: Side Panel (fixed width or min-width) -->
+      <div class="w-96 flex flex-col bg-neutral-800 border-l border-neutral-600">
+        <!-- Chat Area (takes up available vertical space) -->
+        <div class="flex-1 p-4 min-h-0">
+          <ChatClient />
+        </div>
+
+        <!-- Dropzone (fixed height or takes remaining space) -->
+        <div class="h-64 p-4 border-t border-neutral-600 overflow-y-auto">
+          <ApDropzone sessionId={session.id} on:validated={handleValidated} />
+        </div>
       </div>
     </div>
   {/if}
