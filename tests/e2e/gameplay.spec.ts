@@ -15,7 +15,8 @@ import { test, expect } from '@playwright/test';
 import * as fs from 'fs';
 import GPXParser from 'gpxparser';
 import { FitWriter } from '@markw65/fit-file-writer';
-import { resetGameDb, BASELINE_AVAILABLE } from '../reset-db';
+import { resetSessionNodes, BASELINE_AVAILABLE } from '../reset-db';
+import { setupTestGame, type GameTestContext } from '../game-setup';
 
 // ---------------------------------------------------------------------------
 // FIT file builder
@@ -111,7 +112,7 @@ async function takeScreenshot(page: any, name: string) {
 	if (isMobile) {
 		const viewport = page.viewportSize();
 		if (viewport) {
-			await page.evaluate((height) => {
+			await page.evaluate((height: number) => {
 				const fold = document.createElement('div');
 				fold.id = 'fold-indicator';
 				fold.style.position = 'absolute';
@@ -159,18 +160,23 @@ async function takeScreenshot(page: any, name: string) {
 // ---------------------------------------------------------------------------
 
 test.describe('Gameplay flow', () => {
-	// Reset nodes to 3 Available · 7 Hidden · 0 Checked before every test
+	let gameCtx: GameTestContext;
+
+	test.beforeAll(async () => {
+		gameCtx = await setupTestGame();
+	});
+
+	test.afterAll(async () => {
+		await gameCtx.teardown();
+	});
+
 	test.beforeEach(async () => {
-		if (process.env.SKIP_DB_RESET !== 'true') {
-			await resetGameDb('testuser', BASELINE_AVAILABLE);
-		}
+		await resetSessionNodes(gameCtx.adminToken, gameCtx.sessionId, BASELINE_AVAILABLE);
 	});
 
 	test('full gameplay: login → session → route → export GPX → upload FIT → verify HUD', async ({ page, context }) => {
-		// Pipe browser console to test output for easy debugging
 		page.on('console', (msg: any) => console.log(`[Browser] ${msg.type()}: ${msg.text()}`));
 
-		// Inject the PLAYWRIGHT_TEST flag so ap.ts engages its test-mode bypass
 		await page.addInitScript(() => {
 			(window as any).PLAYWRIGHT_TEST = true;
 		});
@@ -179,31 +185,18 @@ test.describe('Gameplay flow', () => {
 
 		// ── 1. Login ─────────────────────────────────────────────────────────
 		await page.goto('/');
-		await page.locator('input[name="username"]').fill('testuser');
-		await page.locator('input[name="password"]').fill('Password');
+		await page.locator('input[name="username"]').fill(gameCtx.credentials.username);
+		await page.locator('input[name="password"]').fill(gameCtx.credentials.password);
 		await page.locator('button[type="submit"]:has-text("Login")').click();
 		await expect(page.locator('a:has-text("Dashboard")')).toBeVisible({ timeout: 10000 });
 
-		// ── 2. Navigate to Play page ──────────────────────────────────────────
-		await page.goto('/game');
-		await expect(page).toHaveURL(/.*\/game$/);
-		await expect(page.locator('h1:has-text("My Sessions")')).toBeVisible();
+		// ── 2. Navigate directly to the game session ──────────────────────────
+		// We know the session ID from setup, so skip the sessions list entirely.
+		// Set geolocation to the session center (Pittsburgh defaults).
+		await context.grantPermissions(['geolocation']);
+		await context.setGeolocation({ latitude: 40.4406, longitude: -79.9959 });
 
-		// ── 3. Read session center from the sessions list ─────────────────────
-		const centerText = await page.locator('p:has-text("Center:")').first().textContent();
-		const match = centerText?.match(/Center:\s*(-?\d+\.\d+),\s*(-?\d+\.\d+)/);
-		expect(match).not.toBeNull();
-
-		if (match) {
-			await context.grantPermissions(['geolocation']);
-			await context.setGeolocation({
-				latitude:  parseFloat(match[1]),
-				longitude: parseFloat(match[2]),
-			});
-		}
-
-		// ── 4. Enter session ──────────────────────────────────────────────────
-		await page.locator('a:has-text("Play")').nth(1).click();
+		await page.goto(`/game/${gameCtx.sessionId}`);
 		await expect(page).toHaveURL(/.*\/game\/.+/);
 
 		// Connect in test-mode if the connection screen is shown
@@ -215,7 +208,7 @@ test.describe('Gameplay flow', () => {
 			await connectBtn.click();
 		}
 
-		// ── 5. Wait for map ───────────────────────────────────────────────────
+		// ── 3. Wait for map ───────────────────────────────────────────────────
 		await expect(page.locator('.leaflet-container')).toBeVisible({ timeout: 15000 });
 		await page.waitForTimeout(3000); // let PB subscription settle and nodes render
 
