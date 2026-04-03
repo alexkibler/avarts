@@ -12,3 +12,6 @@ vite.config.ts.timestamp-*
 /osrm/*
 /graphhopper/*
 !/graphhopper/config-example.yml
+test-screenshots/
+test-results/
+playwright-report/

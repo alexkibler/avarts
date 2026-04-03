@@ -101,10 +101,9 @@ async function readHud(page: any) {
 	return { hidden, available, checked };
 }
 
-async function takeScreenshot(page: any, name: string) {
+async function takeScreenshot(page: any, name: string, testInfo: any) {
 	const projectName = test.info().project.name;
 	const isMobile = projectName === 'mobile';
-	const path = `test-screenshots/${name}-${projectName}.png`;
 	const panel = page.locator('.panel');
 	const isPanelOpen = await panel.isVisible();
 
@@ -142,7 +141,11 @@ async function takeScreenshot(page: any, name: string) {
 			.bottomnav { position: relative !important; margin-top: 20px; z-index: 2000; }
 		`, id: 'screenshot-style' });
 
-		await page.screenshot({ path, fullPage: true });
+		const screenshot = await page.screenshot({ fullPage: true });
+		await testInfo.attach(name, {
+			body: screenshot,
+			contentType: 'image/png',
+		});
 
 		// Cleanup: Remove styles and the fold indicator
 		await page.evaluate(() => {
@@ -151,7 +154,11 @@ async function takeScreenshot(page: any, name: string) {
 		});
 	} else {
 		// Normal viewport screenshot for non-mobile/non-panel views
-		await page.screenshot({ path });
+		const screenshot = await page.screenshot();
+		await testInfo.attach(name, {
+			body: screenshot,
+			contentType: 'image/png',
+		});
 	}
 }
 
@@ -176,7 +183,7 @@ test.describe('Gameplay flow', () => {
 		await resetSessionNodes(gameCtx.adminToken, gameCtx.sessionId, BASELINE_AVAILABLE);
 	});
 
-	test('full gameplay: login → session → route → export GPX → upload FIT → verify HUD', async ({ page, context }) => {
+	test('full gameplay: login → session → route → export GPX → upload FIT → verify HUD', async ({ page, context }, testInfo) => {
 		page.on('console', (msg: any) => console.log(`[Browser] ${msg.type()}: ${msg.text()}`));
 
 		await page.addInitScript(() => {
@@ -204,7 +211,7 @@ test.describe('Gameplay flow', () => {
 		// Connect in test-mode if the connection screen is shown
 		const connectBtn = page.locator('button:has-text("Connect & Play")');
 		if (await connectBtn.isVisible({ timeout: 3000 }).catch(() => false)) {
-			await takeScreenshot(page, 'connection-screen');
+			await takeScreenshot(page, 'connection-screen', testInfo);
 			await page.locator('#ap-url').fill('test');
 			await page.locator('#ap-slot').fill('test-slot');
 			await connectBtn.click();
@@ -214,7 +221,7 @@ test.describe('Gameplay flow', () => {
 		await expect(page.locator('.leaflet-container')).toBeVisible({ timeout: 15000 });
 		await page.waitForTimeout(3000); // let PB subscription settle and nodes render
 
-		await takeScreenshot(page, 'gameplay-screen-bare');
+		await takeScreenshot(page, 'gameplay-screen-bare', testInfo);
 
 		// ── 6. Assert baseline HUD counts ─────────────────────────────────────
 		const baselineHud = await readHud(page);
@@ -261,7 +268,7 @@ test.describe('Gameplay flow', () => {
 			await routeTab.click({ force: true });
 			await page.waitForTimeout(1000);
 		}
-		await takeScreenshot(page, 'gameplay-screen-route');
+		await takeScreenshot(page, 'gameplay-screen-route', testInfo);
 
 		// ── 9. Export GPX ─────────────────────────────────────────────────────
 		const downloadPromise = page.waitForEvent('download');
@@ -310,18 +317,18 @@ test.describe('Gameplay flow', () => {
 			await uploadTab.click({ force: true });
 			await page.waitForTimeout(1000);
 		}
-		await takeScreenshot(page, 'upload-tab-empty');
+		await takeScreenshot(page, 'upload-tab-empty', testInfo);
 
 		await page.locator('input[type="file"]').setInputFiles(fitPath);
 		await page.waitForTimeout(500);
-		await takeScreenshot(page, 'upload-tab-file-selected');
+		await takeScreenshot(page, 'upload-tab-file-selected', testInfo);
 
 		await page.locator('button:has-text("Validate")').click();
 
 		// Wait for at least one validation message
 		await expect(page.locator('div.text-xs.text-neutral-200').first()).toBeVisible({ timeout: 15000 });
 		await page.waitForTimeout(1500); // let UI settle
-		await takeScreenshot(page, 'validate-results');
+		await takeScreenshot(page, 'validate-results', testInfo);
 
 		// Count how many locations were validated
 		const unlockedMsgs = await page.locator('div.text-xs.text-neutral-200:has-text("Unlocked Location")').count();
@@ -332,7 +339,7 @@ test.describe('Gameplay flow', () => {
 
 		// The ap.ts mock runs after 500 ms; wait for PB realtime to propagate
 		await page.waitForTimeout(4000);
-		await takeScreenshot(page, 'gameplay-screen-unlocked');
+		await takeScreenshot(page, 'gameplay-screen-unlocked', testInfo);
 
 		// ── 13. Assert HUD counts after validation ────────────────────────────
 		if (unlockedMsgs > 0) {
