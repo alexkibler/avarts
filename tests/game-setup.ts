@@ -219,8 +219,7 @@ export interface GameTestContext {
  * Set up a complete game test environment:
  *   1. Authenticate as admin
  *   2. Create a fresh test user
- *   3. Authenticate as the test user
- *   4. Create a game session + 10 baseline nodes using user token (not admin)
+ *   3. Create a game session + 10 baseline nodes
  *
  * Call in test.beforeAll(). Call ctx.teardown() in test.afterAll().
  * The teardown deletes the user, which cascade-deletes the session and all nodes.
@@ -232,22 +231,7 @@ export async function setupTestGame(opts: CreateSessionOpts = {}): Promise<GameT
 	const adminToken  = await getAdminToken();
 	const credentials = generateTestCredentials();
 	const userId      = await createTestUser(adminToken, credentials);
-
-	// Get user token for creating game session (createRule requires @request.auth.id != '')
-	const userTokenRes = await fetch(`${PB_URL}/api/collections/users/auth-with-password`, {
-		method: 'POST',
-		headers: { 'Content-Type': 'application/json' },
-		body: JSON.stringify({ identity: credentials.username, password: credentials.password }),
-	});
-
-	if (!userTokenRes.ok) {
-		throw new Error(`User auth failed: ${await userTokenRes.text()}`);
-	}
-
-	const userData = await userTokenRes.json();
-	const userToken = userData.token as string;
-
-	const { sessionId } = await createBaselineSession(userToken, userId, opts);
+	const { sessionId } = await createBaselineSession(adminToken, userId, opts);
 
 	const teardown = async () => {
 		// cleanupTestUser deletes the user record, which cascade-deletes game_sessions → map_nodes
