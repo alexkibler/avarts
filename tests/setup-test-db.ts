@@ -114,9 +114,11 @@ async function importSchema(adminToken: string): Promise<void> {
 	const idMap = new Map<string, string>();
 
 	// First, map existing collections
-	for (const existing of (await (await fetch(`${PB_URL}/api/collections`, {
+	const listRes = await fetch(`${PB_URL}/api/collections`, {
 		headers: { Authorization: `Bearer ${adminToken}` },
-	})).json()) as any[]) {
+	});
+	const { items: existingCollections } = (await listRes.json()) as any;
+	for (const existing of existingCollections) {
 		idMap.set(existing.name, existing.id);
 		console.log(`✓ Collection "${existing.name}" already exists`);
 	}
@@ -202,7 +204,10 @@ async function importSchema(adminToken: string): Promise<void> {
 			continue; // No rules to apply
 		}
 
-		const updateRes = await fetch(`${PB_URL}/api/collections/${collDef.id}`, {
+		const actualId = idMap.get(collDef.name);
+		if (!actualId) continue; // Collection not created
+
+		const updateRes = await fetch(`${PB_URL}/api/collections/${actualId}`, {
 			method: 'PATCH',
 			headers: {
 				'Content-Type': 'application/json',
