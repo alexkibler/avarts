@@ -23,11 +23,9 @@ jobs:
 
       - name: Install dependencies
         run: npm ci
-        working-directory: bikeapelago-src
 
       - name: Install Playwright browsers
         run: npx playwright install --with-deps
-        working-directory: bikeapelago-src
 
       - name: Wait for PocketBase to be ready
         run: |
@@ -37,7 +35,6 @@ jobs:
 
       - name: Run E2E suite
         run: npm run test:e2e
-        working-directory: bikeapelago-src
         env:
           TEST_BASE_URL: http://localhost:5173
           TEST_PB_URL: http://127.0.0.1:8090
@@ -48,5 +45,5 @@ jobs:
         if: always()
         with:
           name: playwright-report
-          path: bikeapelago-src/playwright-report/
+          path: playwright-report/
           retention-days: 7

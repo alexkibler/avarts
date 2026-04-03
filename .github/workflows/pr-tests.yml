@@ -21,8 +21,6 @@ jobs:
 
     - name: Install dependencies
       run: npm install
-      working-directory: bikeapelago-src
 
     - name: Run Unit Tests
       run: npm run test
-      working-directory: bikeapelago-src
