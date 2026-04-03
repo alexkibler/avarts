@@ -41,8 +41,8 @@ export default defineConfig({
 		reuseExistingServer: true,
 		timeout: 120 * 1000,
 		env: {
-			PUBLIC_GRAPHHOPPER_URL: 'https://routing.alexkibler.com/route',
-			PUBLIC_DB_URL: 'https://pb.bikeapelago.alexkibler.com',
+			PUBLIC_GRAPHHOPPER_URL: process.env.PUBLIC_GRAPHHOPPER_URL || 'https://routing.alexkibler.com/route',
+			PUBLIC_DB_URL: process.env.PUBLIC_DB_URL || 'https://pb.bikeapelago.alexkibler.com',
 		},
 	} : undefined,
 });

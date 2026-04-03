@@ -18,8 +18,13 @@ jobs:
         with:
           node-version: 22
 
-      - name: Start Docker services
-        run: docker compose up -d
+      - name: Start PocketBase
+        run: |
+          chmod +x ./db/pocketbase
+          ./db/pocketbase serve --dir=./db/pb_data --http=127.0.0.1:8090 &
+          echo "Waiting for PocketBase to start..."
+          timeout 30s bash -c 'until curl -sf http://127.0.0.1:8090/api/health > /dev/null; do sleep 1; done'
+          echo "PocketBase is up!"
 
       - name: Install dependencies
         run: npm ci
@@ -27,16 +32,14 @@ jobs:
       - name: Install Playwright browsers
         run: npx playwright install --with-deps
 
-      - name: Wait for PocketBase to be ready
-        run: |
-          echo "Waiting for PocketBase to start..."
-          timeout 30s bash -c 'until curl -s http://127.0.0.1:8090/api/health > /dev/null; do sleep 1; done'
-          echo "PocketBase is up!"
-
       - name: Run E2E suite
+        # BASE_URL=localhost triggers playwright to auto-start the dev server.
+        # PUBLIC_DB_URL overrides the hardcoded prod PocketBase in playwright.config.ts
+        # so the app connects to the local PocketBase we just started.
         run: npm run test:e2e
         env:
-          TEST_BASE_URL: http://localhost:5173
+          BASE_URL: http://localhost:5173
+          PUBLIC_DB_URL: http://127.0.0.1:8090
           TEST_PB_URL: http://127.0.0.1:8090
           TEST_ADMIN_EMAIL: admin@bikeapelago.lan
           TEST_ADMIN_PASSWORD: adminadmin
