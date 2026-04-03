@@ -93,8 +93,53 @@
         <Profile data={data} records={totals} />
       </div>
       <div class="flex flex-col w-full lg:w-1/2 mt-8 mx-8 lg:ml-28 lg:mr-5 xl:mx-0">
+        {#if data.gameSessions && data.gameSessions.length > 0}
+          <div class="mb-8">
+            <h2 class="text-orange-500 text-sm font-bold uppercase tracking-[0.2em] mb-4 flex items-center gap-2">
+              <span class="w-2 h-2 bg-orange-500 rounded-full animate-pulse"></span>
+              Active Games
+            </h2>
+            <div class="grid gap-4">
+              {#each data.gameSessions as session}
+                <div class="group relative overflow-hidden bg-neutral-800/50 backdrop-blur-sm border border-white/5 rounded-xl p-5 hover:border-orange-500/30 transition-all duration-300">
+                  <div class="absolute inset-0 bg-gradient-to-br from-orange-500/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity"></div>
+                  
+                  <div class="relative flex items-center justify-between gap-4">
+                    <div class="flex-1 min-w-0">
+                      <div class="flex items-center gap-2 mb-1">
+                        <h3 class="text-white font-bold truncate">{session.ap_seed_name || 'Untitled Seed'}</h3>
+                        <span class="px-2 py-0.5 rounded text-[10px] font-bold bg-orange-500/10 text-orange-400 border border-orange-500/20 uppercase tracking-wider">
+                          AP Mode
+                        </span>
+                      </div>
+                      
+                      <div class="flex flex-wrap gap-x-4 gap-y-1 text-xs text-neutral-400">
+                        <div class="flex items-center gap-1.5">
+                          <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-neutral-500"><rect width="20" height="14" x="2" y="3" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>
+                          <span class="truncate max-w-[120px]">{session.ap_server_url}</span>
+                        </div>
+                        <div class="flex items-center gap-1.5">
+                          <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-neutral-500"><path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+                          <span>{session.ap_slot_name}</span>
+                        </div>
+                      </div>
+                    </div>
+
+                    <a href="/game/{session.id}" class="shrink-0">
+                      <button class="bg-orange-600 hover:bg-orange-500 text-white text-xs font-bold px-4 py-2 rounded-lg transition-all shadow-lg shadow-orange-950/20 active:scale-95">
+                        Resume
+                      </button>
+                    </a>
+                  </div>
+                </div>
+              {/each}
+            </div>
+          </div>
+        {/if}
+
         {#if records.length > 0}
           {#each records as { start_time, name, id, tot_distance, sport, avg_speed, tot_elevation, elap_time, collectionId, img, expand, location }}
+
             <Activity date={start_time}
                       name={name}
                       id={id}
