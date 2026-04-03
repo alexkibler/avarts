@@ -109,6 +109,7 @@ async function importSchema(adminToken: string): Promise<void> {
 	const { items: existing } = (await listRes.json()) as any;
 	const existingNames = new Set(existing.map((c: any) => c.name));
 
+	// Pass 1: Create all collections with schema but NO rules (to avoid relation validation errors)
 	for (const collDef of schema) {
 		if (existingNames.has(collDef.name)) {
 			console.log(`✓ Collection "${collDef.name}" already exists`);
@@ -125,11 +126,11 @@ async function importSchema(adminToken: string): Promise<void> {
 				name: collDef.name,
 				type: collDef.type,
 				schema: collDef.schema,
-				listRule: collDef.listRule,
-				viewRule: collDef.viewRule,
-				createRule: collDef.createRule,
-				updateRule: collDef.updateRule,
-				deleteRule: collDef.deleteRule,
+				listRule: null,
+				viewRule: null,
+				createRule: null,
+				updateRule: null,
+				deleteRule: null,
 				options: collDef.options,
 			}),
 		});
@@ -140,6 +141,36 @@ async function importSchema(adminToken: string): Promise<void> {
 		}
 
 		console.log(`✓ Created collection "${collDef.name}"`);
+	}
+
+	// Pass 2: Update collections to add rules (now that all relations exist)
+	for (const collDef of schema) {
+		if (!collDef.listRule && !collDef.viewRule && !collDef.createRule && !collDef.updateRule && !collDef.deleteRule) {
+			continue; // No rules to apply
+		}
+
+		const updateRes = await fetch(`${PB_URL}/api/collections/${collDef.id}`, {
+			method: 'PATCH',
+			headers: {
+				'Content-Type': 'application/json',
+				Authorization: `Bearer ${adminToken}`,
+			},
+			body: JSON.stringify({
+				listRule: collDef.listRule,
+				viewRule: collDef.viewRule,
+				createRule: collDef.createRule,
+				updateRule: collDef.updateRule,
+				deleteRule: collDef.deleteRule,
+			}),
+		});
+
+		if (!updateRes.ok) {
+			const errData = await updateRes.text();
+			console.warn(`⚠ Failed to update rules for "${collDef.name}" (${updateRes.status}): ${errData}`);
+			continue;
+		}
+
+		console.log(`✓ Updated rules for "${collDef.name}"`);
 	}
 }
 
