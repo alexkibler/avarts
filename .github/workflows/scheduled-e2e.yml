@@ -26,6 +26,13 @@ jobs:
           timeout 30s bash -c 'until curl -sf http://127.0.0.1:8090/api/health > /dev/null; do sleep 1; done'
           echo "PocketBase is up!"
 
+      - name: Create PocketBase admin account
+        run: |
+          curl -X POST http://127.0.0.1:8090/api/admins \
+            -H "Content-Type: application/json" \
+            -d '{"email":"admin@bikeapelago.lan","password":"adminadmin","passwordConfirm":"adminadmin"}'
+          echo "Admin account created!"
+
       - name: Install dependencies
         run: npm ci
 
