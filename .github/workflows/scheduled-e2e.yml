@@ -40,6 +40,7 @@ jobs:
         env:
           BASE_URL: http://localhost:5173
           PUBLIC_DB_URL: http://127.0.0.1:8090
+          PUBLIC_REGISTRATION: "true"
           TEST_PB_URL: http://127.0.0.1:8090
           TEST_ADMIN_EMAIL: admin@bikeapelago.lan
           TEST_ADMIN_PASSWORD: adminadmin
