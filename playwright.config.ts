@@ -11,6 +11,7 @@ export default defineConfig({
 	forbidOnly: !!process.env.CI,
 	retries: 0,
 	workers: 1,
+	globalSetup: './tests/global-setup.ts',
 	reporter: [['html', { outputFolder: 'playwright-report' }], ['list']],
 	use: {
 		baseURL,
