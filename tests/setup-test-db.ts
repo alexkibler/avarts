@@ -110,12 +110,42 @@ async function importSchema(adminToken: string): Promise<void> {
 	const existingNames = new Set(existing.map((c: any) => c.name));
 
 	// Pass 1: Create all collections with schema but NO rules
-	// Use retry logic to handle relation dependencies
-	const pending = new Set(schema.filter((c: any) => !existingNames.has(c.name)).map((c: any) => c.name));
+	// Build a map of collection name -> actual PocketBase ID for relation references
+	const idMap = new Map<string, string>();
 
-	for (let attempt = 0; attempt < 3 && pending.size > 0; attempt++) {
+	// Map existing collections
+	for (const coll of existing) {
+		idMap.set(coll.name, coll.id);
+		console.log(`✓ Collection "${coll.name}" already exists`);
+	}
+
+	// Create missing collections
+	const pending = new Set(schema.filter((c: any) => !idMap.has(c.name)).map((c: any) => c.name));
+	const maxAttempts = 5;
+
+	for (let attempt = 0; attempt < maxAttempts && pending.size > 0; attempt++) {
 		for (const collDef of schema) {
 			if (!pending.has(collDef.name)) continue;
+
+			// Replace relation collectionIds with actual PocketBase IDs
+			const schemaWithRealIds = collDef.schema.map((field: any) => {
+				if (field.type === 'relation' && field.options?.collectionId) {
+					// Find the real ID for this collection name
+					const refCollName = schema.find((c: any) => c.id === field.options.collectionId)?.name;
+					const realId = refCollName ? idMap.get(refCollName) : field.options.collectionId;
+
+					if (!realId || realId === field.options.collectionId) {
+						// Still using schema ID, collection might not be created yet
+						return field;
+					}
+
+					return {
+						...field,
+						options: { ...field.options, collectionId: realId },
+					};
+				}
+				return field;
+			});
 
 			const createRes = await fetch(`${PB_URL}/api/collections`, {
 				method: 'POST',
@@ -126,7 +156,7 @@ async function importSchema(adminToken: string): Promise<void> {
 				body: JSON.stringify({
 					name: collDef.name,
 					type: collDef.type,
-					schema: collDef.schema,
+					schema: schemaWithRealIds,
 					listRule: null,
 					viewRule: null,
 					createRule: null,
@@ -137,26 +167,31 @@ async function importSchema(adminToken: string): Promise<void> {
 			});
 
 			if (createRes.ok) {
+				const created = (await createRes.json()) as any;
+				idMap.set(collDef.name, created.id);
 				pending.delete(collDef.name);
 				console.log(`✓ Created collection "${collDef.name}"`);
 			} else {
 				const errData = await createRes.text();
-				// Retry on relation errors; fail immediately on others
+				// Only retry on relation errors
 				if (!errData.includes('relation') && !errData.includes('collectionId')) {
 					throw new Error(`Failed to create collection "${collDef.name}" (${createRes.status}): ${errData}`);
 				}
+				// Log relation errors but continue to retry
+				if (attempt === 0) {
+					console.log(`⟳ Relation pending for "${collDef.name}", will retry...`);
+				}
 			}
 		}
-		if (pending.size > 0 && attempt < 2) await sleep(200);
+
+		// Wait before retrying
+		if (pending.size > 0 && attempt < maxAttempts - 1) {
+			await sleep(1000);
+		}
 	}
 
 	if (pending.size > 0) {
-		throw new Error(`Failed to create collections after retries: ${Array.from(pending).join(', ')}`);
-	}
-
-	// Log pre-existing collections
-	for (const name of existingNames) {
-		console.log(`✓ Collection "${name}" already exists`);
+		throw new Error(`Failed to create collections after ${maxAttempts} attempts: ${Array.from(pending).join(', ')}`);
 	}
 
 	// Pass 2: Update collections to add rules (now that all relations exist)
@@ -165,7 +200,10 @@ async function importSchema(adminToken: string): Promise<void> {
 			continue; // No rules to apply
 		}
 
-		const updateRes = await fetch(`${PB_URL}/api/collections/${collDef.id}`, {
+		const actualId = idMap.get(collDef.name);
+		if (!actualId) continue; // Collection not created
+
+		const updateRes = await fetch(`${PB_URL}/api/collections/${actualId}`, {
 			method: 'PATCH',
 			headers: {
 				'Content-Type': 'application/json',
