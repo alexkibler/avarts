@@ -439,7 +439,9 @@ test.describe('Activity View and Edit', () => {
 
 	test('can edit activity name and description', async ({ page }) => {
 		await page.goto(`/activities/${activityId}/edit`);
-		await page.waitForSelector('input[name="name"]', { timeout: 10000 });
+		await page.waitForLoadState('networkidle');
+		const input = page.locator('input[name="name"]');
+		await expect(input).toBeVisible({ timeout: 5000 });
 
 		await page.fill('input[name="name"]', 'Updated Ride Name');
 		await page.fill('textarea[name="description"]', 'Updated description text');

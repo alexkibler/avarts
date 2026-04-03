@@ -86,6 +86,9 @@ export async function createGameSession(
 
 	if (!res.ok) {
 		const text = await res.text();
+		console.error('createGameSession failed. Status:', res.status);
+		console.error('Request body:', JSON.stringify(body, null, 2));
+		console.error('Response:', text);
 		throw new Error(`createGameSession failed (${res.status}): ${text}`);
 	}
 
