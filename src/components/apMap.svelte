@@ -34,11 +34,13 @@
   let unsubscribePb: (() => void) | null = null;
   let routingControl: any = null;
   let elevationControl: any = null;
+  let myLocationMarker: any = null;
 
   // Sidebar tab
   let activeTab: 'chat' | 'upload' | 'route' = 'chat';
   let panelOpen = false;
   let isTestMode = false;
+  let locating = false;
   
   if (typeof window !== 'undefined') {
     isTestMode = (window as any).PLAYWRIGHT_TEST || false;
@@ -230,8 +232,33 @@
 
     map = L.map(mapElement, { zoomControl: false }).setView([centerLat, centerLon], 13);
     
+    // Custom "My Location" control
+    const MyLocationControl = (L as any).Control.extend({
+      onAdd: function() {
+        const btn = L.DomUtil.create('button', 'ap-location-control');
+        btn.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="22" y1="12" x2="18" y2="12"/><line x1="6" y1="12" x2="2" y2="12"/><line x1="12" y1="6" x2="12" y2="2"/><line x1="12" y1="22" x2="12" y2="18"/></svg>`;
+        btn.title = "My Location";
+        btn.onclick = (e: any) => {
+          L.DomEvent.stopPropagation(e);
+          if (locating) return;
+          btn.classList.add('locating');
+          handleMyLocation(() => btn.classList.remove('locating'));
+        };
+        return btn;
+      }
+    });
+    new MyLocationControl({ position: 'bottomleft' }).addTo(map);
+
     // Add custom zoom control to bottom-left for desktop
     L.control.zoom({ position: 'bottomleft' }).addTo(map);
+
+    // Map click - add waypoint
+    map.on('click', (e: any) => {
+      if (!routingControl) return;
+      const wps = routingControl.getWaypoints().filter((w: any) => w.latLng);
+      wps.push(L.Routing.waypoint(e.latlng));
+      routingControl.setWaypoints(wps);
+    });
 
 
     L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
@@ -367,6 +394,63 @@
         renderPins();
       }
     });
+
+    function handleMyLocation(callback?: () => void) {
+      if (!navigator.geolocation) {
+        alert("Geolocation is not supported by your browser.");
+        callback?.();
+        return;
+      }
+      
+      locating = true;
+      const options = {
+        enableHighAccuracy: false, // false is often more reliable on desktop/WiFi
+        timeout: 10000,
+        maximumAge: 0
+      };
+
+      navigator.geolocation.getCurrentPosition((position) => {
+        locating = false;
+        callback?.();
+        const { latitude: lat, longitude: lon } = position.coords;
+        const latlng = L.latLng(lat, lon);
+        
+        if (!myLocationMarker) {
+          myLocationMarker = L.circleMarker(latlng, {
+            radius: 10,
+            fillColor: '#3498db',
+            color: '#fff',
+            weight: 3,
+            opacity: 1,
+            fillOpacity: 0.9,
+            className: 'my-location-marker'
+          }).addTo(map);
+
+          myLocationMarker.bindTooltip("My Location (click to route here)", { direction: 'top', offset: [0, -6] });
+
+          myLocationMarker.on('click', (e: any) => {
+            L.DomEvent.stopPropagation(e);
+            if (!routingControl) return;
+            const wps = routingControl.getWaypoints().filter((w: any) => w.latLng);
+            wps.push(L.Routing.waypoint(latlng, "My Location"));
+            routingControl.setWaypoints(wps);
+          });
+        } else {
+          myLocationMarker.setLatLng(latlng);
+        }
+        
+        map.setView(latlng, 15);
+      }, (err) => {
+        locating = false;
+        callback?.();
+        let msg = "Could not find your location.";
+        if (err.code === 1) msg = "Location permission denied. Please enable location access for this site.";
+        else if (err.code === 2) msg = "Position unavailable. Your device could not determine your location.";
+        else if (err.code === 3) msg = "Location request timed out. Try again?";
+        alert(msg);
+        console.error("Geolocation error:", err);
+      }, options);
+    }
   });
 
   onDestroy(() => {
@@ -1522,6 +1606,41 @@
   /* Hide attribution in test mode to prevent click obstruction on mobile nav */
   :global(.playwright-test .leaflet-control-attribution) {
     display: none !important;
+  }
+
+  /* Custom My Location Control (Bottom Left) */
+  :global(.ap-location-control) {
+    background: rgb(38 38 38) !important;
+    color: white !important;
+    border: 2px solid rgba(0, 0, 0, 0.2) !important;
+    background-clip: padding-box;
+    border-radius: 4px !important;
+    width: 30px !important;
+    height: 30px !important;
+    cursor: pointer !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    margin-bottom: 10px !important;
+    transition: all 0.2s !important;
+    box-shadow: 0 1px 5px rgba(0,0,0,0.65) !important;
+  }
+  :global(.ap-location-control:hover) {
+    background: rgb(50 50 50) !important;
+    color: var(--orange) !important;
+  }
+  :global(.ap-location-control.locating) {
+    color: var(--orange) !important;
+    animation: ap-pulse 1.5s infinite ease-in-out;
+  }
+  @keyframes ap-pulse {
+    0% { opacity: 1; transform: scale(1); }
+    50% { opacity: 0.6; transform: scale(0.92); }
+    100% { opacity: 1; transform: scale(1); }
+  }
+  :global(.ap-location-control svg) {
+    width: 18px;
+    height: 18px;
   }
 </style>
 
