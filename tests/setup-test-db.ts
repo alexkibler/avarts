@@ -4,7 +4,6 @@
  * 2. Import schema from pb_schema.json
  */
 
-import fetch from 'node-fetch';
 import * as fs from 'fs';
 
 const PB_URL = process.env.TEST_PB_URL || 'http://127.0.0.1:8090';
