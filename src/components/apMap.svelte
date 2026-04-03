@@ -34,11 +34,13 @@
   let unsubscribePb: (() => void) | null = null;
   let routingControl: any = null;
   let elevationControl: any = null;
+  let myLocationMarker: any = null;
 
   // Sidebar tab
   let activeTab: 'chat' | 'upload' | 'route' = 'chat';
   let panelOpen = false;
   let isTestMode = false;
+  let locating = false;
   
   if (typeof window !== 'undefined') {
     isTestMode = (window as any).PLAYWRIGHT_TEST || false;
@@ -182,21 +184,7 @@
     marker.setStyle(markerOptions(node.state, true));
   }
 
-  function useMyLocation() {
-    if (!navigator.geolocation) return;
-    navigator.geolocation.getCurrentPosition((pos) => {
-      if (!routingControl) return;
-      const wps = routingControl.getWaypoints().filter((w: any) => w.latLng);
-      const startWp = L.Routing.waypoint(L.latLng(pos.coords.latitude, pos.coords.longitude), 'My Location');
-      if (wps.length === 0 || !wps[0].latLng) {
-        wps.unshift(startWp);
-      } else {
-        wps[0] = startWp;
-      }
-      routingControl.setWaypoints(wps);
-      map.setView([pos.coords.latitude, pos.coords.longitude], map.getZoom());
-    });
-  }
+
 
   export function clearRoute() {
     routingControl?.setWaypoints([]);
@@ -229,22 +217,7 @@
     }
   }
 
-  function injectLocationButton() {
-    const container = document.querySelector('.leaflet-routing-container');
-    if (!container) return;
-    const inputs = container.querySelectorAll('.leaflet-routing-geocoder input');
-    if (!inputs.length) return;
-    const row = (inputs[0] as HTMLElement).closest('.leaflet-routing-geocoder');
-    if (!row || row.querySelector('.ap-loc-btn')) return;
 
-    const btn = document.createElement('button');
-    btn.type = 'button';
-    btn.className = 'ap-loc-btn';
-    btn.title = 'Use my current location';
-    btn.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3"/></svg>`;
-    btn.addEventListener('click', (e) => { e.stopPropagation(); useMyLocation(); });
-    row.appendChild(btn);
-  }
 
   // ── Lifecycle ────────────────────────────────────────────────────────────────
 
@@ -257,7 +230,36 @@
     await import('leaflet-control-geocoder');
     await import('lrm-graphhopper');
 
-    map = L.map(mapElement).setView([centerLat, centerLon], 13);
+    map = L.map(mapElement, { zoomControl: false }).setView([centerLat, centerLon], 13);
+    
+    // Custom "My Location" control
+    const MyLocationControl = (L as any).Control.extend({
+      onAdd: function() {
+        const btn = L.DomUtil.create('button', 'ap-location-control');
+        btn.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="22" y1="12" x2="18" y2="12"/><line x1="6" y1="12" x2="2" y2="12"/><line x1="12" y1="6" x2="12" y2="2"/><line x1="12" y1="22" x2="12" y2="18"/></svg>`;
+        btn.title = "My Location";
+        btn.onclick = (e: any) => {
+          L.DomEvent.stopPropagation(e);
+          if (locating) return;
+          btn.classList.add('locating');
+          handleMyLocation(() => btn.classList.remove('locating'));
+        };
+        return btn;
+      }
+    });
+    new MyLocationControl({ position: 'bottomleft' }).addTo(map);
+
+    // Add custom zoom control to bottom-left for desktop
+    L.control.zoom({ position: 'bottomleft' }).addTo(map);
+
+    // Map click - add waypoint
+    map.on('click', (e: any) => {
+      if (!routingControl) return;
+      const wps = routingControl.getWaypoints().filter((w: any) => w.latLng);
+      wps.push(L.Routing.waypoint(e.latlng));
+      routingControl.setWaypoints(wps);
+    });
+
 
     L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
       maxZoom: 19,
@@ -283,9 +285,9 @@
       } catch { /* not available */ }
     }
 
-    // Revert to using GraphHopper URL directly from environment
+    // Use local GraphHopper for development by default to avoid OSRM demo server
     const isPlayout = (typeof window !== 'undefined' && (window as any).PLAYWRIGHT_TEST);
-    const effectiveUrl = env.PUBLIC_GRAPHHOPPER_URL || (isPlayout ? 'https://routing.alexkibler.com/route' : null);
+    const effectiveUrl = env.PUBLIC_GRAPHHOPPER_URL || (isPlayout ? 'https://routing.alexkibler.com/route' : 'http://127.0.0.1:8990/route');
 
     const ghRouter = effectiveUrl
       ? (L.Routing as any).graphHopper(undefined, {
@@ -298,12 +300,59 @@
         })
       : null;
 
+    // Custom GraphHopper Geocoder Provider for leaflet-control-geocoder
+    const GraphHopperGeocoder = (L as any).Class.extend({
+      options: {
+        serviceUrl: 'https://graphhopper.com/api/1/geocode',
+      },
+      initialize: function(apiKey: string, options: any) {
+        this._apiKey = apiKey;
+        (L as any).Util.setOptions(this, options);
+      },
+      geocode: function(query: string, cb: any, context: any) {
+        // Use our internal API proxy to avoid CORS issues with local/different ports
+        const url = `/api/geocode?q=${encodeURIComponent(query)}&limit=5&locale=en`;
+        
+        console.log('[Geocoder] Geocoding:', query);
+        fetch(url)
+          .then(res => res.json())
+          .then(data => {
+            const results = (data.hits || []).map((hit: any) => {
+              return {
+                name: hit.name,
+                center: L.latLng(hit.point.lat, hit.point.lng),
+                bbox: L.latLngBounds(L.latLng(hit.point.lat, hit.point.lng), L.latLng(hit.point.lat, hit.point.lng)),
+                properties: hit
+              };
+            });
+            cb.call(context, results);
+          })
+          .catch(err => {
+            console.error('[Geocoder] Geocoding error:', err);
+            cb.call(context, []);
+          });
+      },
+      suggest: function(query: string, cb: any, context: any) {
+        // suggest() is used for as-you-type autocomplete suggestions.
+        // We add a 300ms debounce to prevent spamming the geocoding service.
+        if (this._timer) clearTimeout(this._timer);
+        this._timer = setTimeout(() => {
+          console.log('[Geocoder] Suggesting:', query);
+          this.geocode(query, cb, context);
+        }, 300);
+      }
+    });
+
+    const geocoder = new GraphHopperGeocoder(graphApi, {
+      ...(effectiveUrl ? { serviceUrl: effectiveUrl.replace('/route', '/geocode') } : {})
+    });
+
     routingControl = (L.Routing as any).control({
       router: ghRouter,
       routeWhileDragging: true,
       showAlternatives: false,
       position: 'topleft',
-      geocoder: (L as any).Control.Geocoder.nominatim(),
+      geocoder: geocoder,
       lineOptions: {
         styles: [{ color: '#f97316', opacity: 0.8, weight: 5 }],
       },
@@ -356,7 +405,28 @@
       elevationControl.load(generateGPX(route));
     });
 
-    setTimeout(injectLocationButton, 400);
+    const updateWaypointCount = () => {
+      const container = routingControl.getContainer();
+      if (!container) return;
+      const wps = routingControl.getWaypoints();
+      // LRM shows a geocoder box for every waypoint in the array.
+      // We only show 'X' buttons if there are more than 2 boxes (Start + End + at least one more).
+      if (wps.length > 2) {
+        L.DomUtil.addClass(container, 'has-vias');
+      } else {
+        L.DomUtil.removeClass(container, 'has-vias');
+      }
+    };
+
+    routingControl.on('waypointschanged', updateWaypointCount);
+    routingControl.on('routingstart', updateWaypointCount);
+    // Initial check and a few retries to ensure LRM has rendered the container
+    updateWaypointCount();
+    setTimeout(updateWaypointCount, 100);
+    setTimeout(updateWaypointCount, 500);
+    setTimeout(updateWaypointCount, 1000);
+
+
 
     nodes = await pb.collection('map_nodes').getFullList({
       filter: `session = "${sessionId}"`,
@@ -371,6 +441,63 @@
         renderPins();
       }
     });
+
+    function handleMyLocation(callback?: () => void) {
+      if (!navigator.geolocation) {
+        alert("Geolocation is not supported by your browser.");
+        callback?.();
+        return;
+      }
+      
+      locating = true;
+      const options = {
+        enableHighAccuracy: false, // false is often more reliable on desktop/WiFi
+        timeout: 10000,
+        maximumAge: 0
+      };
+
+      navigator.geolocation.getCurrentPosition((position) => {
+        locating = false;
+        callback?.();
+        const { latitude: lat, longitude: lon } = position.coords;
+        const latlng = L.latLng(lat, lon);
+        
+        if (!myLocationMarker) {
+          myLocationMarker = L.circleMarker(latlng, {
+            radius: 10,
+            fillColor: '#3498db',
+            color: '#fff',
+            weight: 3,
+            opacity: 1,
+            fillOpacity: 0.9,
+            className: 'my-location-marker'
+          }).addTo(map);
+
+          myLocationMarker.bindTooltip("My Location (click to route here)", { direction: 'top', offset: [0, -6] });
+
+          myLocationMarker.on('click', (e: any) => {
+            L.DomEvent.stopPropagation(e);
+            if (!routingControl) return;
+            const wps = routingControl.getWaypoints().filter((w: any) => w.latLng);
+            wps.push(L.Routing.waypoint(latlng, "My Location"));
+            routingControl.setWaypoints(wps);
+          });
+        } else {
+          myLocationMarker.setLatLng(latlng);
+        }
+        
+        map.setView(latlng, 15);
+      }, (err) => {
+        locating = false;
+        callback?.();
+        let msg = "Could not find your location.";
+        if (err.code === 1) msg = "Location permission denied. Please enable location access for this site.";
+        else if (err.code === 2) msg = "Position unavailable. Your device could not determine your location.";
+        else if (err.code === 3) msg = "Location request timed out. Try again?";
+        alert(msg);
+        console.error("Geolocation error:", err);
+      }, options);
+    }
   });
 
   onDestroy(() => {
@@ -431,12 +558,11 @@
           <ApDropzone {sessionId} on:validated={handleValidated} />
         {:else}
           <div class="route-instructions">
-            <h3>How to plan a route</h3>
             <ol>
-              <li>Click <strong class="my-loc">My Location</strong> (the crosshair button next to the Start field on the map) to set your start.</li>
               <li>Click any <strong class="orange-pin">orange</strong> or <strong class="green-pin">green</strong> node pin on the map to add it as a waypoint.</li>
-              <li>Drag waypoint markers to adjust.</li>
+              <li>Drag waypoint markers to adjust your route.</li>
             </ol>
+
           </div>
           <button on:click={clearRoute} class="btn-clear-route">Clear Route</button>
         {/if}
@@ -900,9 +1026,10 @@
     padding: 0 16px;
     gap: 20px;
     flex-shrink: 0;
-    overflow-x: auto;
+    overflow-x: hidden;
     position: relative;
     z-index: 1;
+    scrollbar-width: none; /* Firefox */
   }
   .route-stats::-webkit-scrollbar { display: none; }
   .stat {
@@ -1110,21 +1237,15 @@
     color: var(--text-secondary);
     margin-bottom: 16px;
   }
-  .route-instructions h3 {
-    font-size: 13px;
-    font-weight: 600;
-    color: var(--text-primary);
-    margin-bottom: 8px;
-  }
   .route-instructions ol {
     padding-left: 18px;
   }
   .route-instructions li {
     margin-bottom: 4px;
   }
-  .route-instructions strong.my-loc { color: var(--orange); text-decoration: underline; }
   .route-instructions strong.orange-pin { color: var(--orange); }
   .route-instructions strong.green-pin { color: var(--green); }
+
 
   .btn-clear-route {
     width: 100%;
@@ -1319,10 +1440,11 @@
     overflow: hidden !important; 
     margin-bottom: 10px !important;
   }
-  @media (max-width: 480px) {
+  @media (max-width: 768px) {
     :global(.leaflet-control-zoom) {
       display: none !important;
     }
+
     :global(.elevation-control) {
       max-height: 100px !important;
       font-size: 10px !important;
@@ -1330,60 +1452,233 @@
     :global(.elevation-control .background) { height: 60px !important; }
   }
 
-  /* Route planner panel — dark theme */
+  /* Route planner panel — sleek dark theme */
   :global(.leaflet-routing-container) {
-    background-color: rgb(38 38 38);
-    color: white;
-    border-radius: 7px;
-    max-height: 400px;
-    overflow-y: auto;
-    font-size: 12px;
-  }
-  :global(.leaflet-routing-geocoders) { border-bottom: none; }
-  :global(.leaflet-routing-geocoder) {
-    display: flex;
-    align-items: center;
-    gap: 4px;
-    padding-right: 4px;
-  }
-  :global(.leaflet-routing-geocoder input) {
-    background-color: rgb(38 38 38);
-    color: white;
-    padding: 2px;
-    border-radius: 5px;
-    flex: 1;
-    font-size: 11px;
-  }
-  :global(.leaflet-routing-add-waypoint) {
-    background-color: rgb(38 38 38) !important;
-    color: white;
-    padding-inline: 5px;
-    margin-top: 3px !important;
-    width: 25px;
-    height: 25px;
-  }
-  :global(.leaflet-routing-add-waypoint:hover) { background-color: rgb(64 64 64) !important; }
-  :global(.leaflet-routing-remove-waypoint::after) {
-    position: absolute;
-    display: block;
-    width: 25px;
-    height: 26px;
-    right: 0; top: 2px;
-    font-size: 18px;
-    font-weight: bold;
-    content: "\00d7";
-    text-align: center;
-    cursor: pointer;
+    background: rgba(30, 30, 32, 0.92) !important;
+    backdrop-filter: blur(16px) !important;
+    -webkit-backdrop-filter: blur(16px) !important;
     color: white !important;
-    background: rgb(38 38 38) !important;
-    padding-top: 3px;
-    padding-left: 5px;
-    line-height: 1;
-    border-width: 1px;
-    border-color: white;
-    border-radius: 4px;
+    border: 1px solid rgba(255, 255, 255, 0.08) !important;
+    border-radius: 16px !important;
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.35), 0 1px 2px rgba(0, 0, 0, 0.2) !important;
+    padding: 12px 14px 16px 14px !important;
+    font-size: 13px !important;
+    width: 320px !important;
+    transition: all 0.3s ease;
+    overflow-x: hidden !important;
   }
-  :global(.leaflet-routing-remove-waypoint:hover::after) { background-color: rgb(64 64 64) !important; }
+
+  @media (max-width: 640px) {
+    :global(.leaflet-routing-container) {
+      width: calc(100vw - 32px) !important;
+      max-width: 280px !important;
+      padding: 10px 10px !important;
+      border-radius: 12px !important;
+      margin: 10px !important;
+      max-height: 70vh !important;
+      overflow-y: auto !important;
+      overflow-x: hidden !important;
+    }
+    :global(.leaflet-routing-geocoder input) {
+      padding: 10px 12px !important;
+      font-size: 13px !important;
+      width: 100% !important;
+      max-width: 100% !important;
+      box-sizing: border-box !important;
+    }
+    :global(.leaflet-routing-geocoders) { 
+      gap: 6px !important; 
+      overflow-x: hidden !important;
+      max-width: 100% !important;
+    }
+    :global(.leaflet-routing-add-waypoint) { 
+      padding: 8px !important; 
+      font-size: 12px !important;
+      margin-top: 4px !important;
+    }
+  }
+
+  /* Nuclear Reset: Hide everything we didn't explicitly style */
+  :global(.leaflet-routing-container *),
+  :global(.leaflet-routing-container *::before),
+  :global(.leaflet-routing-container *::after) {
+    background-color: transparent !important;
+    background-image: none !important;
+    border: none !important;
+    box-shadow: none !important;
+    outline: none !important;
+    content: none !important;
+    visibility: inherit;
+    box-sizing: border-box !important;
+    max-width: 100% !important;
+  }
+
+  /* Hide everything in the row by default EXCEPT the results dropdown */
+  :global(.leaflet-routing-geocoder > :not(input):not(.leaflet-routing-remove-waypoint):not(.leaflet-control-geocoder-alternatives)) {
+    display: none !important;
+  }
+
+  /* White-list ONLY the input and our button */
+  :global(.leaflet-routing-geocoder input),
+  :global(.leaflet-routing-geocoder .leaflet-routing-remove-waypoint) {
+    display: block !important;
+  }
+
+  /* Kill browser-native clear icons (search input "x") */
+  :global(.leaflet-routing-geocoder input::-webkit-search-cancel-button),
+  :global(.leaflet-routing-geocoder input::-webkit-search-decoration) {
+    display: none !important;
+    -webkit-appearance: none;
+  }
+
+  :global(.leaflet-routing-geocoders) { 
+    border-bottom: none; 
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    overflow: hidden !important;
+    scrollbar-width: none !important;
+  }
+  :global(.leaflet-routing-geocoders::-webkit-scrollbar) { display: none !important; }
+  :global(.leaflet-routing-geocoder) {
+    display: flex !important;
+    align-items: center !important;
+    background: rgba(255, 255, 255, 0.07) !important;
+    border: 1px solid rgba(255, 255, 255, 0.08) !important;
+    border-radius: 10px !important;
+    position: relative !important;
+    transition: border-color 0.15s, background 0.15s !important;
+    padding-right: 0 !important;
+  }
+  :global(.leaflet-routing-geocoder:focus-within) {
+    border-color: rgba(255, 255, 255, 0.22) !important;
+    background: rgba(255, 255, 255, 0.10) !important;
+  }
+
+  :global(.leaflet-routing-geocoder input) {
+    flex: 1 !important;
+    background: none !important;
+    border: none !important;
+    outline: none !important;
+    color: #fff !important;
+    font-family: inherit !important;
+    font-size: 14px !important;
+    font-weight: 500 !important;
+    padding: 11px 12px !important;
+    letter-spacing: 0.01em !important;
+  }
+  :global(.leaflet-routing-geocoder input::placeholder) {
+    color: rgba(255, 255, 255, 0.4) !important;
+    font-weight: 400 !important;
+  }
+
+  :global(.leaflet-routing-remove-waypoint) {
+    display: block !important;
+    width: 28px !important;
+    height: 28px !important;
+    margin-right: 10px !important;
+    border-radius: 7px !important;
+    background-color: rgba(255, 255, 255, 0.10) !important;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 12' fill='none' stroke='rgba(255,255,255,0.55)' stroke-width='1.8' stroke-linecap='round'%3E%3Cline x1='2' y1='2' x2='10' y2='10'/%3E%3Cline x1='10' y1='2' x2='2' y2='10'/%3E%3C/svg%3E") !important;
+    background-repeat: no-repeat !important;
+    background-position: center !important;
+    background-size: 13px !important;
+    cursor: pointer !important;
+    flex-shrink: 0 !important;
+    transition: all 0.15s !important;
+  }
+
+  :global(.leaflet-routing-remove-waypoint:hover) {
+    background-color: rgba(255, 80, 80, 0.25) !important;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 12' fill='none' stroke='%23ff6b6b' stroke-width='1.8' stroke-linecap='round'%3E%3Cline x1='2' y1='2' x2='10' y2='10'/%3E%3Cline x1='10' y1='2' x2='2' y2='10'/%3E%3C/svg%3E") !important;
+  }
+
+  :global(.leaflet-routing-remove-waypoint:active) {
+    background-color: rgba(255, 80, 80, 0.35) !important;
+    transform: scale(0.93) !important;
+  }
+
+  /* Geocoder Suggestions Dropdown */
+  :global(.leaflet-control-geocoder-alternatives) {
+    display: block !important;
+    background: rgba(30, 30, 32, 0.95) !important;
+    backdrop-filter: blur(20px) !important;
+    -webkit-backdrop-filter: blur(20px) !important;
+    border: 1px solid rgba(255, 255, 255, 0.12) !important;
+    border-radius: 12px !important;
+    margin-top: 8px !important;
+    padding: 6px !important;
+    list-style: none !important;
+    max-height: 280px !important;
+    overflow-y: auto !important;
+    box-shadow: 0 12px 48px rgba(0, 0, 0, 0.6) !important;
+    position: absolute !important;
+    top: 100% !important;
+    width: 100% !important;
+    left: 0 !important;
+    z-index: 1000 !important;
+    pointer-events: auto !important;
+  }
+
+  :global(.leaflet-control-geocoder-alternatives li) {
+    padding: 12px 14px !important;
+    cursor: pointer !important;
+    font-size: 13px !important;
+    color: rgba(255, 255, 255, 0.75) !important;
+    transition: all 0.15s ease !important;
+    border-radius: 8px !important;
+    margin-bottom: 2px !important;
+    line-height: 1.4 !important;
+    white-space: normal !important;
+    word-break: break-word !important;
+  }
+
+  :global(.leaflet-control-geocoder-alternatives li:last-child) {
+    margin-bottom: 0 !important;
+  }
+
+  :global(.leaflet-control-geocoder-alternatives li:hover),
+  :global(.leaflet-control-geocoder-alternatives li.leaflet-control-geocoder-selected) {
+    background: rgba(255, 255, 255, 0.1) !important;
+    color: white !important;
+    padding-left: 18px !important;
+  }
+
+  :global(.leaflet-control-geocoder-alternatives li strong) {
+    color: var(--orange) !important;
+    font-weight: 600 !important;
+  }
+
+  :global(.leaflet-routing-add-waypoint) {
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    background-color: rgba(255, 255, 255, 0.05) !important;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 12' fill='none' stroke='rgba(255,255,255,0.32)' stroke-width='1.8' stroke-linecap='round'%3E%3Cline x1='6' y1='1' x2='6' y2='11'/%3E%3Cline x1='1' y1='6' x2='11' y2='6'/%3E%3C/svg%3E") !important;
+    background-repeat: no-repeat !important;
+    background-position: center !important;
+    background-size: 15px !important;
+    border: 1px dashed rgba(255, 255, 255, 0.12) !important;
+    border-radius: 10px !important;
+    padding: 12px !important;
+    margin-top: 10px !important;
+    cursor: pointer !important;
+    transition: all 0.15s !important;
+    width: 100% !important;
+    height: 40px !important;
+    color: transparent !important;
+  }
+  :global(.leaflet-routing-add-waypoint:hover) {
+    background-color: rgba(255, 255, 255, 0.08) !important;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 12' fill='none' stroke='rgba(255,255,255,0.5)' stroke-width='1.8' stroke-linecap='round'%3E%3Cline x1='6' y1='1' x2='6' y2='11'/%3E%3Cline x1='1' y1='6' x2='11' y2='6'/%3E%3C/svg%3E") !important;
+    border-color: rgba(255, 255, 255, 0.2) !important;
+  }
+
+
+
+
+
+
   :global(.leaflet-routing-alternatives-container) { display: none; }
   :global(.leaflet-control-attribution) {
     background: rgba(38, 38, 38, 0.7) !important;
@@ -1414,6 +1709,41 @@
   /* Hide attribution in test mode to prevent click obstruction on mobile nav */
   :global(.playwright-test .leaflet-control-attribution) {
     display: none !important;
+  }
+
+  /* Custom My Location Control (Bottom Left) */
+  :global(.ap-location-control) {
+    background: rgb(38 38 38) !important;
+    color: white !important;
+    border: 2px solid rgba(0, 0, 0, 0.2) !important;
+    background-clip: padding-box;
+    border-radius: 4px !important;
+    width: 30px !important;
+    height: 30px !important;
+    cursor: pointer !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    margin-bottom: 10px !important;
+    transition: all 0.2s !important;
+    box-shadow: 0 1px 5px rgba(0,0,0,0.65) !important;
+  }
+  :global(.ap-location-control:hover) {
+    background: rgb(50 50 50) !important;
+    color: var(--orange) !important;
+  }
+  :global(.ap-location-control.locating) {
+    color: var(--orange) !important;
+    animation: ap-pulse 1.5s infinite ease-in-out;
+  }
+  @keyframes ap-pulse {
+    0% { opacity: 1; transform: scale(1); }
+    50% { opacity: 0.6; transform: scale(0.92); }
+    100% { opacity: 1; transform: scale(1); }
+  }
+  :global(.ap-location-control svg) {
+    width: 18px;
+    height: 18px;
   }
 </style>
 
