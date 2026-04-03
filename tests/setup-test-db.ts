@@ -109,38 +109,54 @@ async function importSchema(adminToken: string): Promise<void> {
 	const { items: existing } = (await listRes.json()) as any;
 	const existingNames = new Set(existing.map((c: any) => c.name));
 
-	// Pass 1: Create all collections with schema but NO rules (to avoid relation validation errors)
-	for (const collDef of schema) {
-		if (existingNames.has(collDef.name)) {
-			console.log(`✓ Collection "${collDef.name}" already exists`);
-			continue;
+	// Pass 1: Create all collections with schema but NO rules
+	// Use retry logic to handle relation dependencies between collections
+	const pending = new Set(schema.filter((c: any) => !existingNames.has(c.name)).map((c: any) => c.name));
+	const created = new Set<string>();
+
+	for (let attempt = 0; attempt < 3 && pending.size > 0; attempt++) {
+		for (const collDef of schema) {
+			if (pending.has(collDef.name)) {
+				const createRes = await fetch(`${PB_URL}/api/collections`, {
+					method: 'POST',
+					headers: {
+						'Content-Type': 'application/json',
+						Authorization: `Bearer ${adminToken}`,
+					},
+					body: JSON.stringify({
+						name: collDef.name,
+						type: collDef.type,
+						schema: collDef.schema,
+						listRule: null,
+						viewRule: null,
+						createRule: null,
+						updateRule: null,
+						deleteRule: null,
+						options: collDef.options,
+					}),
+				});
+
+				if (createRes.ok) {
+					pending.delete(collDef.name);
+					created.add(collDef.name);
+					console.log(`✓ Created collection "${collDef.name}"`);
+				} else {
+					const errData = await createRes.text();
+					// Retry on relation errors; fail on other errors
+					if (!errData.includes('relation') && !errData.includes('collectionId')) {
+						throw new Error(`Failed to create collection "${collDef.name}" (${createRes.status}): ${errData}`);
+					}
+				}
+			} else if (!created.has(collDef.name) && existingNames.has(collDef.name)) {
+				console.log(`✓ Collection "${collDef.name}" already exists`);
+				created.add(collDef.name);
+			}
 		}
+		if (pending.size > 0 && attempt < 2) await sleep(200);
+	}
 
-		const createRes = await fetch(`${PB_URL}/api/collections`, {
-			method: 'POST',
-			headers: {
-				'Content-Type': 'application/json',
-				Authorization: `Bearer ${adminToken}`,
-			},
-			body: JSON.stringify({
-				name: collDef.name,
-				type: collDef.type,
-				schema: collDef.schema,
-				listRule: null,
-				viewRule: null,
-				createRule: null,
-				updateRule: null,
-				deleteRule: null,
-				options: collDef.options,
-			}),
-		});
-
-		if (!createRes.ok) {
-			const errData = await createRes.text();
-			throw new Error(`Failed to create collection "${collDef.name}" (${createRes.status}): ${errData}`);
-		}
-
-		console.log(`✓ Created collection "${collDef.name}"`);
+	if (pending.size > 0) {
+		throw new Error(`Failed to create collections after retries: ${Array.from(pending).join(', ')}`);
 	}
 
 	// Pass 2: Update collections to add rules (now that all relations exist)
