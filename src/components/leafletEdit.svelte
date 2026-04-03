@@ -650,9 +650,14 @@
   background-color: rgb(38 38 38);
   color: white;
   border-radius: 7px;
+  max-height: 85vh !important;
+  overflow-y: auto !important;
+  overflow-x: hidden !important;
+  scrollbar-gutter: stable;
 }
 :global(.leaflet-routing-geocoders) {
   border-bottom: none;
+  overflow: visible !important;
 }
 :global(.leaflet-routing-geocoder input) {
   background-color: rgb(38 38 38);
