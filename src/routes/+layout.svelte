@@ -5,6 +5,7 @@
   import { page } from '$app/stores';
   import Header from "./header.svelte";
   import BottomNav from "$components/BottomNav.svelte";
+  import Sidebar from "$components/Sidebar.svelte";
   import { userCookie } from "$lib/stores"
   import { pb } from "$lib/pb"
   import type { UserData } from "$lib/types";
@@ -46,13 +47,22 @@
   });
 </script>
 
-<div class="min-h-screen bg-neutral-700 flex flex-col {isGamePage ? 'h-screen' : ''}" data-sveltekit-prefetch>
-  <div class="bg-neutral-800 border-b-neutral-600 border-b-2 sticky top-0 shrink-0">
-    <Header data={data} {isGamePage} />
+<div class="min-h-screen bg-neutral-700 flex flex-col md:flex-row {isGamePage ? 'h-screen' : ''}" data-sveltekit-prefetch>
+  <!-- Desktop Sidebar -->
+  <Sidebar />
+
+  <div class="flex-1 flex flex-col min-w-0 overflow-hidden">
+    <!-- Mobile Header -->
+    <div class="bg-neutral-800 border-b-neutral-600 border-b-2 sticky top-0 shrink-0 md:hidden">
+      <Header data={data} {isGamePage} />
+    </div>
+
+    <main class="{isGamePage ? 'flex-1 flex flex-col w-full min-h-0' : 'flex-1 overflow-y-auto w-full pb-24 md:pb-8'}">
+      <slot />
+    </main>
   </div>
-  <main class="{isGamePage ? 'flex-1 flex flex-col w-full min-h-0' : 'flex-1 max-w-screen md:max-w-7xl mx-auto w-full'} pb-20 md:pb-0">
-    <slot />
-  </main>
+
+  <!-- Mobile Bottom Nav -->
   <BottomNav />
 </div>
 
