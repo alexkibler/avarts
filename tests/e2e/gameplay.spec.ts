@@ -167,7 +167,9 @@ test.describe('Gameplay flow', () => {
 	});
 
 	test.afterAll(async () => {
-		await gameCtx.teardown();
+		if (gameCtx) {
+			await gameCtx.teardown();
+		}
 	});
 
 	test.beforeEach(async () => {
