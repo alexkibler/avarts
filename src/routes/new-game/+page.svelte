@@ -163,19 +163,37 @@
       });
 
       // 4. Batch Insert Map Nodes into PocketBase
-      // In PocketBase, batch creation is typically done via concurrent create requests
-      const createPromises = selectedNodes.map((node, index) => {
-        return pb.collection('map_nodes').create({
+      // To get the address names and not overwhelm the geocoder or cause rate limits,
+      // we'll run the creation sequentially with a small delay for geocoding
+      for (let i = 0; i < selectedNodes.length; i++) {
+        const node = selectedNodes[i];
+        let nodeName = `OSM Node ${node.id}`;
+
+        try {
+          const res = await fetch(`/api/geocode?q=${node.lat},${node.lon}&limit=1&locale=en`);
+          if (res.ok) {
+            const data = await res.json();
+            if (data.hits && data.hits.length > 0) {
+              nodeName = data.hits[0].name;
+            }
+          }
+        } catch (e) {
+          console.warn('Reverse geocode failed for node', node.id, e);
+        }
+
+        await pb.collection('map_nodes').create({
           session: sessionRecord.id,
-          ap_location_id: 800000 + (index + 1), // Assuming START_ID from items.py
+          ap_location_id: 800000 + (i + 1), // Assuming START_ID from items.py
           osm_node_id: node.id.toString(),
+          name: nodeName,
           lat: node.lat,
           lon: node.lon,
           state: 'Hidden'
-        }, { requestKey: `map_node_${index}` });
-      });
+        }, { requestKey: `map_node_${i}` });
 
-      await Promise.all(createPromises);
+        // Add a tiny delay to not slam the geocoder api
+        await new Promise(r => setTimeout(r, 200));
+      }
 
       window.location.href = `/game/${sessionRecord.id}`;
 
