@@ -35,6 +35,7 @@
   let routingControl: any = null;
   let elevationControl: any = null;
   let myLocationMarker: any = null;
+  let activeWaypointIds = new Set<string>();
 
   // ── Route Optimization ───────────────────────────────────────────────────────
 
@@ -298,6 +299,7 @@
     route = null;
     routeDistance = 0;
     elevationGain = 0;
+    activeWaypointIds = new Set<string>();
     dispatch('routeStats', { distance: 0 });
     for (const node of nodes) {
       const marker = markerMap.get(node.id);
@@ -515,6 +517,22 @@
       const container = routingControl.getContainer();
       if (!container) return;
       const wps = routingControl.getWaypoints();
+
+      // Update our reactive set of active waypoints for the UI
+      const newActive = new Set<string>();
+      for (const wp of wps) {
+        if (!wp.latLng) continue;
+        // Find if this waypoint corresponds to one of our nodes
+        const matchedNode = nodes.find(n =>
+          Math.abs(n.lat - wp.latLng.lat) < 0.0001 &&
+          Math.abs(n.lon - wp.latLng.lng) < 0.0001
+        );
+        if (matchedNode) {
+          newActive.add(matchedNode.id);
+        }
+      }
+      activeWaypointIds = newActive;
+
       // LRM shows a geocoder box for every waypoint in the array.
       // We only show 'X' buttons if there are more than 2 boxes (Start + End + at least one more).
       if (wps.length > 2) {
@@ -619,8 +637,25 @@
   function handleNodeTap(node: any) {
     if (node.state === 'Hidden') return;
     const marker = markerMap.get(node.id);
-    if (marker) {
-      addNodeAsWaypoint(node, marker);
+
+    if (activeWaypointIds.has(node.id)) {
+      // Remove it if it's already a waypoint
+      if (routingControl) {
+        const wps = routingControl.getWaypoints().filter((w: any) => {
+          if (!w.latLng) return true; // keep empty slots
+          const isMatch = Math.abs(node.lat - w.latLng.lat) < 0.0001 && Math.abs(node.lon - w.latLng.lng) < 0.0001;
+          return !isMatch;
+        });
+        routingControl.setWaypoints(wps);
+      }
+      if (marker) {
+        marker.setStyle(markerOptions(node.state, false));
+      }
+    } else {
+      // Add it
+      if (marker) {
+        addNodeAsWaypoint(node, marker);
+      }
     }
   }
 </script>
@@ -696,9 +731,12 @@
                     {#each nodes.filter(n => n.state === state) as node}
                       <!-- svelte-ignore a11y-click-events-have-key-events -->
                       <!-- svelte-ignore a11y-no-static-element-interactions -->
-                      <div class="node-item" on:click={() => handleNodeTap(node)} style="cursor: {state === 'Hidden' ? 'default' : 'pointer'}; opacity: {state === 'Hidden' ? 0.5 : 1};">
+                      <div class="node-item" on:click={() => handleNodeTap(node)} style="cursor: {state === 'Hidden' ? 'default' : 'pointer'}; opacity: {state === 'Hidden' ? 0.5 : 1}; background: {activeWaypointIds.has(node.id) ? 'var(--orange-dim)' : ''};">
                         <span style="font-family: 'JetBrains Mono', monospace; font-size: 11px; opacity: 0.7; width: 30px;">#{node.ap_location_id}</span>
-                        <span style="flex: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;" title={node.name}>{node.name}</span>
+                        <span style="flex: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; {activeWaypointIds.has(node.id) ? 'color: var(--orange); font-weight: 500;' : ''}" title={node.name}>{node.name}</span>
+                        {#if activeWaypointIds.has(node.id)}
+                          <svg style="color: var(--orange); flex-shrink: 0;" xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>
+                        {/if}
                       </div>
                     {/each}
                     {#if nodes.filter(n => n.state === state).length === 0}
