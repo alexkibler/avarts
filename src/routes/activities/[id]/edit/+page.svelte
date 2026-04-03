@@ -1,10 +1,18 @@
 <script lang="ts">
 	import { formatDate } from '$lib/utils.js';
   import { userCookie } from "$lib/stores";
+  import { env } from "$env/dynamic/public";
   import type { Exercise, UserData } from '$lib/types';
 
   export let data: Exercise;
   let user = ($userCookie as UserData)?.user;
+
+  let url: string;
+  if (env.PUBLIC_DB_URL) {
+    url = env.PUBLIC_DB_URL;
+  } else {
+    url = "http://127.0.0.1:8090";
+  }
 
   if (user && user.id != data.user) {
     if (typeof window !== 'undefined') window.location.href = "/";
@@ -40,8 +48,8 @@
     <div class="flex flex-col w-11/12 lg:w-1/3">
       <div class="flex flex-col bg-neutral-800 mt-4">
         <div class="h-[250px] bg-neutral-900 flex items-center justify-center">
-          {#if data.image && !data.image.endsWith('/undefined')}
-            <img src="{data.image}" alt="activity thumbnail" class="w-full h-full object-cover"/>
+          {#if data.img}
+            <img src="{url}/api/files/{data.collectionId}/{data.id}/{data.img}" alt="activity thumbnail" class="w-full h-full object-cover"/>
           {:else}
             <div class="text-neutral-500 flex flex-col items-center">
               <svg xmlns="http://www.w3.org/2000/svg" class="h-12 w-12 mb-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
