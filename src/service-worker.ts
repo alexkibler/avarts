@@ -8,6 +8,9 @@ const ASSETS = [
 	...files  // everything in `static`
 ];
 
+// Check if running in development (localhost:5173/5174)
+const isDev = typeof self !== 'undefined' && self.location.hostname === 'localhost';
+
 self.addEventListener('install', (event: ExtendableEvent) => {
 	// Create a new cache and add all files to it
 	async function addFilesToCache() {
@@ -30,8 +33,19 @@ self.addEventListener('activate', (event: ExtendableEvent) => {
 });
 
 self.addEventListener('fetch', (event: FetchEvent) => {
+	// Skip interception in development (Vite serves everything and SW causes issues)
+	if (isDev) return;
+
 	// ignore POST requests etc
 	if (event.request.method !== 'GET') return;
+
+	// ignore cross-origin requests (PocketBase, GraphHopper, tile servers, etc.)
+	try {
+		const requestUrl = new URL(event.request.url);
+		if (requestUrl.origin !== new URL(self.location.href).origin) return;
+	} catch {
+		return; // bail on URL parse errors
+	}
 
 	async function respond() {
 		const url = new URL(event.request.url);

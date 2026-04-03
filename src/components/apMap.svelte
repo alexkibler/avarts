@@ -395,7 +395,7 @@
 
     // Use local GraphHopper for development by default to avoid OSRM demo server
     const isPlayout = (typeof window !== 'undefined' && (window as any).PLAYWRIGHT_TEST);
-    const effectiveUrl = env.PUBLIC_GRAPHHOPPER_URL || (isPlayout ? 'https://routing.alexkibler.com/route' : 'http://127.0.0.1:8990/route');
+    const effectiveUrl = env.PUBLIC_GRAPHHOPPER_URL || (isPlayout ? 'https://routing.alexkibler.com/route' : '/api/route');
 
     const ghRouter = effectiveUrl
       ? (L.Routing as any).graphHopper(undefined, {
@@ -574,6 +574,9 @@
       return;
     }
 
+    // Querying permission state before getCurrentPosition prevents timeout on some browsers
+    navigator.permissions?.query({ name: 'geolocation' });
+
     locating = true;
     const options = {
       enableHighAccuracy: false, // false is often more reliable on desktop/WiFi
@@ -614,13 +617,14 @@
       callback?.({lat, lon});
     }, (err) => {
       locating = false;
-      callback?.();
       let msg = "Could not find your location.";
       if (err.code === 1) msg = "Location permission denied. Please enable location access for this site.";
       else if (err.code === 2) msg = "Position unavailable. Your device could not determine your location.";
-      else if (err.code === 3) msg = "Location request timed out. Try again?";
-      alert(msg);
+      else if (err.code === 3) msg = "Location request timed out. Using map center as fallback.";
+
       console.error("Geolocation error:", err);
+      alert(msg);
+      callback?.();
     }, options);
   }
 
