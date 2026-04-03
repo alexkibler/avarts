@@ -13,6 +13,8 @@
   import '@raruto/leaflet-elevation/src/index.css';
 
   export let sessionId: string;
+  export let sessionName: string = '';
+  export let apServerUrl: string = '';
   export let centerLat: number;
   export let centerLon: number;
   export let radius: number;
@@ -381,10 +383,9 @@
 <div class="mockup-app-root {isTestMode ? 'playwright-test' : ''}">
   <!-- TOP NAV -->
   <div class="topnav">
-    <div class="logo">bikeapelago</div>
     <div class="status-pill expanded" style="cursor: default;">
       <div class="connected-dot"></div>
-      <span class="seed-label">Session: {sessionId}</span>
+      <span class="seed-label">{sessionName || 'Game Session'} • {apServerUrl || 'localhost'}</span>
     </div>
     
     <div class="status-counters">
