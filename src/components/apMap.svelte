@@ -1465,7 +1465,10 @@
     font-size: 13px !important;
     width: 320px !important;
     transition: all 0.3s ease;
+    max-height: 85vh !important;
+    overflow-y: auto !important;
     overflow-x: hidden !important;
+    scrollbar-gutter: stable;
   }
 
   @media (max-width: 640px) {
@@ -1536,10 +1539,8 @@
     display: flex;
     flex-direction: column;
     gap: 10px;
-    overflow: hidden !important;
-    scrollbar-width: none !important;
+    overflow: visible !important;
   }
-  :global(.leaflet-routing-geocoders::-webkit-scrollbar) { display: none !important; }
   :global(.leaflet-routing-geocoder) {
     display: flex !important;
     align-items: center !important;
