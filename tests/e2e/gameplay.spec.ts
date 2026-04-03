@@ -108,28 +108,27 @@ async function takeScreenshot(page: any, name: string) {
 	const panel = page.locator('.panel');
 	const isPanelOpen = await panel.isVisible();
 
-	// Support indicating "the fold" on mobile full-page screenshots
-	if (isMobile) {
-		const viewport = page.viewportSize();
-		if (viewport) {
-			await page.evaluate((height: number) => {
-				const fold = document.createElement('div');
-				fold.id = 'fold-indicator';
-				fold.style.position = 'absolute';
-				fold.style.top = `${height}px`;
-				fold.style.left = '0';
-				fold.style.right = '0';
-				fold.style.height = '2px';
-				fold.style.backgroundColor = 'red';
-				fold.style.zIndex = '999999';
-				fold.style.pointerEvents = 'none';
-				document.body.appendChild(fold);
-			}, viewport.height);
+	if (isPanelOpen) {
+		// Full-page expansion to reveal panel content below the fold.
+		// Inject fold indicator (absolute, so it appears at the fold in the document).
+		if (isMobile) {
+			const viewport = page.viewportSize();
+			if (viewport) {
+				await page.evaluate((height: number) => {
+					const fold = document.createElement('div');
+					fold.id = 'fold-indicator';
+					fold.style.position = 'absolute';
+					fold.style.top = `${height}px`;
+					fold.style.left = '0';
+					fold.style.right = '0';
+					fold.style.height = '2px';
+					fold.style.backgroundColor = 'red';
+					fold.style.zIndex = '999999';
+					fold.style.pointerEvents = 'none';
+					document.body.appendChild(fold);
+				}, viewport.height);
+			}
 		}
-	}
-
-	if (isPanelOpen || isMobile) {
-		// Inject "unlock" CSS to allow full-page expansion if we need a full-page shot
 		await page.addStyleTag({ content: `
 			.mockup-app-root, .main-area, .panel, .panel-body {
 				height: auto !important;
@@ -141,17 +140,36 @@ async function takeScreenshot(page: any, name: string) {
 			.panel { position: relative !important; width: 100% !important; border: none !important; }
 			.bottomnav { position: relative !important; margin-top: 20px; z-index: 2000; }
 		`, id: 'screenshot-style' });
-
 		await page.screenshot({ path, fullPage: true });
-
-		// Cleanup: Remove styles and the fold indicator
 		await page.evaluate(() => {
 			document.getElementById('screenshot-style')?.remove();
 			document.getElementById('fold-indicator')?.remove();
 		});
 	} else {
-		// Normal viewport screenshot for non-mobile/non-panel views
+		// Viewport screenshot — captures exactly what the user sees, including fixed elements
+		// like the bottomnav pinned to the bottom. For mobile, overlay a fold indicator line.
+		if (isMobile) {
+			const viewport = page.viewportSize();
+			if (viewport) {
+				await page.evaluate((height: number) => {
+					const fold = document.createElement('div');
+					fold.id = 'fold-indicator';
+					fold.style.position = 'fixed';
+					fold.style.bottom = '0';
+					fold.style.left = '0';
+					fold.style.right = '0';
+					fold.style.height = '2px';
+					fold.style.backgroundColor = 'red';
+					fold.style.zIndex = '999999';
+					fold.style.pointerEvents = 'none';
+					document.body.appendChild(fold);
+				}, viewport.height);
+			}
+		}
 		await page.screenshot({ path });
+		await page.evaluate(() => {
+			document.getElementById('fold-indicator')?.remove();
+		});
 	}
 }
 

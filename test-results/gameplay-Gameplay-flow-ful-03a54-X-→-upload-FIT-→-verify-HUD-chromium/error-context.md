@@ -1,0 +1,73 @@
+# Page snapshot
+
+```yaml
+- generic [ref=e3]:
+  - navigation [ref=e5]:
+    - link "Bikeapelago" [ref=e8] [cursor=pointer]:
+      - /url: /
+      - img "Bikeapelago" [ref=e9]
+    - generic [ref=e10]:
+      - link [ref=e12] [cursor=pointer]:
+        - /url: /upload
+        - img [ref=e13]
+      - link "avatar" [ref=e16] [cursor=pointer]:
+        - /url: /athlete
+        - img "avatar" [ref=e17]
+        - img [ref=e18]
+  - main [ref=e20]:
+    - generic [ref=e21]:
+      - generic [ref=e22]:
+        - generic [ref=e25]: E2E Test Seed • test
+        - generic [ref=e26]:
+          - generic [ref=e27]:
+            - generic [ref=e28]: "7"
+            - generic [ref=e29]: Hidden
+          - generic [ref=e30]:
+            - generic [ref=e31]: "3"
+            - generic [ref=e32]: Available
+          - generic [ref=e33]:
+            - generic [ref=e34]: "0"
+            - generic [ref=e35]: Checked
+      - generic [ref=e37]:
+        - generic:
+          - generic:
+            - img
+          - button "Marker" [active] [ref=e49] [cursor=pointer]
+        - generic:
+          - generic:
+            - generic [ref=e50]:
+              - button "Zoom in" [ref=e51] [cursor=pointer]: +
+              - button "Zoom out" [ref=e52] [cursor=pointer]: −
+            - generic [ref=e54]:
+              - generic [ref=e55]:
+                - textbox "Start" [ref=e56]: My Location
+                - generic: ×
+              - generic [ref=e57]:
+                - textbox "End" [ref=e58]
+                - generic: ×
+              - button "+" [ref=e59] [cursor=pointer]
+      - generic [ref=e60]:
+        - button [ref=e61] [cursor=pointer]:
+          - img [ref=e62]
+        - generic [ref=e67]:
+          - generic [ref=e68]: Distance
+          - generic [ref=e69]: 0.00km
+        - generic [ref=e70]:
+          - generic [ref=e71]: Elev Gain
+          - generic [ref=e72]: 0.00m
+        - generic [ref=e73]:
+          - generic [ref=e74]: Est Time
+          - generic [ref=e75]: 0min
+        - textbox "Course Name" [ref=e77]: Archipelago Route
+        - button "Export GPX" [disabled] [ref=e78]
+      - generic [ref=e79]:
+        - button "Chat" [ref=e80] [cursor=pointer]:
+          - img [ref=e81]
+          - generic [ref=e83]: Chat
+        - button "Upload" [ref=e84] [cursor=pointer]:
+          - img [ref=e85]
+          - generic [ref=e88]: Upload
+        - button "Route" [ref=e89] [cursor=pointer]:
+          - img [ref=e90]
+          - generic [ref=e93]: Route
+```
