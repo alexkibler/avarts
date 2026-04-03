@@ -149,6 +149,9 @@ async function importSchema(adminToken: string): Promise<void> {
 				// Log relation errors but continue to retry
 				if (attempt === 0) {
 					console.log(`⟳ Relation pending for "${collDef.name}", will retry...`);
+					console.log(`  Error details: ${errData}`);
+				} else if (attempt === maxAttempts - 1) {
+					console.log(`✗ Final attempt failed for "${collDef.name}": ${errData}`);
 				}
 			}
 		}
