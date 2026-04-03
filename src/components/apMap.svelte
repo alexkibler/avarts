@@ -524,10 +524,10 @@
   .mockup-app-root {
     display: flex;
     flex-direction: column;
-    flex: 1;
+    height: calc(100vh - 96px);
     width: 100%;
-    min-height: 0;
   }
+
 
   /* ═══════════════════════════════════════════
      TOP NAV

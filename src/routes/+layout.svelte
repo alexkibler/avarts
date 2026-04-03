@@ -45,11 +45,11 @@
   });
 </script>
 
-<div class="min-h-screen bg-neutral-700 flex flex-col" data-sveltekit-prefetch>
+<div class="min-h-screen bg-neutral-700 flex flex-col {isGamePage ? 'h-screen' : ''}" data-sveltekit-prefetch>
   <div class="bg-neutral-800 border-b-neutral-600 border-b-2 sticky top-0 shrink-0">
     <Header data={data} {isGamePage} />
   </div>
-  <main class="flex-1 {isGamePage ? 'w-full flex flex-col' : 'max-w-screen md:max-w-7xl mx-auto w-full'}">
+  <main class="{isGamePage ? 'flex-1 flex flex-col w-full min-h-0' : 'flex-1 max-w-screen md:max-w-7xl mx-auto w-full'}">
     <slot />
   </main>
   <!-- <Footer /> -->

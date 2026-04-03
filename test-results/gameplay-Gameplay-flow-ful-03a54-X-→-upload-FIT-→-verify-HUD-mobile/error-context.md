@@ -17,28 +17,26 @@
           - generic [ref=e22]: "7"
           - generic [ref=e24]: "3"
           - generic [ref=e26]: "0"
-      - generic:
+      - generic [ref=e28]:
         - generic:
           - generic:
-            - generic:
-              - img
+            - img
+          - button "Marker" [active] [ref=e40] [cursor=pointer]
+        - generic:
           - generic:
-            - generic:
-              - generic [ref=e37]:
-                - button "Zoom in" [ref=e38] [cursor=pointer]: +
-                - button "Zoom out" [ref=e39] [cursor=pointer]: −
-              - generic [ref=e40]:
-                - generic [ref=e41]:
-                  - generic [ref=e42]:
-                    - textbox "Start" [ref=e43]
-                    - generic: ×
-                    - button "Use my current location" [ref=e44] [cursor=pointer]:
-                      - img [ref=e45]
-                  - generic [ref=e48]:
-                    - textbox "End" [ref=e49]
-                    - generic: ×
-                  - button "+" [ref=e50] [cursor=pointer]
-                - generic [ref=e51]: ×
+            - generic [ref=e41]:
+              - button "Zoom in" [ref=e42] [cursor=pointer]: +
+              - button "Zoom out" [ref=e43] [cursor=pointer]: −
+            - generic [ref=e44]:
+              - generic [ref=e45]:
+                - generic [ref=e46]:
+                  - textbox "Start" [ref=e47]: My Location
+                  - generic: ×
+                - generic [ref=e48]:
+                  - textbox "End" [ref=e49]
+                  - generic: ×
+                - button "+" [ref=e50] [cursor=pointer]
+              - generic [ref=e51]: ×
       - generic [ref=e52]:
         - button [ref=e53] [cursor=pointer]:
           - img [ref=e54]
