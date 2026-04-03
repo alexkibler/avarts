@@ -36,11 +36,117 @@
   let elevationControl: any = null;
   let myLocationMarker: any = null;
 
+  // ── Route Optimization ───────────────────────────────────────────────────────
+
+  function getDistance(coord1: {lat: number, lon: number}, coord2: {lat: number, lon: number}) {
+    const R = 6371; // Radius of the earth in km
+    const dLat = (coord2.lat - coord1.lat) * (Math.PI / 180);
+    const dLon = (coord2.lon - coord1.lon) * (Math.PI / 180);
+
+    const a =
+      Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+      Math.cos(coord1.lat * (Math.PI / 180)) * Math.cos(coord2.lat * (Math.PI / 180)) *
+      Math.sin(dLon / 2) * Math.sin(dLon / 2);
+
+    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+    return R * c;
+  }
+
+  function getPermutations(arr: any[]) {
+    if (arr.length <= 1) return [arr];
+    const result: any[] = [];
+
+    for (let i = 0; i < arr.length; i++) {
+      const current = arr[i];
+      const remaining = arr.slice(0, i).concat(arr.slice(i + 1));
+      const remainingPerms = getPermutations(remaining) as any[];
+
+      for (let j = 0; j < remainingPerms.length; j++) {
+        result.push([current].concat(remainingPerms[j]));
+      }
+    }
+    return result;
+  }
+
+  function findOptimalRoute(startPoint: {lat: number, lon: number}, destinations: any[]) {
+    const permutations = getPermutations(destinations);
+    let shortestDistance = Infinity;
+    let bestRoute: any[] = [];
+
+    for (const route of permutations) {
+      let currentDistance = 0;
+      let currentLocation = startPoint;
+
+      for (const stop of route) {
+        currentDistance += getDistance(currentLocation, stop);
+        currentLocation = stop;
+
+        if (currentDistance >= shortestDistance) break;
+      }
+
+      if (currentDistance < shortestDistance) {
+        shortestDistance = currentDistance;
+        bestRoute = route;
+      }
+    }
+
+    return {
+      optimalOrder: [startPoint, ...bestRoute],
+      totalDistanceKm: shortestDistance
+    };
+  }
+
+  function routeToAvailable() {
+    handleMyLocation((coords) => {
+      if (!coords) return;
+      if (!routingControl) return;
+
+      const availableNodes = nodes.filter(n => n.state === 'Available');
+
+      // Calculate straight-line distance from current location to all available nodes
+      const nodesWithDistance = availableNodes.map(node => ({
+        ...node,
+        distance: getDistance(coords, { lat: node.lat, lon: node.lon })
+      }));
+
+      // Sort by distance and take the closest 8 to avoid O(N!) performance issues
+      nodesWithDistance.sort((a, b) => a.distance - b.distance);
+      const nearestNodes = nodesWithDistance.slice(0, 8);
+
+      if (nearestNodes.length === 0) {
+        alert("No available nodes to route to!");
+        return;
+      }
+
+      const result = findOptimalRoute(coords, nearestNodes);
+
+      // Build waypoints for Leaflet Routing Machine
+      const wps = result.optimalOrder.map((point, index) => {
+        if (index === 0) {
+          return L.Routing.waypoint(L.latLng(point.lat, point.lon), "My Location");
+        } else {
+          return L.Routing.waypoint(L.latLng(point.lat, point.lon), `Check #${point.ap_location_id}`);
+        }
+      });
+
+      routingControl.setWaypoints(wps);
+
+      // Update marker styles for the selected route
+      result.optimalOrder.slice(1).forEach(node => {
+        const marker = markerMap.get(node.id);
+        if (marker) {
+          marker.setStyle(markerOptions(node.state, true));
+        }
+      });
+    });
+  }
+
   // Sidebar tab
   let activeTab: 'chat' | 'upload' | 'route' = 'chat';
   let panelOpen = false;
   let isTestMode = false;
   let locating = false;
+  let expandedAccordion: 'Available' | 'Checked' | 'Hidden' | null = 'Available';
   
   if (typeof window !== 'undefined') {
     isTestMode = (window as any).PLAYWRIGHT_TEST || false;
@@ -441,64 +547,64 @@
         renderPins();
       }
     });
-
-    function handleMyLocation(callback?: () => void) {
-      if (!navigator.geolocation) {
-        alert("Geolocation is not supported by your browser.");
-        callback?.();
-        return;
-      }
-      
-      locating = true;
-      const options = {
-        enableHighAccuracy: false, // false is often more reliable on desktop/WiFi
-        timeout: 10000,
-        maximumAge: 0
-      };
-
-      navigator.geolocation.getCurrentPosition((position) => {
-        locating = false;
-        callback?.();
-        const { latitude: lat, longitude: lon } = position.coords;
-        const latlng = L.latLng(lat, lon);
-        
-        if (!myLocationMarker) {
-          myLocationMarker = L.circleMarker(latlng, {
-            radius: 10,
-            fillColor: '#3498db',
-            color: '#fff',
-            weight: 3,
-            opacity: 1,
-            fillOpacity: 0.9,
-            className: 'my-location-marker'
-          }).addTo(map);
-
-          myLocationMarker.bindTooltip("My Location (click to route here)", { direction: 'top', offset: [0, -6] });
-
-          myLocationMarker.on('click', (e: any) => {
-            L.DomEvent.stopPropagation(e);
-            if (!routingControl) return;
-            const wps = routingControl.getWaypoints().filter((w: any) => w.latLng);
-            wps.push(L.Routing.waypoint(latlng, "My Location"));
-            routingControl.setWaypoints(wps);
-          });
-        } else {
-          myLocationMarker.setLatLng(latlng);
-        }
-        
-        map.setView(latlng, 15);
-      }, (err) => {
-        locating = false;
-        callback?.();
-        let msg = "Could not find your location.";
-        if (err.code === 1) msg = "Location permission denied. Please enable location access for this site.";
-        else if (err.code === 2) msg = "Position unavailable. Your device could not determine your location.";
-        else if (err.code === 3) msg = "Location request timed out. Try again?";
-        alert(msg);
-        console.error("Geolocation error:", err);
-      }, options);
-    }
   });
+
+  function handleMyLocation(callback?: (coords?: {lat: number, lon: number}) => void) {
+    if (!navigator.geolocation) {
+      alert("Geolocation is not supported by your browser.");
+      callback?.();
+      return;
+    }
+
+    locating = true;
+    const options = {
+      enableHighAccuracy: false, // false is often more reliable on desktop/WiFi
+      timeout: 10000,
+      maximumAge: 0
+    };
+
+    navigator.geolocation.getCurrentPosition((position) => {
+      locating = false;
+      const { latitude: lat, longitude: lon } = position.coords;
+      const latlng = L.latLng(lat, lon);
+
+      if (!myLocationMarker) {
+        myLocationMarker = L.circleMarker(latlng, {
+          radius: 10,
+          fillColor: '#3498db',
+          color: '#fff',
+          weight: 3,
+          opacity: 1,
+          fillOpacity: 0.9,
+          className: 'my-location-marker'
+        }).addTo(map);
+
+        myLocationMarker.bindTooltip("My Location (click to route here)", { direction: 'top', offset: [0, -6] });
+
+        myLocationMarker.on('click', (e: any) => {
+          L.DomEvent.stopPropagation(e);
+          if (!routingControl) return;
+          const wps = routingControl.getWaypoints().filter((w: any) => w.latLng);
+          wps.push(L.Routing.waypoint(latlng, "My Location"));
+          routingControl.setWaypoints(wps);
+        });
+      } else {
+        myLocationMarker.setLatLng(latlng);
+      }
+
+      map.setView(latlng, 15);
+      callback?.({lat, lon});
+    }, (err) => {
+      locating = false;
+      callback?.();
+      let msg = "Could not find your location.";
+      if (err.code === 1) msg = "Location permission denied. Please enable location access for this site.";
+      else if (err.code === 2) msg = "Position unavailable. Your device could not determine your location.";
+      else if (err.code === 3) msg = "Location request timed out. Try again?";
+      alert(msg);
+      console.error("Geolocation error:", err);
+    }, options);
+  }
 
   onDestroy(() => {
     unsubscribePb?.();
@@ -508,6 +614,14 @@
   function handleValidated() {
     clearRoute();
     dispatch('validated');
+  }
+
+  function handleNodeTap(node: any) {
+    if (node.state === 'Hidden') return;
+    const marker = markerMap.get(node.id);
+    if (marker) {
+      addNodeAsWaypoint(node, marker);
+    }
   }
 </script>
 
@@ -564,7 +678,37 @@
             </ol>
 
           </div>
+          <button on:click={routeToAvailable} class="btn-route-available" style="margin-bottom: 8px;">Route To Available</button>
           <button on:click={clearRoute} class="btn-clear-route">Clear Route</button>
+
+          <div class="accordions" style="margin-top: 16px;">
+            {#each ['Available', 'Checked', 'Hidden'] as state}
+              <div class="accordion">
+                <button class="accordion-header" on:click={() => expandedAccordion = expandedAccordion === state ? null : state}>
+                  <div style="display: flex; align-items: center; gap: 8px;">
+                    <div class="node-pin {state.toLowerCase()}"></div>
+                    {state} ({nodes.filter(n => n.state === state).length})
+                  </div>
+                  <svg style="transform: {expandedAccordion === state ? 'rotate(180deg)' : 'rotate(0)'}; transition: transform 0.2s;" xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg>
+                </button>
+                {#if expandedAccordion === state}
+                  <div class="accordion-body">
+                    {#each nodes.filter(n => n.state === state) as node}
+                      <!-- svelte-ignore a11y-click-events-have-key-events -->
+                      <!-- svelte-ignore a11y-no-static-element-interactions -->
+                      <div class="node-item" on:click={() => handleNodeTap(node)} style="cursor: {state === 'Hidden' ? 'default' : 'pointer'}; opacity: {state === 'Hidden' ? 0.5 : 1};">
+                        <span style="font-family: 'JetBrains Mono', monospace; font-size: 11px; opacity: 0.7; width: 30px;">#{node.ap_location_id}</span>
+                        <span style="flex: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;" title={node.name}>{node.name}</span>
+                      </div>
+                    {/each}
+                    {#if nodes.filter(n => n.state === state).length === 0}
+                      <div style="padding: 8px 12px; font-size: 11px; color: var(--text-muted); text-align: center;">No {state.toLowerCase()} nodes</div>
+                    {/if}
+                  </div>
+                {/if}
+              </div>
+            {/each}
+          </div>
         {/if}
       </div>
     </div>
@@ -1264,6 +1408,85 @@
     border-color: var(--red);
     color: var(--red);
   }
+
+  .btn-route-available {
+    width: 100%;
+    padding: 10px;
+    background: var(--orange-dim);
+    border: 1px solid var(--orange);
+    color: var(--orange);
+    font-family: 'Outfit', sans-serif;
+    font-size: 13px;
+    font-weight: 600;
+    border-radius: 6px;
+    cursor: pointer;
+    transition: all 0.15s;
+  }
+  .btn-route-available:hover {
+    background: var(--orange);
+    color: white;
+  }
+
+  /* Accordion styles */
+  .accordions {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+  .accordion {
+    background: var(--bg-elevated);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    overflow: hidden;
+  }
+  .accordion-header {
+    width: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 10px 12px;
+    background: none;
+    border: none;
+    color: var(--text-primary);
+    font-family: 'Outfit', sans-serif;
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background 0.15s;
+  }
+  .accordion-header:hover {
+    background: var(--bg-hover);
+  }
+  .accordion-body {
+    border-top: 1px solid var(--border);
+    display: flex;
+    flex-direction: column;
+    max-height: 250px;
+    overflow-y: auto;
+  }
+  .node-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 12px;
+    font-size: 12px;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+    transition: background 0.15s;
+  }
+  .node-item:last-child {
+    border-bottom: none;
+  }
+  .node-item:hover {
+    background: var(--bg-hover);
+  }
+  .node-pin {
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+  }
+  .node-pin.available { background: var(--orange); }
+  .node-pin.checked { background: var(--green); }
+  .node-pin.hidden { background: var(--text-muted); }
 
   /* Chat panel */
   .chat-messages {
