@@ -285,9 +285,9 @@
       } catch { /* not available */ }
     }
 
-    // Revert to using GraphHopper URL directly from environment
+    // Use local GraphHopper for development by default to avoid OSRM demo server
     const isPlayout = (typeof window !== 'undefined' && (window as any).PLAYWRIGHT_TEST);
-    const effectiveUrl = env.PUBLIC_GRAPHHOPPER_URL || (isPlayout ? 'https://routing.alexkibler.com/route' : null);
+    const effectiveUrl = env.PUBLIC_GRAPHHOPPER_URL || (isPlayout ? 'https://routing.alexkibler.com/route' : 'http://127.0.0.1:8990/route');
 
     const ghRouter = effectiveUrl
       ? (L.Routing as any).graphHopper(undefined, {
@@ -300,12 +300,59 @@
         })
       : null;
 
+    // Custom GraphHopper Geocoder Provider for leaflet-control-geocoder
+    const GraphHopperGeocoder = (L as any).Class.extend({
+      options: {
+        serviceUrl: 'https://graphhopper.com/api/1/geocode',
+      },
+      initialize: function(apiKey: string, options: any) {
+        this._apiKey = apiKey;
+        (L as any).Util.setOptions(this, options);
+      },
+      geocode: function(query: string, cb: any, context: any) {
+        // Use our internal API proxy to avoid CORS issues with local/different ports
+        const url = `/api/geocode?q=${encodeURIComponent(query)}&limit=5&locale=en`;
+        
+        console.log('[Geocoder] Geocoding:', query);
+        fetch(url)
+          .then(res => res.json())
+          .then(data => {
+            const results = (data.hits || []).map((hit: any) => {
+              return {
+                name: hit.name,
+                center: L.latLng(hit.point.lat, hit.point.lng),
+                bbox: L.latLngBounds(L.latLng(hit.point.lat, hit.point.lng), L.latLng(hit.point.lat, hit.point.lng)),
+                properties: hit
+              };
+            });
+            cb.call(context, results);
+          })
+          .catch(err => {
+            console.error('[Geocoder] Geocoding error:', err);
+            cb.call(context, []);
+          });
+      },
+      suggest: function(query: string, cb: any, context: any) {
+        // suggest() is used for as-you-type autocomplete suggestions.
+        // We add a 300ms debounce to prevent spamming the geocoding service.
+        if (this._timer) clearTimeout(this._timer);
+        this._timer = setTimeout(() => {
+          console.log('[Geocoder] Suggesting:', query);
+          this.geocode(query, cb, context);
+        }, 300);
+      }
+    });
+
+    const geocoder = new GraphHopperGeocoder(graphApi, {
+      ...(effectiveUrl ? { serviceUrl: effectiveUrl.replace('/route', '/geocode') } : {})
+    });
+
     routingControl = (L.Routing as any).control({
       router: ghRouter,
       routeWhileDragging: true,
       showAlternatives: false,
       position: 'topleft',
-      geocoder: (L as any).Control.Geocoder.nominatim(),
+      geocoder: geocoder,
       lineOptions: {
         styles: [{ color: '#f97316', opacity: 0.8, weight: 5 }],
       },
@@ -979,9 +1026,10 @@
     padding: 0 16px;
     gap: 20px;
     flex-shrink: 0;
-    overflow-x: auto;
+    overflow-x: hidden;
     position: relative;
     z-index: 1;
+    scrollbar-width: none; /* Firefox */
   }
   .route-stats::-webkit-scrollbar { display: none; }
   .stat {
@@ -1465,8 +1513,8 @@
     max-width: 100% !important;
   }
 
-  /* Hide everything in the row by default */
-  :global(.leaflet-routing-geocoder > *) {
+  /* Hide everything in the row by default EXCEPT the results dropdown */
+  :global(.leaflet-routing-geocoder > :not(input):not(.leaflet-routing-remove-waypoint):not(.leaflet-control-geocoder-alternatives)) {
     display: none !important;
   }
 
@@ -1488,13 +1536,17 @@
     display: flex;
     flex-direction: column;
     gap: 10px;
+    overflow: hidden !important;
+    scrollbar-width: none !important;
   }
+  :global(.leaflet-routing-geocoders::-webkit-scrollbar) { display: none !important; }
   :global(.leaflet-routing-geocoder) {
     display: flex !important;
     align-items: center !important;
     background: rgba(255, 255, 255, 0.07) !important;
     border: 1px solid rgba(255, 255, 255, 0.08) !important;
     border-radius: 10px !important;
+    position: relative !important;
     transition: border-color 0.15s, background 0.15s !important;
     padding-right: 0 !important;
   }
@@ -1544,6 +1596,57 @@
   :global(.leaflet-routing-remove-waypoint:active) {
     background-color: rgba(255, 80, 80, 0.35) !important;
     transform: scale(0.93) !important;
+  }
+
+  /* Geocoder Suggestions Dropdown */
+  :global(.leaflet-control-geocoder-alternatives) {
+    display: block !important;
+    background: rgba(30, 30, 32, 0.95) !important;
+    backdrop-filter: blur(20px) !important;
+    -webkit-backdrop-filter: blur(20px) !important;
+    border: 1px solid rgba(255, 255, 255, 0.12) !important;
+    border-radius: 12px !important;
+    margin-top: 8px !important;
+    padding: 6px !important;
+    list-style: none !important;
+    max-height: 280px !important;
+    overflow-y: auto !important;
+    box-shadow: 0 12px 48px rgba(0, 0, 0, 0.6) !important;
+    position: absolute !important;
+    top: 100% !important;
+    width: 100% !important;
+    left: 0 !important;
+    z-index: 1000 !important;
+    pointer-events: auto !important;
+  }
+
+  :global(.leaflet-control-geocoder-alternatives li) {
+    padding: 12px 14px !important;
+    cursor: pointer !important;
+    font-size: 13px !important;
+    color: rgba(255, 255, 255, 0.75) !important;
+    transition: all 0.15s ease !important;
+    border-radius: 8px !important;
+    margin-bottom: 2px !important;
+    line-height: 1.4 !important;
+    white-space: normal !important;
+    word-break: break-word !important;
+  }
+
+  :global(.leaflet-control-geocoder-alternatives li:last-child) {
+    margin-bottom: 0 !important;
+  }
+
+  :global(.leaflet-control-geocoder-alternatives li:hover),
+  :global(.leaflet-control-geocoder-alternatives li.leaflet-control-geocoder-selected) {
+    background: rgba(255, 255, 255, 0.1) !important;
+    color: white !important;
+    padding-left: 18px !important;
+  }
+
+  :global(.leaflet-control-geocoder-alternatives li strong) {
+    color: var(--orange) !important;
+    font-weight: 600 !important;
   }
 
   :global(.leaflet-routing-add-waypoint) {
