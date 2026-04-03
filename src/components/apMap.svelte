@@ -520,6 +520,13 @@
     flex-direction: column;
   }
 
+  .mockup-app-root {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    width: 100%;
+  }
+
   /* ═══════════════════════════════════════════
      TOP NAV
      ═══════════════════════════════════════════ */
@@ -732,6 +739,7 @@
     flex: 1;
     position: relative;
     overflow: hidden;
+    min-height: 0;
   }
 
   /* Map fills entire area */
@@ -896,6 +904,8 @@
     gap: 20px;
     flex-shrink: 0;
     overflow-x: auto;
+    position: relative;
+    z-index: 1;
   }
   .route-stats::-webkit-scrollbar { display: none; }
   .stat {
@@ -976,6 +986,11 @@
     align-items: stretch;
     flex-shrink: 0;
     z-index: 2000;
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    width: 100%;
   }
   .bottomnav-tab {
     flex: 1;

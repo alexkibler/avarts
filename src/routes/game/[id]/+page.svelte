@@ -107,33 +107,16 @@
     <p class="text-neutral-400 text-lg">Loading session…</p>
   </div>
 {:else}
-  <!-- ── Session header bar ─────────────────────────────────────────── -->
-  <div class="bg-neutral-800 border-b border-neutral-600 px-4 py-2 flex flex-wrap items-center gap-4 text-sm">
-    <div>
-      <span class="text-neutral-400">Seed: </span>
-      <span class="text-white font-semibold">{session.ap_seed_name}</span>
+  <!-- ── Session header bar (compact) ─────────────────────────────────────────── -->
+  <div class="bg-neutral-800 border-b border-neutral-600 px-3 py-1 flex items-center gap-3 text-xs">
+    <span class="text-orange-400 font-semibold">{session.ap_seed_name}</span>
+    <span class="text-neutral-500">•</span>
+    <span class="text-neutral-400">{session.ap_slot_name}</span>
+    <div class="ml-auto flex gap-2">
+      <span class="text-neutral-500">{nodeStats.hidden}</span>
+      <span class="text-orange-400">{nodeStats.available}</span>
+      <span class="text-green-400">{nodeStats.checked}</span>
     </div>
-    {#if activeConnectionOptions}
-      <div>
-        <span class="text-neutral-400">Server: </span>
-        <span class="text-white">{activeConnectionOptions.url}</span>
-      </div>
-    {/if}
-    <div>
-      <span class="text-neutral-400">Slot: </span>
-      <span class="text-white">{session.ap_slot_name}</span>
-    </div>
-    <div class="ml-auto flex gap-4">
-      <span class="text-neutral-400">Hidden: <strong class="text-white">{nodeStats.hidden}</strong></span>
-      <span class="text-orange-400">Available: <strong>{nodeStats.available}</strong></span>
-      <span class="text-green-400">Checked: <strong>{nodeStats.checked}</strong></span>
-    </div>
-    {#if isConnected}
-      <button on:click={handleDisconnect} class="ml-2 text-xs text-red-400 hover:text-red-300 border border-red-800 rounded px-2 py-0.5">
-        Disconnect
-      </button>
-      <span class="text-green-400 text-xs font-semibold">● Connected</span>
-    {/if}
   </div>
 
   {#if !activeConnectionOptions}
@@ -195,7 +178,7 @@
     </div>
   {:else}
     <!-- ── Game layout: full-page ApMap (which now includes sidebar and bottom bar) ── -->
-    <div class="flex flex-col h-[calc(100vh-96px)]">
+    <div class="flex flex-col h-[calc(100vh-26px)]">
       <ApMap
         bind:this={apMapRef}
         bind:nodeStats
@@ -208,3 +191,10 @@
     </div>
   {/if}
 {/if}
+
+<style>
+  :global(html, body) {
+    overflow: hidden;
+    height: 100%;
+  }
+</style>
