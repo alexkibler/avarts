@@ -73,14 +73,12 @@ describe('POST /create (route creation endpoint)', () => {
 	});
 
 	/**
-	 * BUG #5 + BUG #6: The getList filter uses `formData.user` (always undefined)
-	 * and passes filter as a 4th arg (silently ignored by the PocketBase SDK).
-	 * The endpoint returns the most recently updated route by ANY user, not the
-	 * one just created by the authenticated user.
+	 * FIXED: The getList filter now correctly uses formData.get('user')
+	 * and merges the filter and expand options into the 3rd argument.
 	 */
-	it('BUG: filter uses formData.user which is undefined, so filter is user = "undefined"', async () => {
+	it('correctly sets the filter using formData.get("user") in the 3rd argument', async () => {
 		let capturedGetListArgs: any[] = [];
-		const routeId = 'route_buggy';
+		const routeId = 'route_fixed';
 		const pb = {
 			collection: vi.fn(() => ({
 				create: vi.fn().mockResolvedValue({}),
@@ -100,11 +98,10 @@ describe('POST /create (route creation endpoint)', () => {
 
 		await POST({ request, locals } as any);
 
-		// BUG: third arg has no filter (or wrong filter); fourth arg is ignored
-		// If fixed, the third arg should include filter: 'user = "user123"'
 		const thirdArg = capturedGetListArgs[2];
-		expect(thirdArg).not.toHaveProperty('filter'); // BUG: filter is NOT in the options
-		// When fixed: expect(thirdArg.filter).toBe('user = "user123"')
+		expect(thirdArg.filter).toBe('user = "user123"');
+		expect(thirdArg.expand).toBe('user');
+		expect(capturedGetListArgs.length).toBe(3);
 	});
 });
 
@@ -181,11 +178,12 @@ describe('POST /update (route update endpoint)', () => {
 	});
 
 	/**
-	 * BUG #7: Same as BUG #5 — formData.user is undefined (not 'user789').
+	 * FIXED: The getList filter now correctly uses formData.get('user')
+	 * and merges the filter and expand options into the 3rd argument.
 	 */
-	it('BUG: filter uses formData.user (undefined) instead of formData.get("user")', async () => {
+	it('correctly sets the filter using formData.get("user") in the 3rd argument', async () => {
 		let capturedGetListArgs: any[] = [];
-		const routeId = 'route_buggy_update';
+		const routeId = 'route_fixed_update';
 		const pb = {
 			collection: vi.fn(() => ({
 				update: vi.fn().mockResolvedValue({}),
@@ -205,9 +203,9 @@ describe('POST /update (route update endpoint)', () => {
 
 		await POST({ request, locals } as any);
 
-		// BUG: filter is not in the 3rd arg options object
 		const thirdArg = capturedGetListArgs[2];
-		expect(thirdArg).not.toHaveProperty('filter');
-		// When fixed: expect(thirdArg.filter).toContain('user123')
+		expect(thirdArg.filter).toBe('user = "user123"');
+		expect(thirdArg.expand).toBe('user');
+		expect(capturedGetListArgs.length).toBe(3);
 	});
 });
