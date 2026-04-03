@@ -540,6 +540,8 @@
     padding: 0 12px;
     gap: 12px;
     flex-shrink: 0;
+    flex-wrap: nowrap;
+    overflow: hidden;
     z-index: 100;
   }
 
@@ -581,6 +583,9 @@
     color: var(--text-primary);
     font-weight: 500;
     white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    min-width: 0;
   }
   .status-pill .server-label {
     font-family: 'JetBrains Mono', monospace;

@@ -166,7 +166,7 @@
     </div>
   {:else}
     <!-- ── Game layout: full-page ApMap (which now includes sidebar and bottom bar) ── -->
-    <div class="flex flex-col h-screen">
+    <div class="flex flex-col h-full">
       <ApMap
         bind:this={apMapRef}
         bind:nodeStats
