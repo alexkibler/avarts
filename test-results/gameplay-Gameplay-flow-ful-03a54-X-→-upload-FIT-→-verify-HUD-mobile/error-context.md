@@ -1,0 +1,65 @@
+# Page snapshot
+
+```yaml
+- generic [ref=e3]:
+  - navigation [ref=e5]:
+    - link "Bikeapelago" [ref=e8] [cursor=pointer]:
+      - /url: /
+      - img "Bikeapelago" [ref=e9]
+    - link "avatar" [ref=e12] [cursor=pointer]:
+      - /url: /athlete
+      - img "avatar" [ref=e13]
+  - main [ref=e14]:
+    - generic [ref=e15]:
+      - generic [ref=e16]:
+        - generic [ref=e19]: E2E Test Seed • test
+        - generic [ref=e20]:
+          - generic [ref=e22]: "7"
+          - generic [ref=e24]: "3"
+          - generic [ref=e26]: "0"
+      - generic:
+        - generic:
+          - generic:
+            - generic:
+              - img
+          - generic:
+            - generic:
+              - generic [ref=e37]:
+                - button "Zoom in" [ref=e38] [cursor=pointer]: +
+                - button "Zoom out" [ref=e39] [cursor=pointer]: −
+              - generic [ref=e40]:
+                - generic [ref=e41]:
+                  - generic [ref=e42]:
+                    - textbox "Start" [ref=e43]
+                    - generic: ×
+                    - button "Use my current location" [ref=e44] [cursor=pointer]:
+                      - img [ref=e45]
+                  - generic [ref=e48]:
+                    - textbox "End" [ref=e49]
+                    - generic: ×
+                  - button "+" [ref=e50] [cursor=pointer]
+                - generic [ref=e51]: ×
+      - generic [ref=e52]:
+        - button [ref=e53] [cursor=pointer]:
+          - img [ref=e54]
+        - generic [ref=e59]:
+          - generic [ref=e60]: Distance
+          - generic [ref=e61]: 0.00km
+        - generic [ref=e62]:
+          - generic [ref=e63]: Elev Gain
+          - generic [ref=e64]: 0.00m
+        - generic [ref=e65]:
+          - generic [ref=e66]: Est Time
+          - generic [ref=e67]: 0min
+        - button "Export GPX" [disabled] [ref=e68]
+      - generic [ref=e69]:
+        - button "Chat" [ref=e70] [cursor=pointer]:
+          - img [ref=e71]
+          - generic [ref=e73]: Chat
+        - button "Upload" [ref=e74] [cursor=pointer]:
+          - img [ref=e75]
+          - generic [ref=e78]: Upload
+        - button "Route" [ref=e79] [cursor=pointer]:
+          - img [ref=e80]
+          - generic [ref=e83]: Route
+```

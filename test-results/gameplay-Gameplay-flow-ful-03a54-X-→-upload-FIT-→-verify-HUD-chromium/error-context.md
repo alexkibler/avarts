@@ -15,59 +15,59 @@
         - img "avatar" [ref=e17]
         - img [ref=e18]
   - main [ref=e20]:
-    - generic [ref=e22]:
-      - generic [ref=e23]:
-        - generic [ref=e26]: E2E Test Seed • test
-        - generic [ref=e27]:
-          - generic [ref=e28]:
-            - generic [ref=e29]: "7"
-            - generic [ref=e30]: Hidden
-          - generic [ref=e31]:
-            - generic [ref=e32]: "3"
-            - generic [ref=e33]: Available
-          - generic [ref=e34]:
-            - generic [ref=e35]: "0"
-            - generic [ref=e36]: Checked
-      - generic [ref=e38]:
+    - generic [ref=e21]:
+      - generic [ref=e22]:
+        - generic [ref=e25]: E2E Test Seed • test
+        - generic [ref=e26]:
+          - generic [ref=e27]:
+            - generic [ref=e28]: "7"
+            - generic [ref=e29]: Hidden
+          - generic [ref=e30]:
+            - generic [ref=e31]: "3"
+            - generic [ref=e32]: Available
+          - generic [ref=e33]:
+            - generic [ref=e34]: "0"
+            - generic [ref=e35]: Checked
+      - generic [ref=e37]:
         - generic:
           - generic:
             - img
-          - button "Marker" [active] [ref=e50] [cursor=pointer]
+          - button "Marker" [active] [ref=e49] [cursor=pointer]
         - generic:
           - generic:
-            - generic [ref=e51]:
-              - button "Zoom in" [ref=e52] [cursor=pointer]: +
-              - button "Zoom out" [ref=e53] [cursor=pointer]: −
-            - generic [ref=e55]:
-              - generic [ref=e56]:
-                - textbox "Start" [ref=e57]: My Location
+            - generic [ref=e50]:
+              - button "Zoom in" [ref=e51] [cursor=pointer]: +
+              - button "Zoom out" [ref=e52] [cursor=pointer]: −
+            - generic [ref=e54]:
+              - generic [ref=e55]:
+                - textbox "Start" [ref=e56]: My Location
                 - generic: ×
-              - generic [ref=e58]:
-                - textbox "End" [ref=e59]
+              - generic [ref=e57]:
+                - textbox "End" [ref=e58]
                 - generic: ×
-              - button "+" [ref=e60] [cursor=pointer]
-      - generic [ref=e61]:
-        - button [ref=e62] [cursor=pointer]:
-          - img [ref=e63]
-        - generic [ref=e68]:
-          - generic [ref=e69]: Distance
-          - generic [ref=e70]: 0.00km
-        - generic [ref=e71]:
-          - generic [ref=e72]: Elev Gain
-          - generic [ref=e73]: 0.00m
-        - generic [ref=e74]:
-          - generic [ref=e75]: Est Time
-          - generic [ref=e76]: 0min
-        - textbox "Course Name" [ref=e78]: Archipelago Route
-        - button "Export GPX" [disabled] [ref=e79]
-      - generic [ref=e80]:
-        - button "Chat" [ref=e81] [cursor=pointer]:
-          - img [ref=e82]
-          - generic [ref=e84]: Chat
-        - button "Upload" [ref=e85] [cursor=pointer]:
-          - img [ref=e86]
-          - generic [ref=e89]: Upload
-        - button "Route" [ref=e90] [cursor=pointer]:
-          - img [ref=e91]
-          - generic [ref=e94]: Route
+              - button "+" [ref=e59] [cursor=pointer]
+      - generic [ref=e60]:
+        - button [ref=e61] [cursor=pointer]:
+          - img [ref=e62]
+        - generic [ref=e67]:
+          - generic [ref=e68]: Distance
+          - generic [ref=e69]: 0.00km
+        - generic [ref=e70]:
+          - generic [ref=e71]: Elev Gain
+          - generic [ref=e72]: 0.00m
+        - generic [ref=e73]:
+          - generic [ref=e74]: Est Time
+          - generic [ref=e75]: 0min
+        - textbox "Course Name" [ref=e77]: Archipelago Route
+        - button "Export GPX" [disabled] [ref=e78]
+      - generic [ref=e79]:
+        - button "Chat" [ref=e80] [cursor=pointer]:
+          - img [ref=e81]
+          - generic [ref=e83]: Chat
+        - button "Upload" [ref=e84] [cursor=pointer]:
+          - img [ref=e85]
+          - generic [ref=e88]: Upload
+        - button "Route" [ref=e89] [cursor=pointer]:
+          - img [ref=e90]
+          - generic [ref=e93]: Route
 ```

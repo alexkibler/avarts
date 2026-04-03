@@ -166,19 +166,17 @@
     </div>
   {:else}
     <!-- ── Game layout: full-page ApMap (which now includes sidebar and bottom bar) ── -->
-    <div class="flex flex-col h-full">
-      <ApMap
-        bind:this={apMapRef}
-        bind:nodeStats
-        sessionId={session.id}
-        sessionName={session.ap_seed_name}
-        apServerUrl={session.ap_server_url}
-        centerLat={session.center_lat}
-        centerLon={session.center_lon}
-        radius={session.radius}
-        on:validated={handleValidated}
-      />
-    </div>
+    <ApMap
+      bind:this={apMapRef}
+      bind:nodeStats
+      sessionId={session.id}
+      sessionName={session.ap_seed_name}
+      apServerUrl={session.ap_server_url}
+      centerLat={session.center_lat}
+      centerLon={session.center_lon}
+      radius={session.radius}
+      on:validated={handleValidated}
+    />
   {/if}
 {/if}
 
