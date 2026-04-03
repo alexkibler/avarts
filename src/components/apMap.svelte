@@ -9,6 +9,7 @@
 
   import ChatClient from '$components/ChatClient.svelte';
   import ApDropzone from '$components/apDropzone.svelte';
+  import { activeGameTab } from '$lib/stores';
 
   import '@raruto/leaflet-elevation/src/index.css';
 
@@ -43,13 +44,17 @@
     isTestMode = (window as any).PLAYWRIGHT_TEST || false;
   }
 
-  function toggleTab(tab: 'chat' | 'upload' | 'route') {
-    if (activeTab === tab && panelOpen) {
-      panelOpen = false;
-    } else {
-      activeTab = tab;
+  $: {
+    if ($activeGameTab) {
+      activeTab = $activeGameTab;
       panelOpen = true;
+    } else {
+      panelOpen = false;
     }
+  }
+
+  function toggleTab(tab: 'chat' | 'upload' | 'route') {
+    activeGameTab.update(current => current === tab ? null : tab);
   }
 
   // Route stats
@@ -467,21 +472,6 @@
     <button on:click={exportToGPX} disabled={!route} class="btn-export mobile-hud-export" style="opacity: {route ? 1 : 0.4}; cursor: {route ? 'pointer' : 'not-allowed'}">Export GPX</button>
   </div>
 
-  <!-- BOTTOM NAV -->
-  <div class="bottomnav">
-    <button class="bottomnav-tab {activeTab === 'chat' && panelOpen ? 'active' : ''}" on:click={() => toggleTab('chat')}>
-      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
-      <span class="tab-label">Chat</span>
-    </button>
-    <button class="bottomnav-tab {activeTab === 'upload' && panelOpen ? 'active' : ''}" on:click={() => toggleTab('upload')}>
-      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" x2="12" y1="3" y2="15"/></svg>
-      <span class="tab-label">Upload</span>
-    </button>
-    <button class="bottomnav-tab {activeTab === 'route' && panelOpen ? 'active' : ''}" on:click={() => toggleTab('route')}>
-      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3v18h18"/><path d="m19 9-5 5-4-4-3 3"/></svg>
-      <span class="tab-label">Route</span>
-    </button>
-  </div>
 </div>
 
 
@@ -524,7 +514,7 @@
   .mockup-app-root {
     display: flex;
     flex-direction: column;
-    height: calc(100vh - 96px);
+    height: 100%;
     width: 100%;
   }
 
@@ -1330,6 +1320,9 @@
     margin-bottom: 10px !important;
   }
   @media (max-width: 480px) {
+    :global(.leaflet-control-zoom) {
+      display: none !important;
+    }
     :global(.elevation-control) {
       max-height: 100px !important;
       font-size: 10px !important;

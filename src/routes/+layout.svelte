@@ -4,6 +4,7 @@
   import { browser } from '$app/environment';
   import { page } from '$app/stores';
   import Header from "./header.svelte";
+  import BottomNav from "$components/BottomNav.svelte";
   import { userCookie } from "$lib/stores"
   import { pb } from "$lib/pb"
   import type { UserData } from "$lib/types";
@@ -49,10 +50,10 @@
   <div class="bg-neutral-800 border-b-neutral-600 border-b-2 sticky top-0 shrink-0">
     <Header data={data} {isGamePage} />
   </div>
-  <main class="{isGamePage ? 'flex-1 flex flex-col w-full min-h-0' : 'flex-1 max-w-screen md:max-w-7xl mx-auto w-full'}">
+  <main class="{isGamePage ? 'flex-1 flex flex-col w-full min-h-0' : 'flex-1 max-w-screen md:max-w-7xl mx-auto w-full'} pb-20 md:pb-0">
     <slot />
   </main>
-  <!-- <Footer /> -->
+  <BottomNav />
 </div>
 
 <style>

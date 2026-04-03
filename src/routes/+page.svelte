@@ -109,23 +109,21 @@
                       location={location}/>
           {/each}
         {:else}
-          <div class="mb-5 bg-neutral-800">
-            <div class="flex flex-col m-5">
-              <div class="flex">
-                <h2 class="text-white text-2xl font-semibold">
-                  Upload your first activity
-                </h2>
-              </div>
-              <div class="mt-3">
-                <a href="/upload">
-                  <button class="p-3 bg-orange-600 text-white font-semibold rounded-md">
-                    Upload activity
-                  </button>
-                </a>
-              </div>
-            </div>
+          <div class="mb-5 bg-neutral-800 p-8 rounded-lg text-center border-2 border-dashed border-neutral-600">
+            <h2 class="text-white text-2xl font-semibold mb-4">
+              No activities yet!
+            </h2>
+            <p class="text-neutral-400 mb-6">
+              Start your first game to see your activities and progress here.
+            </p>
+            <a href="/game">
+              <button class="px-6 py-3 bg-orange-600 text-white font-bold rounded-lg hover:bg-orange-700 transition-colors uppercase tracking-wider">
+                Start Playing
+              </button>
+            </a>
           </div>
         {/if}
+
       </div>
         <div class="w-1/4 m-5 hidden lg:block">
           <Statistics records={totals} month={month} year={year}/>
