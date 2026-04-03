@@ -107,18 +107,6 @@
     <p class="text-neutral-400 text-lg">Loading session…</p>
   </div>
 {:else}
-  <!-- ── Session header bar (compact) ─────────────────────────────────────────── -->
-  <div class="bg-neutral-800 border-b border-neutral-600 px-3 py-1 flex items-center gap-3 text-xs">
-    <span class="text-orange-400 font-semibold">{session.ap_seed_name}</span>
-    <span class="text-neutral-500">•</span>
-    <span class="text-neutral-400">{session.ap_slot_name}</span>
-    <div class="ml-auto flex gap-2">
-      <span class="text-neutral-500">{nodeStats.hidden}</span>
-      <span class="text-orange-400">{nodeStats.available}</span>
-      <span class="text-green-400">{nodeStats.checked}</span>
-    </div>
-  </div>
-
   {#if !activeConnectionOptions}
     <!-- ── Connect form ──────────────────────────────────────────────── -->
     <div class="flex items-center justify-center min-h-[calc(100vh-160px)]">
@@ -178,7 +166,7 @@
     </div>
   {:else}
     <!-- ── Game layout: full-page ApMap (which now includes sidebar and bottom bar) ── -->
-    <div class="flex flex-col h-[calc(100vh-26px)]">
+    <div class="flex flex-col h-screen">
       <ApMap
         bind:this={apMapRef}
         bind:nodeStats

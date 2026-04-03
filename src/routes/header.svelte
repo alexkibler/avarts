@@ -4,6 +4,7 @@
   import type { UserData } from '$lib/types';
 
   export let data: UserData;
+  export let isGamePage = false;
 
   let url: string;
   if (env.PUBLIC_DB_URL) {
@@ -27,7 +28,7 @@
         <svg xmlns="http://www.w3.org/2000/svg" width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="p-2 text-neutral-500 hover:text-neutral-200"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
       </button> -->
     </div>
-    {#if data.user}
+    {#if data.user && !isGamePage}
     <div class="flex flex-row h-1/2 md:h-full">
       <div class="flex items-center pl-4 pr-2 border-neutral-500 border-e-2 h-full {currentPage === '/' ? 'border-b-orange-600 border-b-2' : ''}">
         <a href="/" class="flex items-center group">
@@ -73,10 +74,12 @@
           <svg class="text-neutral-500 group-hover:text-orange-500 transition-colors duration-300 hidden md:block" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"/></svg>
         </a>
       </div>
+      {#if !isGamePage}
       <form action="/logout" method="POST" class="flex px-4 h-1/2 md:h-full pl-5 md:pl-4">
         <button type="submit" class="text-neutral-500 hover:text-orange-500">
           <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M13 4h3a2 2 0 0 1 2 2v14"/><path d="M2 20h3"/><path d="M13 20h9"/><path d="M10 12v.01"/><path d="M13 4.562v16.157a1 1 0 0 1-1.242.97L5 20V5.562a2 2 0 0 1 1.515-1.94l4-1A2 2 0 0 1 13 4.561Z"/></svg>
       </form>
+      {/if}
     </div>
   {/if}
 </nav>
