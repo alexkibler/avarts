@@ -67,6 +67,15 @@ export async function createGameSession(
 	userId:     string,
 	opts:       CreateSessionOpts = {}
 ): Promise<string> {
+	// Verify user exists before creating session
+	const userCheck = await fetch(`${PB_URL}/api/collections/users/records/${userId}`, {
+		headers: { Authorization: adminToken },
+	});
+
+	if (!userCheck.ok) {
+		throw new Error(`User ${userId} not found (${userCheck.status}): ${await userCheck.text()}`);
+	}
+
 	const body = {
 		user:          userId,
 		ap_seed_name:  opts.ap_seed_name ?? 'E2E Test Seed',
@@ -87,6 +96,7 @@ export async function createGameSession(
 	if (!res.ok) {
 		const text = await res.text();
 		console.error('createGameSession failed. Status:', res.status);
+		console.error('User ID:', userId);
 		console.error('Request body:', JSON.stringify(body, null, 2));
 		console.error('Response:', text);
 		throw new Error(`createGameSession failed (${res.status}): ${text}`);

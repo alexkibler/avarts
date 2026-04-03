@@ -655,11 +655,13 @@ test.describe('Dashboard Statistics', () => {
 	test('statistics sidebar is visible on the dashboard', async ({ page }) => {
 		await page.goto('/');
 		await page.waitForLoadState('networkidle');
-		// Statistics component renders on the right side on large screens
-		// With a desktop viewport it should be present
-		await expect(
-			page.locator('text=Upload your first activity').or(page.locator('[class*="statistics"]')).first()
-		).toBeVisible({ timeout: 10000 });
+		// Wait a bit more for React/Svelte components to fully render
+		await page.waitForTimeout(500);
+		// Either show the empty state or the statistics panel
+		// The statistics panel typically has role="complementary" or a heading
+		const emptyState = page.locator('text=Upload your first activity');
+		const statsPanel = page.locator('[role="complementary"]').or(page.locator('h2', { hasText: /Statistics|Summary/ }));
+		await expect(emptyState.or(statsPanel).first()).toBeVisible({ timeout: 10000 });
 	});
 });
 
