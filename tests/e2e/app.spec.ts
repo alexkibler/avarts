@@ -345,6 +345,7 @@ test.describe('Activity Upload', () => {
 
 	test('all sport types are available in the upload form', async ({ page }) => {
 		await page.goto('/upload');
+		await page.waitForLoadState('networkidle');
 		const options = await page.locator('select[name="sport"] option').allTextContents();
 		expect(options).toContain('Cycling');
 		expect(options).toContain('Running');
@@ -400,9 +401,9 @@ test.describe('Activity View and Edit', () => {
 
 	test('activity detail page shows sport type', async ({ page }) => {
 		await page.goto(`/activities/${activityId}`);
-		// The activity detail page renders sport as 'Ride', 'Run', or 'Swim' (not the raw value)
+		// The activity detail page renders sport as 'Ride', 'Run', or 'Swim' in a span after the user name
 		await expect(
-			page.locator('text=Ride').or(page.locator('text=cycling')).or(page.locator('text=Cycling'))
+			page.locator('span', { hasText: /^- (Ride|Run|Swim)$/ })
 		).toBeVisible({ timeout: 10000 });
 	});
 
