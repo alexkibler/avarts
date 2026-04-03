@@ -1,64 +1,70 @@
 # CI/CD Smoke Testing Guide
 
-This guide explains how to run the Bikeapelago E2E suite as a smoke test against a public URL in a CI/CD pipeline (e.g., GitHub Actions).
+This guide explains how to run the Bikeapelago E2E suite against a live deployment from a cloud agent session (Jules, Claude Code cloud, GitHub Actions, etc.).
 
-## Prerequisites
+## How It Works
 
-1.  **Public URL**: Your site must be accessible from the internet (or your CI runner).
-2.  **Smoke Test Account**: Create a dedicated user (e.g., `smoketest`) and a game session on your public site.
-3.  **Secrets**: Store your PocketBase admin credentials in your CI provider (if you need to reset the DB for the smoke test account).
+The test suite is fully self-contained. On each run it:
+1. Creates a fresh test user in PocketBase
+2. Creates a game session with 10 seeded map nodes (Pittsburgh coordinates)
+3. Runs all tests
+4. Deletes the test user and all associated data (cascade)
+
+No pre-seeded accounts, no `SKIP_DB_RESET`, no manual setup required.
 
 ## Environment Variables
 
-| Variable | Description |
-|----------|-------------|
-| `BASE_URL` | The public URL of your site (e.g., `https://bikeapelago.com`). Disables local `webServer`. |
-| `SKIP_DB_RESET` | Set to `true` to skip the `resetGameDb()` call. Crucial for non-destructive production tests. |
-| `TEST_ADMIN_EMAIL` | PocketBase admin email (required if `SKIP_DB_RESET=false`). |
-| `TEST_ADMIN_PASSWORD` | PocketBase admin password (required if `SKIP_DB_RESET=false`). |
+| Variable | Description | Required |
+|----------|-------------|----------|
+| `BASE_URL` | Public URL of the SvelteKit app | Yes |
+| `TEST_PB_URL` | Public URL of PocketBase API | Yes |
+| `TEST_ADMIN_EMAIL` | PocketBase admin email | Yes |
+| `TEST_ADMIN_PASSWORD` | PocketBase admin password | Yes |
+
+## Running from a Cloud Agent
+
+```bash
+cd bikeapelago-src
+npm ci
+npx playwright install --with-deps
+BASE_URL=https://bikeapelago.alexkibler.com \
+  TEST_PB_URL=https://pb.bikeapelago.alexkibler.com \
+  TEST_ADMIN_EMAIL=<secret> \
+  TEST_ADMIN_PASSWORD=<secret> \
+  npm run test:e2e
+```
+
+Results (screenshots, traces on failure) are in `playwright-report/`.
 
 ## GitHub Actions Example
 
-Save this as `.github/workflows/smoke-test.yml`:
-
 ```yaml
-name: Remote Smoke Test
+name: E2E Smoke Test
 on:
-  deployment_status:
   workflow_dispatch:
-    inputs:
-      base_url:
-        description: 'URL to test'
-        required: true
-        default: 'https://bikeapelago.alexkibler.com'
 
 jobs:
   smoke-test:
-    if: github.event_name == 'workflow_dispatch' || github.event.deployment_status.state == 'success'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
           node-version: lts/*
-          
       - name: Install dependencies
         run: npm ci
         working-directory: bikeapelago-src
-
-      - name: Install Playwright Browsers
+      - name: Install Playwright browsers
         run: npx playwright install --with-deps
         working-directory: bikeapelago-src
-
-      - name: Run Smoke Test
-        run: npx playwright test
+      - name: Run E2E suite
+        run: npm run test:e2e
         working-directory: bikeapelago-src
         env:
-          BASE_URL: ${{ github.event.inputs.base_url || github.event.deployment_status.target_url }}
-          SKIP_DB_RESET: "true"
-          # Optional: provide DB URL if reset is needed
-          # PUBLIC_DB_URL: https://pb.bikeapelago.alexkibler.com
-          
+          BASE_URL: ${{ vars.APP_URL }}
+          TEST_PB_URL: ${{ vars.PB_URL }}
+          TEST_ADMIN_EMAIL: ${{ secrets.PB_ADMIN_EMAIL }}
+          TEST_ADMIN_PASSWORD: ${{ secrets.PB_ADMIN_PASSWORD }}
       - uses: actions/upload-artifact@v4
         if: always()
         with:
@@ -66,15 +72,3 @@ jobs:
           path: bikeapelago-src/playwright-report/
           retention-days: 7
 ```
-
-## Local Verification
-
-You can verify the smoke test behavior locally by running:
-
-```bash
-cd bikeapelago-src
-SKIP_DB_RESET=true BASE_URL=https://your-public-site.com npx playwright test
-```
-
-> [!WARNING]
-> Running with `SKIP_DB_RESET=true` means the test will interact with whatever state is currently in the database for the user. Ensure your "Smoke Test Session" is pre-configured with a valid route for the test to succeed.

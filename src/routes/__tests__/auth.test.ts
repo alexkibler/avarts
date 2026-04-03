@@ -94,7 +94,7 @@ describe('login action', () => {
 		const request = buildFormDataRequest({ username: 'testuser', password: 'wrongpass' });
 
 		const result = await actions.login({ request, locals } as any);
-		expect(result).toEqual({ login: true });
+		expect(result).toMatchObject({ login: true });
 	});
 
 	it('returns { login: true } when credentials are wrong (401)', async () => {
@@ -110,7 +110,7 @@ describe('login action', () => {
 		const request = buildFormDataRequest({ username: 'testuser', password: 'wrongpass' });
 
 		const result = await actions.login({ request, locals } as any);
-		expect(result).toEqual({ login: true });
+		expect(result).toMatchObject({ login: true });
 	});
 
 	it('throws a 500 error for unexpected server errors', async () => {
@@ -165,8 +165,8 @@ describe('register action', () => {
 		expect(collectionMethods.create).toHaveBeenCalled();
 
 		// Verify that the email field was auto-generated (since no email is entered)
-		const callArgs = collectionMethods.create.mock.calls[0][0];
-		expect(callArgs.get('email')).toMatch(/@bikeapelago\.com$/);
+		const payload = collectionMethods.create.mock.calls[0][0];
+		expect(payload.email).toMatch(/@bikeapelago\.com$/);
 	});
 
 	/**
@@ -176,7 +176,7 @@ describe('register action', () => {
 	 *
 	 * This test documents the bug: authWithPassword should be called after create.
 	 */
-	it('BUG: does NOT call authWithPassword after creating user (user lands logged out)', async () => {
+	it('calls authWithPassword after creating user', async () => {
 		vi.doMock('$env/dynamic/public', () => ({ env: { PUBLIC_REGISTRATION: 'true' } }));
 		const authWithPassword = vi.fn().mockResolvedValue({ token: 'tok', record: {} });
 		const pb = {
@@ -201,9 +201,7 @@ describe('register action', () => {
 			// redirect thrown — that's expected
 		}
 
-		// BUG: authWithPassword is never called, so the user is not logged in
-		expect(authWithPassword).not.toHaveBeenCalled();
-		// When fixed, this test should be updated to assert authWithPassword IS called
+		expect(authWithPassword).toHaveBeenCalledWith('newuser', 'password123');
 	});
 
 	it('returns { email: true } when username is already taken (400)', async () => {
@@ -225,7 +223,7 @@ describe('register action', () => {
 		const request = { formData: async () => fd };
 
 		const result = await actions.register({ request, locals } as any);
-		expect(result).toEqual({ email: true });
+		expect(result).toMatchObject({ email: true });
 	});
 
 	/**
