@@ -113,14 +113,10 @@ async function importSchema(adminToken: string): Promise<void> {
 	// Build a map of collection name -> actual PocketBase ID for relation references
 	const idMap = new Map<string, string>();
 
-	// First, map existing collections
-	const listRes = await fetch(`${PB_URL}/api/collections`, {
-		headers: { Authorization: `Bearer ${adminToken}` },
-	});
-	const { items: existingCollections } = (await listRes.json()) as any;
-	for (const existing of existingCollections) {
-		idMap.set(existing.name, existing.id);
-		console.log(`✓ Collection "${existing.name}" already exists`);
+	// Map existing collections
+	for (const coll of existing) {
+		idMap.set(coll.name, coll.id);
+		console.log(`✓ Collection "${coll.name}" already exists`);
 	}
 
 	// Create missing collections
