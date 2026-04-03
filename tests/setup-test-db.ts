@@ -110,13 +110,44 @@ async function importSchema(adminToken: string): Promise<void> {
 	const existingNames = new Set(existing.map((c: any) => c.name));
 
 	// Pass 1: Create all collections with schema but NO rules
-	// Retry logic with exponential backoff for relation dependencies
-	const pending = new Set(schema.filter((c: any) => !existingNames.has(c.name)).map((c: any) => c.name));
+	// Build a map of collection name -> actual PocketBase ID for relation references
+	const idMap = new Map<string, string>();
+
+	// First, map existing collections
+	for (const existing of (await (await fetch(`${PB_URL}/api/collections`, {
+		headers: { Authorization: `Bearer ${adminToken}` },
+	})).json()) as any[]) {
+		idMap.set(existing.name, existing.id);
+		console.log(`✓ Collection "${existing.name}" already exists`);
+	}
+
+	// Create missing collections
+	const pending = new Set(schema.filter((c: any) => !idMap.has(c.name)).map((c: any) => c.name));
 	const maxAttempts = 5;
 
 	for (let attempt = 0; attempt < maxAttempts && pending.size > 0; attempt++) {
 		for (const collDef of schema) {
 			if (!pending.has(collDef.name)) continue;
+
+			// Replace relation collectionIds with actual PocketBase IDs
+			const schemaWithRealIds = collDef.schema.map((field: any) => {
+				if (field.type === 'relation' && field.options?.collectionId) {
+					// Find the real ID for this collection name
+					const refCollName = schema.find((c: any) => c.id === field.options.collectionId)?.name;
+					const realId = refCollName ? idMap.get(refCollName) : field.options.collectionId;
+
+					if (!realId || realId === field.options.collectionId) {
+						// Still using schema ID, collection might not be created yet
+						return field;
+					}
+
+					return {
+						...field,
+						options: { ...field.options, collectionId: realId },
+					};
+				}
+				return field;
+			});
 
 			const createRes = await fetch(`${PB_URL}/api/collections`, {
 				method: 'POST',
@@ -127,7 +158,7 @@ async function importSchema(adminToken: string): Promise<void> {
 				body: JSON.stringify({
 					name: collDef.name,
 					type: collDef.type,
-					schema: collDef.schema,
+					schema: schemaWithRealIds,
 					listRule: null,
 					viewRule: null,
 					createRule: null,
@@ -138,6 +169,8 @@ async function importSchema(adminToken: string): Promise<void> {
 			});
 
 			if (createRes.ok) {
+				const created = (await createRes.json()) as any;
+				idMap.set(collDef.name, created.id);
 				pending.delete(collDef.name);
 				console.log(`✓ Created collection "${collDef.name}"`);
 			} else {
@@ -149,24 +182,13 @@ async function importSchema(adminToken: string): Promise<void> {
 				// Log relation errors but continue to retry
 				if (attempt === 0) {
 					console.log(`⟳ Relation pending for "${collDef.name}", will retry...`);
-					console.log(`  Error details: ${errData}`);
-				} else if (attempt === maxAttempts - 1) {
-					console.log(`✗ Final attempt failed for "${collDef.name}": ${errData}`);
 				}
 			}
 		}
 
-		// Log pre-existing collections on first attempt
-		if (attempt === 0) {
-			for (const name of existingNames) {
-				console.log(`✓ Collection "${name}" already exists`);
-			}
-		}
-
-		// Wait with exponential backoff before retrying
+		// Wait before retrying
 		if (pending.size > 0 && attempt < maxAttempts - 1) {
-			const waitMs = Math.min(1000, (attempt + 1) * 500);
-			await sleep(waitMs);
+			await sleep(1000);
 		}
 	}
 
