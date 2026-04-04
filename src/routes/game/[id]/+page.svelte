@@ -57,11 +57,18 @@
       activeConnectionOptions = options;
       isConnected = true;
       localStorage.setItem('last_ap_url', options.url);
-      await pb.collection('game_sessions').update(session.id, { ap_server_url: options.url });
+      await pb.collection('game_sessions').update(session.id, {
+        ap_server_url: options.url,
+        ap_slot_name: options.name
+      });
     } else {
       connectionError = 'Could not connect. Check server URL, slot name, and password.';
     }
     connecting = false;
+  }
+
+  function goToConnect() {
+    window.location.href = `/game/${data.sessionId}/connect`;
   }
 
   function handleDisconnect() {
@@ -72,25 +79,6 @@
 
   async function handleValidated() {
     // ApMap will handle node stats update via subscription
-  }
-
-  function downloadYaml() {
-    const totalChecks = nodeStats.hidden + nodeStats.available + nodeStats.checked;
-    const yaml = [
-      `game: Bikeapelago`,
-      `name: ${session.ap_slot_name}`,
-      ``,
-      `Bikeapelago:`,
-      `  check_count: ${totalChecks}`,
-      `  goal_type: all_intersections`,
-    ].join('\n');
-    const blob = new Blob([yaml], { type: 'text/yaml' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `${session.ap_slot_name}.yaml`;
-    a.click();
-    URL.revokeObjectURL(url);
   }
 </script>
 
@@ -136,32 +124,6 @@
             {connecting ? 'Connecting…' : 'Connect & Play'}
           </button>
         </form>
-
-        <div class="mt-6 pt-5 border-t border-neutral-600">
-          <p class="text-xs text-neutral-400 mb-3">Need to set up the Archipelago server first? Download these files:</p>
-          <div class="flex gap-3">
-            <button
-              type="button"
-              on:click={downloadYaml}
-              class="flex-1 flex items-center justify-center gap-2 bg-neutral-700 hover:bg-neutral-600 border border-neutral-600 text-white text-sm font-medium px-4 py-2 rounded transition"
-            >
-              <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4 text-orange-400 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/>
-              </svg>
-              Player YAML
-            </button>
-            <a
-              href="/bikeapelago.apworld"
-              download="bikeapelago.apworld"
-              class="flex-1 flex items-center justify-center gap-2 bg-neutral-700 hover:bg-neutral-600 border border-neutral-600 text-white text-sm font-medium px-4 py-2 rounded transition"
-            >
-              <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4 text-orange-400 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/>
-              </svg>
-              .apworld
-            </a>
-          </div>
-        </div>
       </div>
     </div>
   {:else}
