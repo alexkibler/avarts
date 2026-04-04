@@ -280,4 +280,237 @@ describe('ap.ts module', () => {
       consoleSpy.mockRestore();
     });
   });
+
+  describe('Non-sequential item distribution', () => {
+    it('correctly unlocks only nodes matching non-sequential item IDs', async () => {
+      // AP grants items for locations 800001, 800003, 800005 (skipping 800002, 800004)
+      // This simulates non-linear item distribution in a multiworld
+      apClient.items.received = [{ id: 800001 }, { id: 800003 }, { id: 800005 }];
+      apClient.room.checkedLocations = [];
+
+      getFullListMock.mockResolvedValue([
+        { id: 'node1', ap_location_id: 800001, state: 'Hidden' },    // Has item -> Available
+        { id: 'node2', ap_location_id: 800002, state: 'Hidden' },    // No item -> Hidden
+        { id: 'node3', ap_location_id: 800003, state: 'Hidden' },    // Has item -> Available
+        { id: 'node4', ap_location_id: 800004, state: 'Hidden' },    // No item -> Hidden
+        { id: 'node5', ap_location_id: 800005, state: 'Hidden' },    // Has item -> Available
+      ]);
+
+      await connectToAp({
+        url: 'archipelago.gg:38281',
+        game: 'test-game',
+        name: 'player1',
+        sessionId: 'session-id'
+      });
+
+      // Only nodes 1, 3, 5 should be updated to Available (those with items)
+      expect(updateMock).toHaveBeenCalledWith('node1', { state: 'Available' });
+      expect(updateMock).toHaveBeenCalledWith('node3', { state: 'Available' });
+      expect(updateMock).toHaveBeenCalledWith('node5', { state: 'Available' });
+      // Nodes 2 and 4 should NOT be unlocked
+      expect(updateMock).not.toHaveBeenCalledWith('node2', { state: 'Available' });
+      expect(updateMock).not.toHaveBeenCalledWith('node4', { state: 'Available' });
+    });
+
+    it('handles gaps in item distribution with sparse AP items', async () => {
+      // Extreme case: AP only grants items 800001 and 800050
+      apClient.items.received = [{ id: 800001 }, { id: 800050 }];
+      apClient.room.checkedLocations = [];
+
+      getFullListMock.mockResolvedValue([
+        { id: 'node1', ap_location_id: 800001, state: 'Hidden' },
+        { id: 'node2', ap_location_id: 800010, state: 'Hidden' },
+        { id: 'node3', ap_location_id: 800050, state: 'Hidden' },
+      ]);
+
+      await connectToAp({
+        url: 'archipelago.gg:38281',
+        game: 'test-game',
+        name: 'player1',
+        sessionId: 'session-id'
+      });
+
+      // Only nodes with items should be updated
+      expect(updateMock).toHaveBeenCalledWith('node1', { state: 'Available' });
+      expect(updateMock).toHaveBeenCalledWith('node3', { state: 'Available' });
+      // Node 2 has no item and starts as Hidden, so no update needed
+      expect(updateMock).toHaveBeenCalledTimes(2);
+    });
+  });
+
+  describe('Node count mismatch scenarios', () => {
+    it('handles case where bikeapelago has fewer nodes than AP items', async () => {
+      // AP has items 800001-800050, but bikeapelago only created nodes for 800001-800010
+      apClient.items.received = Array.from({ length: 50 }, (_, i) => ({ id: 800001 + i }));
+      apClient.room.checkedLocations = [];
+
+      // Only 10 nodes exist locally
+      getFullListMock.mockResolvedValue(
+        Array.from({ length: 10 }, (_, i) => ({
+          id: `node${i + 1}`,
+          ap_location_id: 800001 + i,
+          state: 'Hidden'
+        }))
+      );
+
+      const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
+
+      await connectToAp({
+        url: 'archipelago.gg:38281',
+        game: 'test-game',
+        name: 'player1',
+        sessionId: 'session-id'
+      });
+
+      // All 10 local nodes should be unlocked (they match AP items)
+      expect(updateMock).toHaveBeenCalledTimes(10);
+      expect(updateMock).toHaveBeenCalledWith('node1', { state: 'Available' });
+      expect(updateMock).toHaveBeenCalledWith('node10', { state: 'Available' });
+
+      // Sync should log that AP has more items than local nodes
+      expect(consoleSpy).toHaveBeenCalledWith(
+        expect.stringContaining('reconciled: 0 checked, 50 total unlocked items')
+      );
+
+      consoleSpy.mockRestore();
+    });
+
+    it('handles case where bikeapelago has more nodes than AP items', async () => {
+      // AP has items 800001-800010, but bikeapelago created nodes for 800001-800050
+      apClient.items.received = Array.from({ length: 10 }, (_, i) => ({ id: 800001 + i }));
+      apClient.room.checkedLocations = [];
+
+      // 50 nodes exist locally
+      getFullListMock.mockResolvedValue(
+        Array.from({ length: 50 }, (_, i) => ({
+          id: `node${i + 1}`,
+          ap_location_id: 800001 + i,
+          state: 'Hidden'
+        }))
+      );
+
+      await connectToAp({
+        url: 'archipelago.gg:38281',
+        game: 'test-game',
+        name: 'player1',
+        sessionId: 'session-id'
+      });
+
+      // Only first 10 nodes should be updated (to Available - they have AP items)
+      // Nodes 11-50 already start as Hidden, so no update needed
+      for (let i = 0; i < 10; i++) {
+        expect(updateMock).toHaveBeenCalledWith(`node${i + 1}`, { state: 'Available' });
+      }
+
+      // Total calls should be 10 (only the unlockable nodes)
+      expect(updateMock).toHaveBeenCalledTimes(10);
+    });
+  });
+
+  describe('Initial state and timing', () => {
+    it('handles sync when AP items are initially empty', async () => {
+      // Simulate AP not having items ready on first sync
+      apClient.items.received = [];
+      apClient.room.checkedLocations = [];
+
+      getFullListMock.mockResolvedValue([
+        { id: 'node1', ap_location_id: 800001, state: 'Hidden' },
+      ]);
+
+      await connectToAp({
+        url: 'archipelago.gg:38281',
+        game: 'test-game',
+        name: 'player1',
+        sessionId: 'session-id'
+      });
+
+      // With no items, node should stay Hidden (no state change needed)
+      expect(updateMock).not.toHaveBeenCalled();
+    });
+
+    it('verifies validateNodeCountVsApItems with exact match', async () => {
+      const { validateNodeCountVsApItems } = await import('./ap');
+
+      apClient.items.received = Array.from({ length: 10 }, (_, i) => ({ id: 800001 + i }));
+      expect(validateNodeCountVsApItems(10)).toBeNull();
+    });
+
+    it('verifies validateNodeCountVsApItems detects significant mismatch', async () => {
+      const { validateNodeCountVsApItems } = await import('./ap');
+
+      apClient.items.received = Array.from({ length: 10 }, (_, i) => ({ id: 800001 + i }));
+      const warning = validateNodeCountVsApItems(50);
+      expect(warning).toContain('Significant mismatch');
+      expect(warning).toContain('50 nodes');
+      expect(warning).toContain('10 items');
+    });
+
+    it('verifies validateNodeCountVsApItems detects fewer nodes than items', async () => {
+      const { validateNodeCountVsApItems } = await import('./ap');
+
+      apClient.items.received = Array.from({ length: 50 }, (_, i) => ({ id: 800001 + i }));
+      const warning = validateNodeCountVsApItems(10);
+      expect(warning).toContain('10 nodes');
+      expect(warning).toContain('50 items');
+      expect(warning).toContain('40 items cannot be collected');
+    });
+  });
+
+  describe('Idempotency and resilience', () => {
+    it('does not perform unnecessary updates when state already matches', async () => {
+      apClient.items.received = [{ id: 800001 }];
+      apClient.room.checkedLocations = [];
+
+      getFullListMock.mockResolvedValue([
+        { id: 'node1', ap_location_id: 800001, state: 'Available' }, // Already in correct state
+      ]);
+
+      await connectToAp({
+        url: 'archipelago.gg:38281',
+        game: 'test-game',
+        name: 'player1',
+        sessionId: 'session-id'
+      });
+
+      // Should not update since state already matches
+      expect(updateMock).not.toHaveBeenCalled();
+    });
+
+    it('handles multiple rapid sync calls idempotently', async () => {
+      apClient.items.received = [{ id: 800001 }];
+      apClient.room.checkedLocations = [];
+
+      getFullListMock.mockResolvedValue([
+        { id: 'node1', ap_location_id: 800001, state: 'Hidden' },
+      ]);
+
+      await connectToAp({
+        url: 'archipelago.gg:38281',
+        game: 'test-game',
+        name: 'player1',
+        sessionId: 'session-id'
+      });
+
+      expect(updateMock).toHaveBeenCalledTimes(1);
+      expect(updateMock).toHaveBeenCalledWith('node1', { state: 'Available' });
+
+      // Get the itemsReceived callback before clearing mocks
+      const itemsReceivedCallback = (apClient.items.on as any).mock.calls.find(
+        (call: any) => call[0] === 'itemsReceived'
+      )?.[1];
+
+      // Second sync call with same state should not trigger updates
+      vi.clearAllMocks();
+      getFullListMock.mockResolvedValue([
+        { id: 'node1', ap_location_id: 800001, state: 'Available' },
+      ]);
+
+      // Trigger sync again via itemsReceived callback
+      if (itemsReceivedCallback) {
+        await itemsReceivedCallback();
+      }
+
+      expect(updateMock).not.toHaveBeenCalled();
+    });
+  });
 });

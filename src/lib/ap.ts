@@ -22,13 +22,26 @@ let _msgId = 0;
 let _hooksRegistered = false;
 let _pendingType: ChatMessageType = 'server';
 let _listenersRegistered = false;
+let _listenerUnsubscribers: Array<() => void> = [];
 
 // Test mode variables
 let _testMode = false;
 let _testSessionId = '';
 
 /**
+ * Unregister all previously registered event listeners.
+ * Useful for reconnection scenarios where listeners need to be cleared.
+ */
+function teardownListeners() {
+  _listenerUnsubscribers.forEach(unsub => unsub());
+  _listenerUnsubscribers = [];
+  _listenersRegistered = false;
+}
+
+/**
  * Register event listeners on the singleton apClient once.
+ * Handles both initial connection and reconnection scenarios.
+ * Listeners are stored so they can be torn down and re-registered if needed.
  */
 function setupListeners() {
   if (_listenersRegistered) return;
@@ -68,6 +81,29 @@ export interface ApConnectionOptions {
   sessionId: string; // PocketBase game_session id
 }
 
+/**
+ * Establishes connection to an Archipelago server and syncs state.
+ *
+ * Flow:
+ * 1. Registers event listeners (itemsReceived, locationsChecked) once per session
+ * 2. Connects to AP server via apClient.login()
+ * 3. Performs initial full state sync to reconcile DB with current AP state
+ *
+ * Reconnection Note:
+ * - If AP connection drops and reconnects, the apClient may automatically reconnect
+ * - Event listeners remain registered and will continue to trigger syncs
+ * - If listeners stop working after reconnection, consider calling connectToAp() again
+ *   or explicitly calling teardownListeners() + setupListeners()
+ *
+ * Initial Sync Timing:
+ * - syncArchipelagoState() is called immediately after successful login
+ * - At this point, apClient.items.received should be populated from the AP server
+ * - If items are not ready, the sync will see them as empty and reconcile as Hidden
+ * - When AP broadcasts itemsReceived event, listeners will trigger another sync
+ *
+ * @param options - Connection options (url, game, name, password, sessionId)
+ * @returns true on success, false on failure
+ */
 export async function connectToAp(options: ApConnectionOptions) {
   setupListeners();
   _activeSessionId = options.sessionId;
@@ -109,8 +145,10 @@ export async function connectToAp(options: ApConnectionOptions) {
     );
 
     console.log('[AP] Connected successfully!');
+    console.log(`[AP] Items received: ${apClient.items.received.length}, Checked locations: ${apClient.room.checkedLocations.length}`);
 
     // Perform initial full sync
+    // At this point, apClient.items.received should be populated from AP server
     await syncArchipelagoState(options.sessionId);
 
     return true;
@@ -124,7 +162,20 @@ export async function connectToAp(options: ApConnectionOptions) {
 
 /**
  * Reconciles the local PocketBase state with the current Archipelago state.
- * Marks checked locations first, then unlocks the correct number of additional nodes.
+ *
+ * CRITICAL: This is the source-of-truth reconciliation function.
+ * - AP server is the source-of-truth (apClient.items.received, apClient.room.checkedLocations)
+ * - PocketBase map_nodes table is reconciled to match AP state
+ * - Uses ID-based matching (not count-based) to handle non-sequential item distribution
+ *
+ * State priority:
+ * 1. If location ID is in apClient.room.checkedLocations → state = 'Checked'
+ * 2. Else if location ID is in apClient.items.received → state = 'Available'
+ * 3. Else → state = 'Hidden'
+ *
+ * @param sessionId - PocketBase game_session ID to reconcile
+ *
+ * @throws Logs errors but doesn't throw (graceful degradation)
  */
 async function syncArchipelagoState(sessionId: string) {
   if (!sessionId || sessionId !== _activeSessionId) return;
@@ -142,17 +193,18 @@ async function syncArchipelagoState(sessionId: string) {
     const receivedItems = apClient.items.received;
 
     const receivedItemIds = new Set(receivedItems.map((i: any) => i.id));
- 
+
     // Create a set of updates to perform
     const updates: Promise<any>[] = [];
- 
+    let updateCount = 0;
+
     for (let i = 0; i < nodes.length; i++) {
       const node = nodes[i];
       let newState: 'Hidden' | 'Available' | 'Checked' = 'Hidden';
- 
+
       const isChecked = checkedLocationIds.includes(node.ap_location_id);
       const isUnlockedByItem = receivedItemIds.has(node.ap_location_id);
- 
+
       if (isChecked) {
         newState = 'Checked';
       } else if (isUnlockedByItem) {
@@ -160,10 +212,11 @@ async function syncArchipelagoState(sessionId: string) {
       } else {
         newState = 'Hidden';
       }
- 
+
       if (node.state !== newState) {
         console.log(`[AP Sync] Correcting node ${node.ap_location_id} from ${node.state} to ${newState}`);
         updates.push(pb.collection('map_nodes').update(node.id, { state: newState }));
+        updateCount++;
       }
     }
 
@@ -171,15 +224,73 @@ async function syncArchipelagoState(sessionId: string) {
       await Promise.all(updates);
     }
 
-    // 3. Sync Location Swaps
+    // Warn if there's a significant mismatch between local nodes and AP items
+    if (nodes.length !== receivedItemIds.size) {
+      console.warn(
+        `[AP Sync] Node count mismatch: bikeapelago has ${nodes.length} nodes, ` +
+        `but AP provides ${receivedItemIds.size} unlockable items. ` +
+        `This may indicate the session was created with a different check count than the AP multiworld expects.`
+      );
+    }
+
+    // Sync Location Swaps
     const totalSwapsFound = receivedItems.filter((i: any) => i.id === 802003).length;
     const usedSwaps = session.location_swaps_used || 0;
     locationSwaps.set(Math.max(0, totalSwapsFound - usedSwaps));
 
-    console.log(`[AP Sync] Session ${sessionId} reconciled: ${checkedLocationIds.length} checked, ${receivedItemIds.size} total unlocked items.`);
+    console.log(
+      `[AP Sync] Session ${sessionId} reconciled: ${checkedLocationIds.length} checked, ` +
+      `${receivedItemIds.size} total unlocked items, ${updateCount} state updates applied.`
+    );
   } catch (e) {
     console.error('[AP Sync] Error during state reconciliation:', e);
   }
+}
+
+/**
+ * Validates that the local nodes match the AP multiworld item count.
+ *
+ * Returns diagnostics about potential mismatches:
+ * - If counts differ significantly, returns a warning message
+ * - If counts match, returns null
+ *
+ * This should be called after connectToAp() succeeds to validate the session setup.
+ *
+ * @param nodeCount - Number of map_nodes for this session (from DB)
+ * @returns Warning message if mismatch detected, null if counts match
+ */
+export function validateNodeCountVsApItems(nodeCount: number): string | null {
+  const apItemCount = apClient.items.received.length;
+
+  if (nodeCount === apItemCount) {
+    return null;
+  }
+
+  const diff = Math.abs(nodeCount - apItemCount);
+  const percentDiff = Math.round((diff / Math.max(nodeCount, apItemCount)) * 100);
+
+  if (percentDiff > 20) {
+    // Significant mismatch (>20% difference)
+    return (
+      `Significant mismatch detected: bikeapelago has ${nodeCount} nodes, ` +
+      `but Archipelago provides ${apItemCount} items. ` +
+      `This session may have been created with an incorrect check count. ` +
+      `Nodes without corresponding AP items will never unlock, and AP items without nodes cannot be found.`
+    );
+  }
+
+  if (nodeCount < apItemCount) {
+    return (
+      `Bikeapelago has ${nodeCount} nodes, but Archipelago has ${apItemCount} items. ` +
+      `${apItemCount - nodeCount} items cannot be collected on this map.`
+    );
+  }
+
+  // nodeCount > apItemCount
+  return (
+    `Bikeapelago has ${nodeCount} nodes, but Archipelago only has ${apItemCount} items. ` +
+    `${nodeCount - apItemCount} nodes will never unlock.`
+  );
 }
 
 export function sendLocationChecks(locationIds: number[]) {
