@@ -128,12 +128,19 @@ async function processReceivedItems(sessionId: string, items: any[]) {
     (n: any) => n.state === 'Available' || n.state === 'Checked'
   ).length;
 
+  const nodesToUnlock = [];
   for (const node of nodes) {
     if (unlockedCount >= unlockItemsCount) break;
     if (node.state === 'Hidden') {
-      await pb.collection('map_nodes').update(node.id, { state: 'Available' });
+      nodesToUnlock.push(node.id);
       unlockedCount++;
     }
+  }
+
+  if (nodesToUnlock.length > 0) {
+    await Promise.all(
+      nodesToUnlock.map((id) => pb.collection('map_nodes').update(id, { state: 'Available' }))
+    );
   }
 }
 
@@ -144,29 +151,42 @@ export function sendLocationChecks(locationIds: number[]) {
       try {
         // Step 1: Mark each checked location as Checked (idempotent — validation.ts may have
         // already done this, but we ensure consistency if sendLocationChecks is called directly).
-        for (const apLocId of locationIds) {
-          const matched = await pb.collection('map_nodes').getFullList({
-            filter: `session = "${_testSessionId}" && ap_location_id = ${apLocId}`,
-          });
-          for (const node of matched) {
-            if (node.state !== 'Checked') {
-              await pb.collection('map_nodes').update(node.id, { state: 'Checked' });
-              console.log(`[AP Mock] Marked node ${node.id} (loc ${apLocId}) as Checked`);
-            }
-          }
+        const nodesInSession = await pb.collection('map_nodes').getFullList({
+          filter: `session = "${_testSessionId}"`,
+        });
+
+        const nodesToMarkChecked = nodesInSession.filter(
+          (node: any) => locationIds.includes(node.ap_location_id) && node.state !== 'Checked'
+        );
+
+        if (nodesToMarkChecked.length > 0) {
+          await Promise.all(
+            nodesToMarkChecked.map((node) =>
+              pb.collection('map_nodes').update(node.id, { state: 'Checked' })
+            )
+          );
+          nodesToMarkChecked.forEach((node) =>
+            console.log(`[AP Mock] Marked node ${node.id} (loc ${node.ap_location_id}) as Checked`)
+          );
         }
 
         // Step 2: Simulate receiving one unlock item per checked location.
-        // Fetch hidden nodes fresh each iteration so we never re-unlock the same one.
-        for (let i = 0; i < locationIds.length; i++) {
-          const hiddenNodes = await pb.collection('map_nodes').getFullList({
-            filter: `session = "${_testSessionId}" && state = "Hidden"`,
-            sort: '+ap_location_id',
-          });
-          if (hiddenNodes.length > 0) {
-            await pb.collection('map_nodes').update(hiddenNodes[0].id, { state: 'Available' });
-            console.log(`[AP Mock] Unlocked node ${hiddenNodes[0].id} to Available`);
-          }
+        const hiddenNodes = await pb.collection('map_nodes').getFullList({
+          filter: `session = "${_testSessionId}" && state = "Hidden"`,
+          sort: '+ap_location_id',
+        });
+
+        const nodesToUnlockMock = hiddenNodes.slice(0, locationIds.length);
+
+        if (nodesToUnlockMock.length > 0) {
+          await Promise.all(
+            nodesToUnlockMock.map((node) =>
+              pb.collection('map_nodes').update(node.id, { state: 'Available' })
+            )
+          );
+          nodesToUnlockMock.forEach((node) =>
+            console.log(`[AP Mock] Unlocked node ${node.id} to Available`)
+          );
         }
       } catch (e) {
         console.error('Mock unlock failed', e);
