@@ -83,6 +83,14 @@
         <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 11V6a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v5"/><path d="M4 19a2 2 0 0 1-2-2v-2a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v2a2 2 0 0 1-2 2H4Z"/><path d="M6 15v-2"/><path d="M10 15v-2"/><path d="M14 15v-2"/><path d="M18 15v-2"/></svg>
         <span class="font-medium text-sm">Play Now</span>
       </a>
+
+      <a
+        href="/yaml-creator"
+        class="flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200 {pathname === '/yaml-creator' ? 'bg-orange-500/10 text-orange-500 shadow-inner shadow-orange-500/5' : 'text-neutral-400 hover:text-white hover:bg-white/5'}"
+      >
+        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+        <span class="font-medium text-sm">Create YAML</span>
+      </a>
     {/if}
   </nav>
 
