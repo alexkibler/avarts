@@ -122,66 +122,9 @@ describe('ap.ts module', () => {
     });
   });
 
-  describe('processReceivedItems via connectToAp', () => {
-    it('ignores when unlockItemsCount is 0', async () => {
-      apClient.items.received = [{ id: 700000 }, { id: 900000 }]; // Not in range 800001 - 802000
-
-      await connectToAp({
-        url: 'archipelago.gg:38281',
-        game: 'test-game',
-        name: 'player1',
-        sessionId: 'session-id'
-      });
-
-      // game_sessions.getOne is always called to update locationSwaps store
-      expect(pb.collection).toHaveBeenCalledWith('game_sessions');
-      // map_nodes should NOT be queried when no unlock items
-      expect(pb.collection).not.toHaveBeenCalledWith('map_nodes');
-    });
-
-    it('updates node state to Available up to unlockItemsCount', async () => {
-      apClient.items.received = [{ id: 800001 }, { id: 800002 }]; // 2 unlock items
-
-      getFullListMock.mockResolvedValue([
-        { id: 'node1', state: 'Checked' }, // 1 already unlocked
-        { id: 'node2', state: 'Hidden' },  // Should become Available
-        { id: 'node3', state: 'Hidden' },  // Should not be updated (unlockedCount becomes 2)
-      ]);
-
-      await connectToAp({
-        url: 'archipelago.gg:38281',
-        game: 'test-game',
-        name: 'player1',
-        sessionId: 'session-id'
-      });
-
-      expect(pb.collection).toHaveBeenCalledWith('map_nodes');
-      expect(updateMock).toHaveBeenCalledTimes(1);
-      expect(updateMock).toHaveBeenCalledWith('node2', { state: 'Available' });
-    });
-
-    it('breaks early if unlockedCount >= unlockItemsCount', async () => {
-        apClient.items.received = [{ id: 800001 }]; // 1 unlock item
-
-        getFullListMock.mockResolvedValue([
-          { id: 'node1', state: 'Available' }, // 1 already unlocked
-          { id: 'node2', state: 'Hidden' },
-        ]);
-
-        await connectToAp({
-          url: 'archipelago.gg:38281',
-          game: 'test-game',
-          name: 'player1',
-          sessionId: 'session-id'
-        });
-
-        expect(pb.collection).toHaveBeenCalledWith('map_nodes');
-        expect(updateMock).not.toHaveBeenCalled();
-    });
-  });
-
-  describe('syncCheckedLocations via connectToAp', () => {
-    it('does nothing when AP reports no checked locations', async () => {
+  describe('syncArchipelagoState via connectToAp', () => {
+    it('queries map_nodes and game_sessions even when counts are 0', async () => {
+      apClient.items.received = [];
       apClient.room.checkedLocations = [];
 
       await connectToAp({
@@ -191,51 +134,21 @@ describe('ap.ts module', () => {
         sessionId: 'session-id'
       });
 
-      expect(pb.collection).not.toHaveBeenCalledWith('map_nodes');
-    });
-
-    it('marks nodes as Checked when ap_location_id matches AP checked list', async () => {
-      apClient.items.received = []; // no unlock items → processReceivedItems returns early
-      apClient.room.checkedLocations = [800001, 800002];
-
-      getFullListMock.mockResolvedValue([
-        { id: 'node1', ap_location_id: 800001, state: 'Available' },
-        { id: 'node2', ap_location_id: 800002, state: 'Available' },
-        { id: 'node3', ap_location_id: 800003, state: 'Hidden' },
-      ]);
-
-      await connectToAp({
-        url: 'archipelago.gg:38281',
-        game: 'test-game',
-        name: 'player1',
-        sessionId: 'session-id'
-      });
-
-      expect(updateMock).toHaveBeenCalledTimes(2);
-      expect(updateMock).toHaveBeenCalledWith('node1', { state: 'Checked' });
-      expect(updateMock).toHaveBeenCalledWith('node2', { state: 'Checked' });
-      expect(updateMock).not.toHaveBeenCalledWith('node3', expect.anything());
-    });
-
-    it('skips nodes already in Checked state', async () => {
-      apClient.items.received = [];
-      apClient.room.checkedLocations = [800001];
-
-      getFullListMock.mockResolvedValue([
-        { id: 'node1', ap_location_id: 800001, state: 'Checked' },
-      ]);
-
-      await connectToAp({
-        url: 'archipelago.gg:38281',
-        game: 'test-game',
-        name: 'player1',
-        sessionId: 'session-id'
-      });
-
+      expect(pb.collection).toHaveBeenCalledWith('game_sessions');
+      expect(pb.collection).toHaveBeenCalledWith('map_nodes');
       expect(updateMock).not.toHaveBeenCalled();
     });
 
-    it('registers locationsChecked event listener on room', async () => {
+    it('corrects node states to match Archipelago ground truth (Available)', async () => {
+      apClient.items.received = [{ id: 800001 }, { id: 800002 }]; // 2 unlock items
+      apClient.room.checkedLocations = [];
+
+      getFullListMock.mockResolvedValue([
+        { id: 'node1', ap_location_id: 800001, state: 'Checked' },   // Incorrect (not checked in AP) -> should become Available
+        { id: 'node2', ap_location_id: 800002, state: 'Hidden' },    // Should become Available
+        { id: 'node3', ap_location_id: 800003, state: 'Available' }, // Incorrect (not in unlock range) -> should become Hidden
+      ]);
+
       await connectToAp({
         url: 'archipelago.gg:38281',
         game: 'test-game',
@@ -243,7 +156,49 @@ describe('ap.ts module', () => {
         sessionId: 'session-id'
       });
 
-      expect(apClient.room.on).toHaveBeenCalledWith('locationsChecked', expect.any(Function));
+      expect(updateMock).toHaveBeenCalledWith('node1', { state: 'Available' });
+      expect(updateMock).toHaveBeenCalledWith('node2', { state: 'Available' });
+      expect(updateMock).toHaveBeenCalledWith('node3', { state: 'Hidden' });
+      expect(updateMock).toHaveBeenCalledTimes(3);
+    });
+
+    it('corrects node states to match Archipelago ground truth (Checked)', async () => {
+      apClient.items.received = [{ id: 800001 }]; // 1 unlock item
+      apClient.room.checkedLocations = [800001, 800002]; // 2 checks (non-linear)
+
+      getFullListMock.mockResolvedValue([
+        { id: 'node1', ap_location_id: 800001, state: 'Available' }, // Should become Checked
+        { id: 'node2', ap_location_id: 800002, state: 'Hidden' },    // Should become Checked
+        { id: 'node3', ap_location_id: 800003, state: 'Available' }, // Should become Hidden
+      ]);
+
+      await connectToAp({
+        url: 'archipelago.gg:38281',
+        game: 'test-game',
+        name: 'player1',
+        sessionId: 'session-id'
+      });
+
+      expect(updateMock).toHaveBeenCalledWith('node1', { state: 'Checked' });
+      expect(updateMock).toHaveBeenCalledWith('node2', { state: 'Checked' });
+      expect(updateMock).toHaveBeenCalledWith('node3', { state: 'Hidden' });
+    });
+
+    it('registers event listeners via setupListeners', async () => {
+      // Use fresh module state to test registration
+      vi.resetModules();
+      const apModule = await import('./ap');
+      
+      const onSpy = vi.spyOn(apModule.apClient.room, 'on');
+
+      await apModule.connectToAp({
+        url: 'archipelago.gg:38281',
+        game: 'test-game',
+        name: 'player1',
+        sessionId: 'session-id'
+      });
+
+      expect(onSpy).toHaveBeenCalledWith('locationsChecked', expect.any(Function));
     });
   });
 
