@@ -34,7 +34,7 @@
 <div class="max-w-4xl mx-auto px-4 py-8">
   <div class="flex items-center justify-between mb-6">
     <h1 class="text-3xl font-bold text-orange-500">My Sessions</h1>
-    <a href="/new-game"
+    <a href="/game/connect"
       class="bg-orange-600 hover:bg-orange-500 text-white font-semibold py-2 px-4 rounded transition">
       + New Session
     </a>
@@ -47,7 +47,7 @@
   {:else if sessions.length === 0}
     <div class="bg-neutral-800 rounded-lg p-8 text-center border border-neutral-700">
       <p class="text-neutral-300 text-lg mb-4">No sessions yet.</p>
-      <a href="/new-game"
+      <a href="/game/connect"
         class="bg-orange-600 hover:bg-orange-500 text-white font-semibold py-2 px-6 rounded transition">
         Create your first session
       </a>
