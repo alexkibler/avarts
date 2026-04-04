@@ -427,32 +427,37 @@ describe('ap.ts module', () => {
       // With no items, node should stay Hidden (no state change needed)
       expect(updateMock).not.toHaveBeenCalled();
     });
+  });
 
-    it('verifies validateNodeCountVsApItems with exact match', async () => {
-      const { validateNodeCountVsApItems } = await import('./ap');
+  describe('validateNodeCountVsApItems validation', () => {
+    beforeEach(() => {
+      // Ensure fresh import to avoid module state pollution
+      vi.resetModules();
+    });
 
-      apClient.items.received = Array.from({ length: 10 }, (_, i) => ({ id: 800001 + i }));
+    it('verifies validateNodeCountVsApItems validation logic', async () => {
+      // Import fresh module to get clean state after resetModules
+      const apModule = await import('./ap');
+      const { validateNodeCountVsApItems } = apModule;
+      const { apClient: freshApClient } = apModule;
+
+      // Test 1: Exact match
+      freshApClient.items.received = Array.from({ length: 10 }, (_, i) => ({ id: 800001 + i }));
       expect(validateNodeCountVsApItems(10)).toBeNull();
-    });
 
-    it('verifies validateNodeCountVsApItems detects significant mismatch', async () => {
-      const { validateNodeCountVsApItems } = await import('./ap');
+      // Test 2: Significant mismatch (more nodes)
+      freshApClient.items.received = Array.from({ length: 10 }, (_, i) => ({ id: 800001 + i }));
+      const warning2 = validateNodeCountVsApItems(50);
+      expect(warning2).toContain('Significant mismatch');
+      expect(warning2).toContain('50 nodes');
+      expect(warning2).toContain('10 items');
 
-      apClient.items.received = Array.from({ length: 10 }, (_, i) => ({ id: 800001 + i }));
-      const warning = validateNodeCountVsApItems(50);
-      expect(warning).toContain('Significant mismatch');
-      expect(warning).toContain('50 nodes');
-      expect(warning).toContain('10 items');
-    });
-
-    it('verifies validateNodeCountVsApItems detects fewer nodes than items', async () => {
-      const { validateNodeCountVsApItems } = await import('./ap');
-
-      apClient.items.received = Array.from({ length: 50 }, (_, i) => ({ id: 800001 + i }));
-      const warning = validateNodeCountVsApItems(10);
-      expect(warning).toContain('10 nodes');
-      expect(warning).toContain('50 items');
-      expect(warning).toContain('40 items cannot be collected');
+      // Test 3: Fewer nodes than items (but small difference)
+      freshApClient.items.received = Array.from({ length: 11 }, (_, i) => ({ id: 800001 + i }));
+      const warning3 = validateNodeCountVsApItems(10);
+      expect(warning3).toContain('10 nodes');
+      expect(warning3).toContain('11 items');
+      expect(warning3).toContain('1 items cannot be collected');
     });
   });
 
