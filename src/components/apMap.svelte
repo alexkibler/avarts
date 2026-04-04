@@ -1214,7 +1214,6 @@
     min-width: 0;
     display: flex;
     align-items: center;
-    padding: 4px 0;
   }
 
   #elevation-container {
@@ -1584,6 +1583,14 @@
   /* ═══════════════════════════════════════════
      MOBILE RESPONSIVE
      ═══════════════════════════════════════════ */
+
+  /* Account for the layout's fixed BottomNav (md:hidden = visible below 768px) */
+  @media (max-width: 767px) {
+    .mockup-app-root {
+      padding-bottom: 64px;
+    }
+  }
+
   @media (max-width: 600px) {
     .panel {
       width: 100%;
@@ -1604,9 +1611,9 @@
     }
     .elevation-graph-container {
       width: 100%;
-      height: 60px;
-      min-height: 60px;
-      max-height: 60px;
+      height: 80px;
+      min-height: 80px;
+      max-height: 80px;
       overflow: hidden;
     }
     .bottom-row-mobile {
