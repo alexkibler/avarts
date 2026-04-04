@@ -735,13 +735,6 @@
         {:else if activeTab === 'upload'}
           <ApDropzone {sessionId} on:validated={handleValidated} />
         {:else}
-          <div class="route-instructions">
-            <ol>
-              <li>Click any <strong class="orange-pin">orange</strong> or <strong class="green-pin">green</strong> node pin on the map to add it as a waypoint.</li>
-              <li>Drag waypoint markers to adjust your route.</li>
-            </ol>
-
-          </div>
           <button on:click={routeToAvailable} class="btn-route-available" style="margin-bottom: 8px;">Route To Available</button>
           <button on:click={clearRoute} class="btn-clear-route">Clear Route</button>
 
