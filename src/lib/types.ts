@@ -1,67 +1,3 @@
-export interface Exercise {
-	collectionId: string;
-	collectionName: string;
-	created: string;
-	updated: string;
-	id: string;
-	name: string;
-	description: string;
-	sport: string;
-	start_time: Date;
-	tot_distance: number;
-	avg_speed: number;
-	max_speed: number;
-	tot_elevation: number;
-	avg_cadence: number;
-	max_cadence: number;
-	avg_hr: number;
-	max_hr: number;
-	avg_power: number;
-	max_power: number;
-	norm_power: number;
-	tot_calories: number;
-	elap_time: number;
-	tot_time: number;
-	fit: string;
-	gpx: string;
-	img: string;
-	location: string;
-	expand: {
-		user: User;
-	};
-	url: string;
-	user: string;
-	image: string;
-}
-
-export interface Exercises extends Array<Exercise> {
-	length: number;
-}
-
-export interface Activities {
-	items: Exercise[];
-}
-
-export interface Course {
-	collectionId: string;
-	collectionName: string;
-	created: string;
-	updated: string;
-	id: string;
-	sport: string;
-	title: string;
-	gpx: string;
-	distance: number;
-	elevation: number;
-	time: number;
-	img: string;
-	expand: {
-		user: User;
-	};
-	builder?: any;
-	user: string;
-}
-
 export interface GameSession {
 	id: string;
 	status: string;
@@ -79,10 +15,6 @@ export interface GameSession {
 
 export interface GameSessions {
 	items: GameSession[];
-}
-
-export interface Courses extends Array<Course> {
-	length: number;
 }
 
 export interface User {

@@ -200,33 +200,31 @@
 		{/if}
 	</nav>
 
-	<!-- Athlete Profile (at bottom) -->
+	<!-- Logout (at bottom) -->
 	{#if user}
 		<div class="p-4 mt-auto border-t border-white/5">
-			<a
-				href="/athlete"
-				class="flex items-center gap-3 p-3 rounded-xl hover:bg-white/5 transition-colors group"
-			>
-				{#if user.avatar}
-					<img
-						src="{url}/api/files/{user.collectionId}/{user.id}/{user.avatar}"
-						alt="avatar"
-						class="h-10 w-10 rounded-xl border border-white/10 object-cover shadow-sm group-hover:scale-105 transition-transform"
-					/>
-				{:else}
-					<img
-						src="/avatar.svg"
-						alt="avatar"
-						class="h-10 w-10 rounded-xl border border-white/10 object-cover shadow-sm group-hover:scale-105 transition-transform"
-					/>
-				{/if}
-				<div class="flex flex-col min-w-0">
-					<span class="text-white font-bold text-sm truncate">{user.name || user.username}</span>
-					<span class="text-neutral-500 text-[10px] uppercase font-bold tracking-wider"
-						>Athlete Profile</span
+			<form action="/logout" method="POST" class="w-full">
+				<button
+					type="submit"
+					class="w-full flex items-center justify-center gap-3 p-3 rounded-xl hover:bg-red-500/10 hover:text-red-500 text-neutral-400 transition-all duration-200 group"
+				>
+					<svg
+						xmlns="http://www.w3.org/2000/svg"
+						width="18"
+						height="18"
+						viewBox="0 0 24 24"
+						fill="none"
+						stroke="currentColor"
+						stroke-width="2"
+						stroke-linecap="round"
+						stroke-linejoin="round"
+						><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" /><polyline
+							points="16 17 21 12 16 7"
+						/><line x1="21" x2="9" y1="12" y2="12" /></svg
 					>
-				</div>
-			</a>
+					<span class="font-bold text-xs uppercase tracking-widest">Sign Out</span>
+				</button>
+			</form>
 		</div>
 	{/if}
 </aside>

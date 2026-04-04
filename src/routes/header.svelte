@@ -27,25 +27,10 @@
 
 	{#if data.user}
 		<div class="flex items-center gap-4">
-			<a href="/athlete" class="group flex items-center gap-2">
-				{#if data.user.avatar}
-					<img
-						src="{url}/api/files/{data.user.collectionId}/{data.user.id}/{data.user.avatar}"
-						alt="avatar"
-						class="h-8 w-8 rounded-full border border-neutral-600 object-cover shadow-sm transition-transform group-hover:scale-105"
-					/>
-				{:else}
-					<img
-						src="/avatar.svg"
-						alt="avatar"
-						class="h-8 w-8 rounded-full border border-neutral-600 object-cover shadow-sm transition-transform group-hover:scale-105"
-					/>
-				{/if}
-				<span
-					class="hidden text-sm font-medium text-neutral-300 group-hover:text-white transition-colors sm:block"
-					>{data.user.name || data.user.username}</span
-				>
-			</a>
+			<span
+				class="hidden text-sm font-medium text-neutral-300 sm:block"
+				>{data.user.name || data.user.username}</span
+			>
 		</div>
 	{/if}
 </nav>
