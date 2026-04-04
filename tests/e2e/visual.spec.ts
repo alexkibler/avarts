@@ -23,13 +23,10 @@ test.describe('Visual UX Capture (Mock Mode)', () => {
 	}
 
 	test('Capture key UI states', async ({ page }, testInfo) => {
-		// 1. Login Page (Bypassed)
-		await page.goto('/login');
-		// Mock mode auto-redirects, but we might catch the login screen if we load it directly without session.
-		// However, in mock mode, submitting login auto-redirects. Let's just go to root.
+		// 1. Dashboard
 		await page.goto('/');
 		await page.waitForLoadState('networkidle');
-		await captureAndAttach(page, testInfo, '1_Dashboard_Empty');
+		await captureAndAttach(page, testInfo, '1_Dashboard');
 
 		// 2. New Game Page
 		await page.goto('/new-game');
@@ -59,37 +56,32 @@ test.describe('Visual UX Capture (Mock Mode)', () => {
 		}
 
 		// Switch to Route Tab
-		const routeTab = page.getByRole('button', { name: 'Route Planning' });
+		const routeTab = page.getByRole('button', { name: /Route/i });
 		if (await routeTab.isVisible()) {
 			await routeTab.click();
-			await page.waitForTimeout(500);
+			await page.waitForTimeout(1000);
 			await captureAndAttach(page, testInfo, '6_Game_Route_Tab');
 		}
 
 		// Switch to Upload Tab
-		const uploadTab = page.getByRole('button', { name: 'Validate Check' });
+		const uploadTab = page.getByRole('button', { name: /Upload/i });
 		if (await uploadTab.isVisible()) {
 			await uploadTab.click();
-			await page.waitForTimeout(500);
+			await page.waitForTimeout(1000);
 			await captureAndAttach(page, testInfo, '7_Game_Upload_Tab');
 		}
 
 		// Switch to Chat Tab
-		const chatTab = page.getByRole('button', { name: 'Chat' });
+		const chatTab = page.getByRole('button', { name: /Chat/i });
 		if (await chatTab.isVisible()) {
 			await chatTab.click();
-			await page.waitForTimeout(500);
+			await page.waitForTimeout(1000);
 			await captureAndAttach(page, testInfo, '8_Game_Chat_Tab');
 		}
 
-		// 4. Routes Profile Page
-		await page.goto('/routes');
-		await page.waitForLoadState('networkidle');
-		await captureAndAttach(page, testInfo, '9_Routes_List');
-
-		// 5. Athlete Profile Page
+		// 4. Athlete Profile Page
 		await page.goto('/athlete');
 		await page.waitForLoadState('networkidle');
-		await captureAndAttach(page, testInfo, '10_Athlete_Profile');
+		await captureAndAttach(page, testInfo, '9_Athlete_Profile');
 	});
 });
