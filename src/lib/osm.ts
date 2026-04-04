@@ -41,7 +41,18 @@ function haversineDistance(lat1: number, lon1: number, lat2: number, lon2: numbe
  * @param radius Radius in meters
  * @returns Array of OSM Nodes that are confirmed intersections
  */
+import { env } from '$env/dynamic/public';
+
 export async function fetchCyclingIntersections(lat: number, lon: number, radius: number): Promise<OSMNode[]> {
+  if (env.PUBLIC_MOCK_MODE === 'true') {
+    // Return dummy nodes arranged around the center
+    return Array.from({ length: 50 }, (_, i) => ({
+      id: 999000 + i,
+      lat: lat + (Math.random() - 0.5) * 0.01,
+      lon: lon + (Math.random() - 0.5) * 0.01,
+    }));
+  }
+
   const overpassUrl = 'https://overpass-api.de/api/interpreter';
 
   // The Overpass QL query:

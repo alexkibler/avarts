@@ -21,33 +21,14 @@ jobs:
         with:
           node-version: 22
 
-      - name: Start PocketBase
-        run: |
-          chmod +x ./db/pocketbase
-          ./db/pocketbase serve --dir=./db/pb_data_test --http=127.0.0.1:8090 &
-          echo $! > /tmp/pb.pid
-          echo "Waiting for PocketBase to start..."
-          timeout 30s bash -c 'until curl -sf http://127.0.0.1:8090/api/health > /dev/null; do sleep 1; done'
-          echo "PocketBase is up!"
-
       - name: Install dependencies
         run: npm ci
-
-      - name: Initialize PocketBase schema and admin
-        run: npx ts-node tests/setup-test-db.ts
 
       - name: Install Playwright browsers
         run: npx playwright install --with-deps
 
       - name: Run E2E suite
         run: npm run test:e2e
-        env:
-          BASE_URL: http://localhost:5173
-          PUBLIC_DB_URL: http://127.0.0.1:8090
-          PUBLIC_REGISTRATION: 'true'
-          TEST_PB_URL: http://127.0.0.1:8090
-          TEST_ADMIN_EMAIL: admin@bikeapelago.lan
-          TEST_ADMIN_PASSWORD: adminadmin
 
       - uses: actions/upload-artifact@v4
         if: always()

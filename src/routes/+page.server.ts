@@ -33,6 +33,10 @@ export const actions = {
     const username = formData.username?.toString() || '';
     const password = formData.password?.toString() || '';
 
+    if (env.PUBLIC_MOCK_MODE === 'true') {
+      throw redirect(303, '/');
+    }
+
     try {
       // try to log in
       await locals.pb.collection('users').authWithPassword(username, password);
@@ -53,6 +57,10 @@ export const actions = {
     throw redirect(303, '/');
   },
   register: async ({ request, locals }) => {
+    if (env.PUBLIC_MOCK_MODE === 'true') {
+      throw redirect(303, '/');
+    }
+
     if (env.PUBLIC_REGISTRATION == "true") {
       const formData = await request.formData();
       // Generate a random string for the internal email field

@@ -36,17 +36,16 @@
     isGeocoding = true;
     geocodeError = '';
     try {
-      const url = `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(addressQuery.trim())}`;
-      const res = await fetch(url, { headers: { 'Accept-Language': 'en' } });
+      const res = await fetch(`/api/geocode?q=${encodeURIComponent(addressQuery.trim())}&limit=1&locale=en`);
       if (!res.ok) throw new Error('Geocoding request failed.');
-      const results = await res.json();
-      if (!results || results.length === 0) {
+      const data = await res.json();
+      if (!data.hits || data.hits.length === 0) {
         geocodeError = 'No results found. Try a different address.';
         return;
       }
-      const { lat, lon } = results[0];
-      centerLat = parseFloat(lat);
-      centerLon = parseFloat(lon);
+      const { lat, lng } = data.hits[0].point;
+      centerLat = lat;
+      centerLon = lng;
       map.setView([centerLat, centerLon], 13);
       updateMapPin(centerLat, centerLon);
     } catch (err: any) {

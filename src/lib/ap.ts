@@ -1,6 +1,7 @@
 import { Client } from '@airbreather/archipelago.js';
 import { pb } from '$lib/pb';
 import { writable } from 'svelte/store';
+import { env } from '$env/dynamic/public';
 
 export const apClient = new Client();
 
@@ -74,8 +75,10 @@ export async function connectToAp(options: ApConnectionOptions) {
 
   // Test environment bypass checks BOTH 'test' url and global test engine flag
   const isTestForce = (typeof globalThis !== 'undefined' && (globalThis as any).PLAYWRIGHT_TEST) || (typeof window !== 'undefined' && (window as any).PLAYWRIGHT_TEST);
-  if (cleanUrl === 'test' || isTestForce) {
-      console.log('[AP] Test mode bypass engaged.');
+  const isMockMode = env.PUBLIC_MOCK_MODE === 'true';
+
+  if (cleanUrl === 'test' || isTestForce || isMockMode) {
+      console.log('[AP] Test/Mock mode bypass engaged.');
       _testMode = true;
       _testSessionId = options.sessionId;
       return true;
