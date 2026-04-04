@@ -10,6 +10,7 @@
   import ChatClient from '$components/ChatClient.svelte';
   import ApDropzone from '$components/apDropzone.svelte';
   import { activeGameTab } from '$lib/stores';
+  import { locationSwaps } from '$lib/ap';
 
   import '@raruto/leaflet-elevation/src/index.css';
 
@@ -643,6 +644,43 @@
       }
     }
   }
+
+  async function performSwap(node: any) {
+    if ($locationSwaps <= 0) {
+      alert("No Location Swaps available.");
+      return;
+    }
+
+    if (!confirm(`Are you sure you want to swap Check #${node.ap_location_id}? It will be hidden, and a random hidden node will become available.`)) {
+      return;
+    }
+
+    const hiddenNodes = nodes.filter(n => n.state === 'Hidden');
+    if (hiddenNodes.length === 0) {
+      alert("No hidden nodes available to swap with.");
+      return;
+    }
+
+    // Pick a random hidden node
+    const randomHidden = hiddenNodes[Math.floor(Math.random() * hiddenNodes.length)];
+
+    try {
+      // Get fresh session to accurately increment swaps_used
+      const session = await pb.collection('game_sessions').getOne(sessionId);
+      const usedSwaps = session.location_swaps_used || 0;
+
+      await Promise.all([
+        pb.collection('map_nodes').update(node.id, { state: 'Hidden' }),
+        pb.collection('map_nodes').update(randomHidden.id, { state: 'Available' }),
+        pb.collection('game_sessions').update(sessionId, { location_swaps_used: usedSwaps + 1 })
+      ]);
+
+      locationSwaps.update(n => Math.max(0, n - 1));
+    } catch (e) {
+      console.error("Failed to perform location swap:", e);
+      alert("Failed to swap location.");
+    }
+  }
 </script>
 
 
@@ -664,6 +702,11 @@
       <div class="counter checked">
         <span class="num">{nodeStats.checked}</span> <span class="lbl">Checked</span>
       </div>
+      {#if $locationSwaps > 0}
+        <div class="counter available">
+          <span class="num">{$locationSwaps}</span> <span class="lbl">Swaps</span>
+        </div>
+      {/if}
     </div>
   </div>
 
@@ -716,11 +759,18 @@
                     {#each nodes.filter(n => n.state === state) as node}
                       <!-- svelte-ignore a11y-click-events-have-key-events -->
                       <!-- svelte-ignore a11y-no-static-element-interactions -->
-                      <div class="node-item" on:click={() => handleNodeTap(node)} style="cursor: {state === 'Hidden' ? 'default' : 'pointer'}; opacity: {state === 'Hidden' ? 0.5 : 1}; background: {activeWaypointIds.has(node.id) ? 'var(--orange-dim)' : ''};">
-                        <span style="font-family: 'JetBrains Mono', monospace; font-size: 11px; opacity: 0.7; width: 30px;">#{node.ap_location_id}</span>
-                        <span style="flex: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; {activeWaypointIds.has(node.id) ? 'color: var(--orange); font-weight: 500;' : ''}" title={node.name}>{node.name}</span>
-                        {#if activeWaypointIds.has(node.id)}
-                          <svg style="color: var(--orange); flex-shrink: 0;" xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>
+                      <div class="node-item" style="cursor: {state === 'Hidden' ? 'default' : 'pointer'}; opacity: {state === 'Hidden' ? 0.5 : 1}; background: {activeWaypointIds.has(node.id) ? 'var(--orange-dim)' : ''};">
+                        <div style="display: flex; align-items: center; flex: 1; overflow: hidden;" on:click={() => handleNodeTap(node)}>
+                          <span style="font-family: 'JetBrains Mono', monospace; font-size: 11px; opacity: 0.7; width: 30px; flex-shrink: 0;">#{node.ap_location_id}</span>
+                          <span style="flex: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; {activeWaypointIds.has(node.id) ? 'color: var(--orange); font-weight: 500;' : ''}" title={node.name}>{node.name}</span>
+                          {#if activeWaypointIds.has(node.id)}
+                            <svg style="color: var(--orange); flex-shrink: 0;" xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>
+                          {/if}
+                        </div>
+                        {#if state === 'Available' && $locationSwaps > 0}
+                          <button class="btn-swap" title="Swap this location" on:click|stopPropagation={() => performSwap(node)}>
+                            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8"></path><polyline points="16 6 12 2 8 6"></polyline><line x1="12" y1="2" x2="12" y2="15"></line></svg>
+                          </button>
                         {/if}
                       </div>
                     {/each}
@@ -1499,6 +1549,24 @@
   .node-pin.available { background: var(--orange); }
   .node-pin.checked { background: var(--green); }
   .node-pin.hidden { background: var(--text-muted); }
+
+  .btn-swap {
+    background: transparent;
+    border: none;
+    color: var(--text-muted);
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 4px;
+    border-radius: 4px;
+    margin-left: 8px;
+    transition: all 0.15s;
+  }
+  .btn-swap:hover {
+    color: var(--orange);
+    background: rgba(255, 255, 255, 0.05);
+  }
 
   /* Chat panel */
   .chat-messages {
