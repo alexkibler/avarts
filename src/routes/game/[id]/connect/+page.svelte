@@ -2,10 +2,10 @@
 	import { onMount } from 'svelte';
 	import { page } from '$app/stores';
 	import { goto } from '$app/navigation';
-	import { pb } from '$lib/pb';
+	import { pb } from '$lib/database';
 	import { connectToAp, getRoomInfoSessionKey } from '$lib/ap';
 	import type { ApConnectionOptions } from '$lib/ap';
-	import { getSessionByRoomInfo } from '$lib/db';
+	import { getSessionByRoomInfo } from '$lib/database';
 	import type { GameSession } from '$lib/types';
 
 	const sessionId = $page.params.id;

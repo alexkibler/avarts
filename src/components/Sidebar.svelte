@@ -93,7 +93,7 @@
 						points="17 8 12 3 7 8"
 					/><line x1="12" x2="12" y1="3" y2="15" /></svg
 				>
-				<span class="font-medium text-sm">Upload GPX</span>
+				<span class="font-medium text-sm">Upload .fit</span>
 			</button>
 
 			<button
@@ -119,7 +119,6 @@
 				>
 				<span class="font-medium text-sm">Route Builder</span>
 			</button>
-
 		{:else}
 			<!-- Standard Mode Navigation -->
 			<a
@@ -145,7 +144,6 @@
 				>
 				<span class="font-medium text-sm">Dashboard</span>
 			</a>
-
 
 			<a
 				href="/game"

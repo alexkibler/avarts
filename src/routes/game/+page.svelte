@@ -1,6 +1,6 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
-	import { pb } from '$lib/pb';
+	import { pb } from '$lib/database';
 
 	export let data: { user: any };
 

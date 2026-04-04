@@ -1,8 +1,8 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { connectToAp, apClient, sendLocationChecks } from './ap';
-import { pb } from '$lib/pb';
+import { pb } from '$lib/database';
 
-vi.mock('$lib/pb', () => ({
+vi.mock('$lib/database', () => ({
 	pb: {
 		collection: vi.fn(() => ({
 			getFullList: vi.fn(),

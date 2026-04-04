@@ -7,7 +7,7 @@
 	import BottomNav from '$components/BottomNav.svelte';
 	import Sidebar from '$components/Sidebar.svelte';
 	import { userCookie } from '$lib/stores';
-	import { pb } from '$lib/pb';
+	import { pb } from '$lib/database';
 	import type { UserData } from '$lib/types';
 
 	export let data: UserData;

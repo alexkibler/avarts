@@ -1,5 +1,5 @@
 import { Client } from '@airbreather/archipelago.js';
-import { pb } from '$lib/pb';
+import { pb } from '$lib/database';
 import { writable } from 'svelte/store';
 import { env } from '$env/dynamic/public';
 

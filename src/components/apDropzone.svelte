@@ -63,7 +63,8 @@
 <div class="bg-neutral-800 p-4 rounded-lg shadow-lg h-full flex flex-col">
 	<h2 class="text-lg font-bold mb-3 text-orange-500">Validate Check(s)</h2>
 
-	<div
+	<label
+		for="file-upload"
 		role="region"
 		aria-label="File Upload Dropzone"
 		class="border-2 border-dashed rounded-lg p-6 text-center cursor-pointer transition-colors flex-1 flex flex-col items-center justify-center {isHovering
@@ -73,7 +74,12 @@
 		on:dragleave={handleDragLeave}
 		on:drop={handleDrop}
 	>
-		<svg class="w-8 h-8 text-neutral-400 mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"
+		<svg
+			class="w-8 h-8 text-neutral-400 mb-2"
+			fill="none"
+			stroke="currentColor"
+			viewBox="0 0 24 24"
+			aria-hidden="true"
 			><path
 				stroke-linecap="round"
 				stroke-linejoin="round"
@@ -86,7 +92,7 @@
 		</p>
 		<p class="text-xs text-neutral-500 mt-1">Only .fit files are supported</p>
 		<input id="file-upload" type="file" class="hidden" accept=".fit" on:change={handleFileSelect} />
-	</div>
+	</label>
 
 	{#if file}
 		<div class="mt-3 p-3 bg-neutral-700 rounded-lg flex justify-between items-center">

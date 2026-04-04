@@ -1,7 +1,7 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
 	import { goto } from '$app/navigation';
-	import { pb } from '$lib/pb';
+	import { pb } from '$lib/database';
 	import ApMap from '$components/apMap.svelte';
 	import { connectToAp, apClient } from '$lib/ap';
 	import type { ApConnectionOptions } from '$lib/ap';
