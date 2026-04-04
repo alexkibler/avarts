@@ -16,6 +16,7 @@
   export let sessionId: string;
   export let sessionName: string = '';
   export let apServerUrl: string = '';
+  export let apSlot: string = '';
   export let centerLat: number;
   export let centerLon: number;
   export let radius: number;
@@ -170,10 +171,6 @@
   let route: Route | null = null;
   let routeDistance = 0;
   let elevationGain = 0;
-  let courseName = "Archipelago Route";
-  let averageSpeed = 15; // default km/h
-  let type: 'cycling' | 'running' = 'cycling';
-  let mode: 'bike' | 'foot' = 'bike';
 
   // ── Node rendering ───────────────────────────────────────────────────────────
 
@@ -254,15 +251,17 @@
     const userName = user?.name || "Player";
     const userId = user?.id || "";
 
+    const combinedName = `${sessionName}_${apSlot}`;
+
     const gpx = `<?xml version='1.0' encoding='UTF-8'?>
 <gpx version="1.1" creator="${userName}" xmlns="http://www.topografix.com/GPX/1/1" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.topografix.com/GPX/1/1 http://www.topografix.com/GPX/1/1/gpx.xsd">
   <metadata>
-    <name>${courseName}</name>
+    <name>${combinedName}</name>
     <author><name>${userName}</name><link href="${userId}" /></author>
     <copyright author="OpenStreetMap contributors"><license>https://www.openstreetmap.org/copyright</license></copyright>
   </metadata>
   <trk>
-    <name>${courseName}</name>
+    <name>${combinedName}</name>
     <type>cycling</type>
     <trkseg>
       ${routeData.coordinates.map((coord: any) => `<trkpt lat="${coord.lat}" lon="${coord.lng}"><ele>${coord.meta?.elevation || 0}</ele></trkpt>`).join('\n')}
@@ -278,7 +277,8 @@
       const blob = new Blob([gpxData], { type: 'application/gpx+xml' });
       const link = document.createElement('a');
       link.href = window.URL.createObjectURL(blob);
-      link.download = `${courseName.replace(/\s+/g, '_')}.gpx`;
+      const combinedName = `${sessionName}_${apSlot}`.replace(/\s+/g, '_');
+      link.download = `${combinedName}.gpx`;
       link.click();
     }
   }
@@ -306,26 +306,6 @@
       if (marker) marker.setStyle(markerOptions(node.state, false));
     }
   }
-
-  async function handleTypeClick() {
-    if (type === 'cycling') {
-      type = 'running';
-      mode = 'foot';
-    } else {
-      type = 'cycling';
-      mode = 'bike';
-    }
-
-    if (routingControl) {
-      const router = routingControl.getRouter();
-      if (router && router.options && router.options.urlParameters) {
-        router.options.urlParameters.profile = mode;
-        routingControl.route();
-      }
-    }
-  }
-
-
 
   // ── Lifecycle ────────────────────────────────────────────────────────────────
 
@@ -490,8 +470,9 @@
         elevationControl = L.control.elevation({
           srcFolder: 'https://unpkg.com/@raruto/leaflet-elevation/src/',
           theme: 'elevation-theme-dark',
-          margins: { top: 30, right: 20, bottom: 20, left: 40 },
-          detached: false,
+          margins: { top: 10, right: 10, bottom: 15, left: 30 },
+          detached: true,
+          elevationDiv: "#elevation-container",
           position: "bottomright",
           slope: "summary",
           altitude: true,
@@ -755,29 +736,27 @@
 
   <!-- ROUTE STATS BAR -->
   <div class="route-stats">
-    <div class="stat-type cursor-pointer" on:click={handleTypeClick} on:keydown={(e) => e.key === 'Enter' && handleTypeClick()} tabindex="0" role="button">
-      {#if type === 'cycling'}
-        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="18.5" cy="17.5" r="3.5"/><circle cx="5.5" cy="17.5" r="3.5"/><circle cx="15" cy="5" r="1"/><path d="M12 17.5V14l-3-3 4-3 2 3h2"/></svg>
-      {:else}
-        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 16v-2.38C4 11.5 2.97 10.5 3 8c.03-2.72 1.49-6 4.5-6C9.37 2 10 3.8 10 5.5c0 3.11-2 5.66-2 8.68V16a2 2 0 1 1-4 0Z"/><path d="M20 20v-2.38c0-2.12 1.03-3.12 1-5.62-.03-2.72-1.49-6-4.5-6C14.63 6 14 7.8 14 9.5c0 3.11 2 5.66 2 8.68V20a2 2 0 1 0 4 0Z"/><path d="M16 17h4"/><path d="M4 13h4"/></svg>
-      {/if}
+    <div class="elevation-graph-container">
+      <div id="elevation-container"></div>
     </div>
-    <div class="stat">
-      <span class="stat-label">Distance</span>
-      <span class="stat-value">{(routeDistance / 1000).toFixed(2)}<span class="unit">km</span></span>
+
+    <div class="bottom-row-mobile" style="display: contents;">
+      <div class="stats-container">
+        <div class="stat">
+          <span class="stat-label">Distance</span>
+          <span class="stat-value">{(routeDistance / 1000).toFixed(2)}<span class="unit">km</span></span>
+        </div>
+        <div class="stat">
+          <span class="stat-label">Elev Gain</span>
+          <span class="stat-value">{(elevationGain * 0.6).toFixed(2)}<span class="unit">m</span></span>
+        </div>
+      </div>
+
+      <button on:click={exportToGPX} disabled={!route} class="btn-export mobile-hud-export" style="opacity: {route ? 1 : 0.4}; cursor: {route ? 'pointer' : 'not-allowed'}">
+        <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-right: 4px; display: inline-block; vertical-align: middle;"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
+        Download GPX
+      </button>
     </div>
-    <div class="stat">
-      <span class="stat-label">Elev Gain</span>
-      <span class="stat-value">{(elevationGain * 0.6).toFixed(2)}<span class="unit">m</span></span>
-    </div>
-    <div class="stat">
-      <span class="stat-label">Est Time</span>
-      <span class="stat-value">{routeDistance > 0 ? ((routeDistance / 1000) / (averageSpeed / 60)).toFixed(0) : 0}<span class="unit">min</span></span>
-    </div>
-    <div class="course-name">
-      <input bind:value={courseName} type="text" placeholder="Course Name" />
-    </div>
-    <button on:click={exportToGPX} disabled={!route} class="btn-export mobile-hud-export" style="opacity: {route ? 1 : 0.4}; cursor: {route ? 'pointer' : 'not-allowed'}">Export GPX</button>
   </div>
 
 </div>
@@ -1133,22 +1112,6 @@
     z-index: 1;
   }
 
-  /* Elevation mini chart */
-  .elevation-chart {
-    position: absolute;
-    bottom: 12px;
-    right: 12px;
-    width: 200px;
-    height: 80px;
-    background: rgba(20,20,20,0.9);
-    border: 1px solid var(--border);
-    border-radius: 8px;
-    z-index: 10;
-    padding: 8px;
-    backdrop-filter: blur(8px);
-  }
-  .elevation-chart svg { width: 100%; height: 100%; }
-
   /* Waypoint list floating on map */
   .waypoint-list {
     position: absolute;
@@ -1200,7 +1163,7 @@
      ROUTE STATS BAR (above bottom nav)
      ═══════════════════════════════════════════ */
   .route-stats {
-    height: var(--stats-h);
+    height: 60px;
     background: var(--bg-surface);
     border-top: 1px solid var(--border);
     display: flex;
@@ -1208,20 +1171,25 @@
     padding: 0 16px;
     gap: 20px;
     flex-shrink: 0;
-    overflow-x: hidden;
     position: relative;
     z-index: 1;
-    scrollbar-width: none; /* Firefox */
   }
-  .route-stats::-webkit-scrollbar { display: none; }
+
+  .stats-container {
+    display: flex;
+    gap: 24px;
+    flex-shrink: 0;
+  }
+
   .stat {
     display: flex;
     flex-direction: column;
     min-width: 0;
     flex-shrink: 0;
+    justify-content: center;
   }
   .stat .stat-label {
-    font-size: 9px;
+    font-size: 10px;
     text-transform: uppercase;
     letter-spacing: 0.5px;
     color: var(--text-muted);
@@ -1229,55 +1197,57 @@
     margin-bottom: 2px;
   }
   .stat .stat-value {
-    font-size: 14px;
+    font-size: 16px;
     font-weight: 600;
     white-space: nowrap;
   }
   .stat .stat-value .unit {
-    font-size: 10px;
+    font-size: 11px;
     font-weight: 400;
     color: var(--text-secondary);
     margin-left: 2px;
   }
-  .stat-type {
+
+  .elevation-graph-container {
+    flex: 1;
+    height: 100%;
+    min-width: 0;
     display: flex;
     align-items: center;
-    gap: 4px;
-    flex-shrink: 0;
   }
-  .stat-type svg { width: 18px; height: 18px; color: var(--orange); }
-  .course-name {
-    flex: 1;
-    min-width: 0;
-  }
-  .course-name input {
-    background: var(--bg-elevated);
-    border: 1px solid var(--border);
-    border-radius: 4px;
-    color: var(--text-primary);
-    font-family: 'Outfit', sans-serif;
-    font-size: 12px;
-    padding: 4px 8px;
+
+  #elevation-container {
     width: 100%;
-    min-width: 100px;
+    height: 100%;
+    overflow: hidden;
   }
-  .course-name input:focus {
-    outline: none;
-    border-color: var(--orange);
+
+  /* Override internal leaflet-elevation styles when detached */
+  :global(#elevation-container .elevation-control) {
+    margin: 0 !important;
+    border: none !important;
+    background: transparent !important;
+    height: 100% !important;
   }
+  :global(#elevation-container .elevation-control .background) {
+    background-color: transparent !important;
+  }
+
   .btn-export {
     background: var(--orange);
     color: white;
     border: none;
     font-family: 'Outfit', sans-serif;
-    font-size: 11px;
+    font-size: 12px;
     font-weight: 600;
-    padding: 6px 12px;
-    border-radius: 4px;
+    padding: 8px 16px;
+    border-radius: 6px;
     cursor: pointer;
     white-space: nowrap;
     flex-shrink: 0;
     transition: filter 0.15s;
+    display: flex;
+    align-items: center;
   }
   .btn-export:hover { filter: brightness(1.1); }
 
@@ -1613,6 +1583,14 @@
   /* ═══════════════════════════════════════════
      MOBILE RESPONSIVE
      ═══════════════════════════════════════════ */
+
+  /* Account for the layout's fixed BottomNav (md:hidden = visible below 768px) */
+  @media (max-width: 767px) {
+    .mockup-app-root {
+      padding-bottom: 64px;
+    }
+  }
+
   @media (max-width: 600px) {
     .panel {
       width: 100%;
@@ -1625,13 +1603,30 @@
       display: none;
     }
     .route-stats {
+      flex-direction: column;
+      height: auto;
+      padding: 8px 12px;
+      gap: 8px;
+      align-items: stretch;
+    }
+    .elevation-graph-container {
+      width: 100%;
+      height: 80px;
+      min-height: 80px;
+      max-height: 80px;
+      overflow: hidden;
+    }
+    .bottom-row-mobile {
+      display: flex !important;
+      width: 100%;
+      justify-content: space-between;
+      align-items: center;
+    }
+    .stats-container {
       gap: 12px;
-      padding: 0 12px;
     }
     .stat .stat-value { font-size: 13px; }
-    .course-name { display: none; }
-    .elevation-chart { width: 150px; height: 60px; }
-    .waypoint-list { min-width: 130px; }
+    .btn-export { padding: 6px 10px; font-size: 11px; }
   }
 
   @media (max-width: 380px) {
@@ -1705,37 +1700,14 @@
   }
 
   @media (max-width: 768px) {
-    :global(.elevation-control) {
-      width: calc(100vw - 32px) !important;
-    }
     :global(.leaflet-control-zoom) {
       display: none !important;
     }
-
-    :global(.elevation-control) {
-      max-height: 100px !important;
-      font-size: 10px !important;
-    }
-    :global(.elevation-control .background) { height: 60px !important; }
   }
 
-  /* Route planner panel — sleek dark theme */
+  /* Route planner panel — completely hide since we rely on custom buttons */
   :global(.leaflet-routing-container) {
-    background: rgba(30, 30, 32, 0.92) !important;
-    backdrop-filter: blur(16px) !important;
-    -webkit-backdrop-filter: blur(16px) !important;
-    color: white !important;
-    border: 1px solid rgba(255, 255, 255, 0.08) !important;
-    border-radius: 16px !important;
-    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.35), 0 1px 2px rgba(0, 0, 0, 0.2) !important;
-    padding: 12px 14px 16px 14px !important;
-    font-size: 13px !important;
-    width: 320px !important;
-    transition: all 0.3s ease;
-    max-height: 85vh !important;
-    overflow-y: auto !important;
-    overflow-x: hidden !important;
-    scrollbar-gutter: stable;
+    display: none !important;
   }
 
   @media (max-width: 640px) {

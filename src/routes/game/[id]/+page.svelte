@@ -172,6 +172,7 @@
       sessionId={session.id}
       sessionName={session.ap_seed_name}
       apServerUrl={session.ap_server_url}
+      apSlot={session.ap_slot_name}
       centerLat={session.center_lat}
       centerLon={session.center_lon}
       radius={session.radius}
