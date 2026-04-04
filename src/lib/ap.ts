@@ -100,9 +100,14 @@ export async function connectToAp(options: ApConnectionOptions) {
     console.log('[AP] Connected successfully!');
 
     await processReceivedItems(options.sessionId, apClient.items.received);
+    await syncCheckedLocations(options.sessionId, apClient.room.checkedLocations);
 
     apClient.items.on('itemsReceived', async () => {
       await processReceivedItems(options.sessionId, apClient.items.received);
+    });
+
+    apClient.room.on('locationsChecked', async (newlyChecked: number[]) => {
+      await syncCheckedLocations(options.sessionId, newlyChecked);
     });
 
     return true;
@@ -151,6 +156,28 @@ async function processReceivedItems(sessionId: string, items: any[]) {
   if (nodesToUnlock.length > 0) {
     await Promise.all(
       nodesToUnlock.map((id) => pb.collection('map_nodes').update(id, { state: 'Available' }))
+    );
+  }
+}
+
+/**
+ * Reconcile AP's checked locations with local node states.
+ * Any node whose ap_location_id appears in the AP-checked list should be Checked in PocketBase.
+ */
+async function syncCheckedLocations(sessionId: string, checkedLocationIds: number[]) {
+  if (!checkedLocationIds.length) return;
+
+  const nodes = await pb.collection('map_nodes').getFullList({
+    filter: `session = "${sessionId}"`,
+  });
+
+  const toMark = nodes.filter(
+    (n: any) => checkedLocationIds.includes(n.ap_location_id) && n.state !== 'Checked'
+  );
+
+  if (toMark.length > 0) {
+    await Promise.all(
+      toMark.map((n: any) => pb.collection('map_nodes').update(n.id, { state: 'Checked' }))
     );
   }
 }
