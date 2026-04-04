@@ -739,25 +739,27 @@
 
   <!-- ROUTE STATS BAR -->
   <div class="route-stats">
-    <div class="stats-container">
-      <div class="stat">
-        <span class="stat-label">Distance</span>
-        <span class="stat-value">{(routeDistance / 1000).toFixed(2)}<span class="unit">km</span></span>
-      </div>
-      <div class="stat">
-        <span class="stat-label">Elev Gain</span>
-        <span class="stat-value">{(elevationGain * 0.6).toFixed(2)}<span class="unit">m</span></span>
-      </div>
-    </div>
-
     <div class="elevation-graph-container">
       <div id="elevation-container"></div>
     </div>
 
-    <button on:click={exportToGPX} disabled={!route} class="btn-export mobile-hud-export" style="opacity: {route ? 1 : 0.4}; cursor: {route ? 'pointer' : 'not-allowed'}">
-      <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-right: 4px; display: inline-block; vertical-align: middle;"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
-      Download GPX
-    </button>
+    <div class="bottom-row-mobile" style="display: contents;">
+      <div class="stats-container">
+        <div class="stat">
+          <span class="stat-label">Distance</span>
+          <span class="stat-value">{(routeDistance / 1000).toFixed(2)}<span class="unit">km</span></span>
+        </div>
+        <div class="stat">
+          <span class="stat-label">Elev Gain</span>
+          <span class="stat-value">{(elevationGain * 0.6).toFixed(2)}<span class="unit">m</span></span>
+        </div>
+      </div>
+
+      <button on:click={exportToGPX} disabled={!route} class="btn-export mobile-hud-export" style="opacity: {route ? 1 : 0.4}; cursor: {route ? 'pointer' : 'not-allowed'}">
+        <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-right: 4px; display: inline-block; vertical-align: middle;"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
+        Download GPX
+      </button>
+    </div>
   </div>
 
 </div>
@@ -1597,16 +1599,26 @@
       display: none;
     }
     .route-stats {
-      gap: 12px;
-      padding: 0 12px;
-      height: 52px;
+      flex-direction: column;
+      height: auto;
+      padding: 8px 12px;
+      gap: 8px;
+      align-items: stretch;
+    }
+    .elevation-graph-container {
+      width: 100%;
+      height: 60px;
+    }
+    .bottom-row-mobile {
+      display: flex !important;
+      width: 100%;
+      justify-content: space-between;
+      align-items: center;
     }
     .stats-container {
       gap: 12px;
     }
     .stat .stat-value { font-size: 13px; }
-    .elevation-graph-container { display: none; } /* Hide graph on small mobile to save space */
-    .waypoint-list { min-width: 130px; }
     .btn-export { padding: 6px 10px; font-size: 11px; }
   }
 
