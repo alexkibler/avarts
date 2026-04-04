@@ -24,6 +24,10 @@ let _pendingType: ChatMessageType = 'server';
 let _listenersRegistered = false;
 let _listenerUnsubscribers: Array<() => void> = [];
 
+// Connection context for session identification (RoomInfo composite key)
+let _connectedUrl = '';
+let _connectedSlotName = '';
+
 // Test mode variables
 let _testMode = false;
 let _testSessionId = '';
@@ -107,6 +111,8 @@ export interface ApConnectionOptions {
 export async function connectToAp(options: ApConnectionOptions) {
   setupListeners();
   _activeSessionId = options.sessionId;
+  _connectedUrl = options.url;
+  _connectedSlotName = options.name;
 
   const connectionOptions: any = {
     slotData: true,
@@ -291,6 +297,43 @@ export function validateNodeCountVsApItems(nodeCount: number): string | null {
     `Bikeapelago has ${nodeCount} nodes, but Archipelago only has ${apItemCount} items. ` +
     `${nodeCount - apItemCount} nodes will never unlock.`
   );
+}
+
+/**
+ * Extracts a unique session identifier from RoomInfo (available after successful AP login).
+ *
+ * Returns a composite key that uniquely identifies an AP session:
+ * - seed_name: Stable identifier for this multiworld (from RoomInfo.seedName)
+ * - server_url: Which Archipelago server (from connection attempt)
+ * - slot_name: Which player slot (from connection attempt)
+ *
+ * Can be used to check if a session already exists in the database before setup.
+ * Returns null if not authenticated or connection details not stored.
+ *
+ * @returns Session key object with seed_name, server_url, slot_name, or null if unavailable
+ */
+export function getRoomInfoSessionKey(): { seed_name: string; server_url: string; slot_name: string } | null {
+  if (!apClient.authenticated || !_connectedUrl || !_connectedSlotName) {
+    return null;
+  }
+
+  return {
+    seed_name: apClient.room.seedName,
+    server_url: _connectedUrl,
+    slot_name: _connectedSlotName
+  };
+}
+
+/**
+ * Gets the current AP connection state summary for logging/debugging.
+ * @returns Summary of items received and checked locations
+ */
+export function getApConnectionState(): { itemsReceived: number; checkedLocations: number; authenticated: boolean } {
+  return {
+    itemsReceived: apClient.items.received.length,
+    checkedLocations: apClient.room.checkedLocations.length,
+    authenticated: apClient.authenticated
+  };
 }
 
 export function sendLocationChecks(locationIds: number[]) {
