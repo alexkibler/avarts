@@ -77,15 +77,15 @@ The Archipelago world definition lives in `apworld/bikeapelago/`.
 game: Bikeapelago
 name: YourSlotName
 Bikeapelago:
-  check_count: 50          # Number of intersections / locations (10–1000, default 100)
-  goal_type: all_intersections  # all_intersections | percentage
+  check_count: 50 # Number of intersections / locations (10–1000, default 100)
+  goal_type: all_intersections # all_intersections | percentage
 ```
 
-| Option | Values | Description |
-|--------|--------|-------------|
-| `check_count` | 10 – 1000 | How many intersection locations to generate |
-| `goal_type` | `all_intersections` | Win by checking every location |
-| | `percentage` | Win by checking 70 % of locations |
+| Option        | Values              | Description                                 |
+| ------------- | ------------------- | ------------------------------------------- |
+| `check_count` | 10 – 1000           | How many intersection locations to generate |
+| `goal_type`   | `all_intersections` | Win by checking every location              |
+|               | `percentage`        | Win by checking 70 % of locations           |
 
 ### Items & Locations
 
@@ -111,33 +111,35 @@ If you prefer to create the collections by hand:
 
 #### `game_sessions`
 
-| Field | Type | Required | Notes |
-|-------|------|----------|-------|
-| `user` | Relation → `users` | ✓ | cascade delete |
-| `ap_seed_name` | Text | ✓ | human-readable label |
-| `ap_server_url` | Text | ✓ | e.g. `archipelago.gg:38281` |
-| `ap_slot_name` | Text | ✓ | your slot name in the multiworld |
-| `center_lat` | Number | ✓ | latitude of the play area centre |
-| `center_lon` | Number | ✓ | longitude of the play area centre |
-| `radius` | Number | ✓ | radius in metres |
-| `status` | Select | ✓ | `Active` \| `Completed` |
+| Field           | Type               | Required | Notes                             |
+| --------------- | ------------------ | -------- | --------------------------------- |
+| `user`          | Relation → `users` | ✓        | cascade delete                    |
+| `ap_seed_name`  | Text               | ✓        | human-readable label              |
+| `ap_server_url` | Text               | ✓        | e.g. `archipelago.gg:38281`       |
+| `ap_slot_name`  | Text               | ✓        | your slot name in the multiworld  |
+| `center_lat`    | Number             | ✓        | latitude of the play area centre  |
+| `center_lon`    | Number             | ✓        | longitude of the play area centre |
+| `radius`        | Number             | ✓        | radius in metres                  |
+| `status`        | Select             | ✓        | `Active` \| `Completed`           |
 
 **API Rules** (recommended):
+
 - List / View / Update / Delete: `@request.auth.id = user.id`
 - Create: `@request.auth.id != ""`
 
 #### `map_nodes`
 
-| Field | Type | Required | Notes |
-|-------|------|----------|-------|
-| `session` | Relation → `game_sessions` | ✓ | cascade delete |
-| `ap_location_id` | Number | ✓ | Archipelago location ID (e.g. 800001) |
-| `osm_node_id` | Text | ✓ | OpenStreetMap node ID |
-| `lat` | Number | ✓ | |
-| `lon` | Number | ✓ | |
-| `state` | Select | ✓ | `Hidden` \| `Available` \| `Checked` |
+| Field            | Type                       | Required | Notes                                 |
+| ---------------- | -------------------------- | -------- | ------------------------------------- |
+| `session`        | Relation → `game_sessions` | ✓        | cascade delete                        |
+| `ap_location_id` | Number                     | ✓        | Archipelago location ID (e.g. 800001) |
+| `osm_node_id`    | Text                       | ✓        | OpenStreetMap node ID                 |
+| `lat`            | Number                     | ✓        |                                       |
+| `lon`            | Number                     | ✓        |                                       |
+| `state`          | Select                     | ✓        | `Hidden` \| `Available` \| `Checked`  |
 
 **API Rules** (recommended):
+
 - List / View / Update / Delete: `@request.auth.id = session.user.id`
 - Create: `@request.auth.id != ""`
 
@@ -168,6 +170,7 @@ You are then redirected to the game page automatically.
 On the game page (`/game/<id>`), confirm or edit the connection details and click **Connect & Play**.
 
 The client connects via WebSocket using `archipelago.js`. On connection:
+
 - All already-received **Node Unlock** items are processed — the corresponding nodes flip from `Hidden` → `Available` and appear on the map.
 - New items received during the session are processed in real time.
 
@@ -177,7 +180,7 @@ The client connects via WebSocket using `archipelago.js`. On connection:
 - **Green markers** — Checked (completed) intersections.
 - Click an available marker to add it as a routing waypoint.
 - Use **Download GPX** to download the planned route to your device.
-*(Note: The ability to add specific non-node locations to the route planner is planned for a future update.)*
+  _(Note: The ability to add specific non-node locations to the route planner is planned for a future update.)_
 
 ### Validating a Check
 
@@ -187,6 +190,7 @@ The client connects via WebSocket using `archipelago.js`. On connection:
 4. Click **Validate**.
 
 The app parses the GPS track, runs a **30-metre Haversine proximity check** against every available node, and for each match:
+
 - Updates the node's `state` to `Checked` in PocketBase.
 - Sends a `LocationChecks` packet to the Archipelago server.
 
@@ -218,11 +222,14 @@ npx playwright test --project=chromium
 ```
 
 ### Automated Screenshots
-Tests generate visual walkthroughs in the `test-screenshots/` directory. 
+
+Tests generate visual walkthroughs in the `test-screenshots/` directory.
+
 - **Mobile Screenshots**: Use `fullPage: true` to capture the entire layout.
 - **The Fold**: Mobile captures include a **red horizontal line** at `874px` to indicate the initial device viewport (at the fold).
 
 ### Routing Verification
+
 The E2E suite requires a running GraphHopper instance (configured via `playwright.config.ts`) to verify road-snapped routing.
 
 ---
@@ -231,13 +238,13 @@ The E2E suite requires a running GraphHopper instance (configured via `playwrigh
 
 ### Environment Variables
 
-| Variable | Default | Description |
-|----------|---------|-------------|
-| `PUBLIC_DB_URL` | `http://127.0.0.1:8090` | Public URL of the PocketBase API (browser-facing — required for internet hosting) |
-| `PUBLIC_GRAPHHOPPER_URL` | — | **Recommended:** URL of a self-hosted GraphHopper `/route` endpoint (e.g., `http://localhost:8989/route`) |
-| `PUBLIC_GRAPHHOPPER_API` | — | GraphHopper cloud API key (used if no self-hosted URL is set) |
-| `PUBLIC_REGISTRATION` | `true` | Set to `false` to disable new user registration |
-| `BODY_SIZE_LIMIT` | `5242880` | Max upload size in bytes (default 20 MB in Docker Compose) |
+| Variable                 | Default                 | Description                                                                                               |
+| ------------------------ | ----------------------- | --------------------------------------------------------------------------------------------------------- |
+| `PUBLIC_DB_URL`          | `http://127.0.0.1:8090` | Public URL of the PocketBase API (browser-facing — required for internet hosting)                         |
+| `PUBLIC_GRAPHHOPPER_URL` | —                       | **Recommended:** URL of a self-hosted GraphHopper `/route` endpoint (e.g., `http://localhost:8989/route`) |
+| `PUBLIC_GRAPHHOPPER_API` | —                       | GraphHopper cloud API key (used if no self-hosted URL is set)                                             |
+| `PUBLIC_REGISTRATION`    | `true`                  | Set to `false` to disable new user registration                                                           |
+| `BODY_SIZE_LIMIT`        | `5242880`               | Max upload size in bytes (default 20 MB in Docker Compose)                                                |
 
 ### Docker Compose (recommended)
 
@@ -294,9 +301,9 @@ GraphHopper only needs a rebuild if its `Dockerfile` or `config.yml` changed.
 
 The app exposes two ports that need public DNS:
 
-| Port | Service |
-|------|---------|
-| `8182` | SvelteKit frontend |
+| Port   | Service                   |
+| ------ | ------------------------- |
+| `8182` | SvelteKit frontend        |
 | `8090` | PocketBase API + admin UI |
 
 Set `PUBLIC_DB_URL` to the public URL of port 8090 so the browser can reach PocketBase directly.

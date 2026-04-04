@@ -122,6 +122,13 @@ class BikeapelagoWorld(World):
     def get_filler_item_name(self) -> str:
         return "Wheel Patch Kit"
 
+    def fill_slot_data(self) -> dict:
+        return {
+            "check_count": self.options.check_count.value,
+            "starting_nodes": self.options.starting_nodes.value,
+            "goal_type": self.options.goal_type.value,
+        }
+
     def create_item(self, name: str) -> BikeapelagoItem:
         item_data = item_table[name]
         return BikeapelagoItem(

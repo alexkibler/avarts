@@ -1,199 +1,186 @@
 <script lang="ts">
-  import { onMount, onDestroy, setContext, createEventDispatcher, tick } from 'svelte';
-  import 'leaflet/dist/leaflet.css';
-  import '@raruto/leaflet-elevation/src/index.css';
-  import * as imageConversion from 'image-conversion';
+	import { onMount, onDestroy, setContext, createEventDispatcher, tick } from 'svelte';
+	import 'leaflet/dist/leaflet.css';
+	import '@raruto/leaflet-elevation/src/index.css';
+	import * as imageConversion from 'image-conversion';
 
-  let L: any;
+	let L: any;
 
-  export let bounds: any | undefined = undefined;
-  export let view: any | undefined = undefined;
-  export let zoom: number | undefined = undefined;
-  export let gpx: string , from: string;
+	export let bounds: any | undefined = undefined;
+	export let view: any | undefined = undefined;
+	export let zoom: number | undefined = undefined;
+	export let gpx: string, from: string;
 
-  const dispatch = createEventDispatcher();
+	const dispatch = createEventDispatcher();
 
-  let map: any | undefined;
-  let mapElement: HTMLElement;
+	let map: any | undefined;
+	let mapElement: HTMLElement;
 
-  let elevationControl: any | undefined;
+	let elevationControl: any | undefined;
 
-  let simpleMapScreenshoter: any | undefined;
-  let screenshotOptions = {
-    cropImageByInnerWH: true,
-    hidden: true,
-    preventDownload: true,
-    hideElementsWithSelectors: ['.leaflet-control-container'],
-    mimeType: 'image/png',
-  }
+	let simpleMapScreenshoter: any | undefined;
+	let screenshotOptions = {
+		cropImageByInnerWH: true,
+		hidden: true,
+		preventDownload: true,
+		hideElementsWithSelectors: ['.leaflet-control-container'],
+		mimeType: 'image/png'
+	};
 
-  onMount(async () => {
-    const leafletMod = await import('leaflet');
-    L = leafletMod.default ?? leafletMod;
-    window.L = L;
-    await import('@raruto/leaflet-elevation/src/index.js');
-    await import('leaflet-simple-map-screenshoter');
+	onMount(async () => {
+		const leafletMod = await import('leaflet');
+		L = leafletMod.default ?? leafletMod;
+		window.L = L;
+		await import('@raruto/leaflet-elevation/src/index.js');
+		await import('leaflet-simple-map-screenshoter');
 
-    if (!bounds && (!view || !zoom)) {
-      throw new Error('Must set either bounds, or view and zoom.');
-    }
+		if (!bounds && (!view || !zoom)) {
+			throw new Error('Must set either bounds, or view and zoom.');
+		}
 
-    map = L.map(mapElement)
-      .on('zoom', (e: MouseEvent) => dispatch('zoom', e))
-      .on('popupopen', async (e: any) => {
-        await tick();
-        e.popup.update();
-      });
+		map = L.map(mapElement)
+			.on('zoom', (e: MouseEvent) => dispatch('zoom', e))
+			.on('popupopen', async (e: any) => {
+				await tick();
+				e.popup.update();
+			});
 
-    L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
-      maxZoom: 19,
-      attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
-    }).addTo(map);
+		L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
+			maxZoom: 19,
+			attribution:
+				'&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+		}).addTo(map);
 
-    if (from == "upload") {
-      elevationControl = L.control.elevation({
-        srcFolder: 'https://unpkg.com/@raruto/leaflet-elevation/src/',
-        detached: false,
-        position: "bottomleft",
-        collapsed: true,
-        slope: "summary",
-        altitude: true,
-        time: false,
-        summary: false,
-        followMarker: true,
-        autofitBounds: true,
-        legend: false,
-        waypoints: false,
-        wptLabels: false,
-        downloadLink: false,
-        distanceMarkers: false,
-        edgeScale: false,
-      }).addTo(map);
-    } else if (from == "activity") {
-      elevationControl = L.control.elevation({
-        srcFolder: 'https://unpkg.com/@raruto/leaflet-elevation/src/',
-        // detached: true,
-        // position: "bottomleft",
-        slope: "summary",
-        altitude: true,
-        time: true,
-        speed: true,
-        summary: false,
-        followMarker: true,
-        autofitBounds: true,
-        legend: true,
-        waypoints: false,
-        wptLabels: false,
-        downloadLink: false,
-        closeBtn: false,
-      }).addTo(map);
-    } else if (from == "route") {
-      elevationControl = L.control.elevation({
-        srcFolder: 'https://unpkg.com/@raruto/leaflet-elevation/src/',
-        // detached: true,
-        // position: "bottomleft",
-        slope: "summary",
-        altitude: true,
-        time: false,
-        summary: false,
-        followMarker: true,
-        autofitBounds: true,
-        legend: false,
-        waypoints: false,
-        wptLabels: false,
-        downloadLink: false,
-        closeBtn: false,
-      }).addTo(map);
-    }
+		if (from == 'upload') {
+			elevationControl = L.control
+				.elevation({
+					srcFolder: 'https://unpkg.com/@raruto/leaflet-elevation/src/',
+					detached: false,
+					position: 'bottomleft',
+					collapsed: true,
+					slope: 'summary',
+					altitude: true,
+					time: false,
+					summary: false,
+					followMarker: true,
+					autofitBounds: true,
+					legend: false,
+					waypoints: false,
+					wptLabels: false,
+					downloadLink: false,
+					distanceMarkers: false,
+					edgeScale: false
+				})
+				.addTo(map);
+		} else if (from == 'activity') {
+			elevationControl = L.control
+				.elevation({
+					srcFolder: 'https://unpkg.com/@raruto/leaflet-elevation/src/',
+					// detached: true,
+					// position: "bottomleft",
+					slope: 'summary',
+					altitude: true,
+					time: true,
+					speed: true,
+					summary: false,
+					followMarker: true,
+					autofitBounds: true,
+					legend: true,
+					waypoints: false,
+					wptLabels: false,
+					downloadLink: false,
+					closeBtn: false
+				})
+				.addTo(map);
+		}
 
-    simpleMapScreenshoter = L.simpleMapScreenshoter(screenshotOptions).addTo(map);
+		simpleMapScreenshoter = L.simpleMapScreenshoter(screenshotOptions).addTo(map);
+	});
 
-  });
+	$: if (gpx) {
+		if (from == 'upload') {
+			elevationControl.load(gpx);
+		} else if (from == 'activity') {
+			onMount(() => {
+				elevationControl.load(gpx);
+			});
+		}
+	}
 
-  $: if (gpx) {
-    if (from == "upload") {
-      elevationControl.load(gpx);
-    } else if (from == "activity" || from == "route") {
-      onMount(() => {
-        elevationControl.load(gpx);
-      });
-    }
-  }
+	onDestroy(() => {
+		map?.remove();
+		map = undefined;
+	});
 
-  onDestroy(() => {
-    map?.remove();
-    map = undefined;
-  });
+	setContext('map', {
+		getMap: () => map
+	});
 
-  setContext('map', {
-    getMap: () => map
-  });
+	$: if (map) {
+		if (bounds) {
+			map.fitBounds(bounds);
+		} else if (view && zoom) {
+			map.setView(view, zoom);
+		}
+	}
 
-  $: if (map) {
-    if (bounds) {
-      map.fitBounds(bounds);
-    } else if (view && zoom) {
-      map.setView(view, zoom);
-    }
-  }
+	export async function createScreenshot() {
+		const format = 'blob';
+		const overridedPluginOptions = {
+			mimeType: 'image/png'
+		};
 
-  export async function createScreenshot(){
-    const format = 'blob';
-    const overridedPluginOptions = {
-      mimeType: 'image/png'
-    };
-
-    // take screenshot
-    const blob = await simpleMapScreenshoter.takeScreen(format, overridedPluginOptions)
-    // compress screenshot
-    const image = await imageConversion.compressAccurately(blob,100);
-    // pass back image
-    dispatch('screenshotTaken', image);
-  }
+		// take screenshot
+		const blob = await simpleMapScreenshoter.takeScreen(format, overridedPluginOptions);
+		// compress screenshot
+		const image = await imageConversion.compressAccurately(blob, 100);
+		// pass back image
+		dispatch('screenshotTaken', image);
+	}
 </script>
 
 <div class="view w-full h-full" bind:this={mapElement}>
-  {#if map}
-    <slot />
-  {/if}
+	{#if map}
+		<slot />
+	{/if}
 </div>
 
 <style>
-  /* fix screenshot tailwind grid */
-:global(.leaflet-tile) {
-  border-style: none !important;
-}
-:global(.grid){
-  opacity: 0;
-}
-:global(.elevation-control .area) {
-  fill:  #ff9f24 ;
-  opacity: 1;
-}
-:global(.elevation-control .background) {
-  background-color: rgb(38 38 38);
-}
-:global(.view .leaflet-map-pane .leaflet-marker-pane) {
-  opacity: 0;
-}
-:global(.tick text, .axis text) {
-  font-size: 12px;
-  fill: white !important;
-  color: white !important;
-  stroke-width: 0px !important;
-}
-:global(.elevation-detached.lightblue-theme .area) {
-  stroke: orange;
-  stroke-width: 3px;
-}
-:global(.leaflet-bottom) {
-  max-width: 40% !important;
-}
-:global(.background) {
-  height: 100%;
-}
-:global(.legend-item text, .legend-switcher-label) {
-  fill: white !important;
-  stroke-width: 0px !important;
-}
+	/* fix screenshot tailwind grid */
+	:global(.leaflet-tile) {
+		border-style: none !important;
+	}
+	:global(.grid) {
+		opacity: 0;
+	}
+	:global(.elevation-control .area) {
+		fill: #ff9f24;
+		opacity: 1;
+	}
+	:global(.elevation-control .background) {
+		background-color: rgb(38 38 38);
+	}
+	:global(.view .leaflet-map-pane .leaflet-marker-pane) {
+		opacity: 0;
+	}
+	:global(.tick text, .axis text) {
+		font-size: 12px;
+		fill: white !important;
+		color: white !important;
+		stroke-width: 0px !important;
+	}
+	:global(.elevation-detached.lightblue-theme .area) {
+		stroke: orange;
+		stroke-width: 3px;
+	}
+	:global(.leaflet-bottom) {
+		max-width: 40% !important;
+	}
+	:global(.background) {
+		height: 100%;
+	}
+	:global(.legend-item text, .legend-switcher-label) {
+		fill: white !important;
+		stroke-width: 0px !important;
+	}
 </style>

@@ -1,13 +1,13 @@
-import type { UserLocals } from "$lib/types";
+import type { UserLocals } from '$lib/types';
 
 export const load = ({ locals }: UserLocals) => {
-  if (locals.user) {
-    return {
-      user: locals.user,
-    };
-  };
+	if (locals.user) {
+		return {
+			user: locals.user
+		};
+	}
 
-  return {
-    user: undefined,
-  };
+	return {
+		user: undefined
+	};
 };

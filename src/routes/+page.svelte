@@ -1,269 +1,254 @@
 <script lang="ts">
-  import { afterUpdate, onMount } from 'svelte';
-  import { pb } from '$lib/database';
-  import { env } from '$env/dynamic/public';
-  import Profile from '$components/profile.svelte'
-  import Activity from '$components/activity.svelte'
-  import Statistics from '$components/statistics.svelte'
-  import type { Exercises } from '$lib/types';
+	import { afterUpdate, onMount } from 'svelte';
+	import { pb } from '$lib/database';
+	import { env } from '$env/dynamic/public';
 
-  export let data;
-  export let form;
-  let username: string, name: string, password: string = '', confirm: string;
-  let records: Exercises = [];
-  let ready: boolean
-  let loadingMore: boolean = false;
-  let page: number = 0;
-  const itemsPerPage: number = 5; // Number of activities loaded
+	export let data;
+	export let form;
+	let username: string,
+		name: string,
+		password: string = '',
+		confirm: string;
+	let ready: boolean = true;
 
-  let register = false;
-  function ifRegister(){
-    if (register == false) {
-      register = true;
-    } else {
-      register = false;
-    }
-  }
-
-  let totals: Exercises;
-  let month: Exercises;
-  let year: Exercises;
-  let currentDate = new Date();
-  let currentYear = currentDate.getFullYear()
-  currentDate.setDate(currentDate.getDate() - 28);
-  let formattedDate = currentDate.toISOString().split('T')[0];
-
-  // incrementally load activities
-  async function loadMoreActivities() {
-    if (!loadingMore) {
-      loadingMore = true;
-      page += 1;
-
-      const newActivities = await pb.collection('activities').getList(page, itemsPerPage, { filter: `user = "${data.user.id}"`, expand: 'user', sort: '-start_time'});
-
-      records = [...records, ...newActivities.items];
-
-      loadingMore = false;
-    }
-  }
-
-  onMount(async () => {
-    if (data.user) {
-      // load initial 5 posts
-      await loadMoreActivities();
-      // get list of all activities their types (lower package w/ loading only 5 posts at a time.)
-      totals = await pb.collection("activities").getFullList({filter: `user = "${data.user.id}"`, fields: "id, name, sport, start_time, tot_distance, tot_elevation, tot_time"})
-
-      // get activities of last 4 weeks
-      month = await pb.collection('activities').getFullList({ sort: '-start_time', filter: `user = "${data.user.id}" && start_time > "${formattedDate}"`});
-
-      // get activities from current year
-      year = await pb.collection('activities').getFullList({ sort: '-start_time', filter: `user = "${data.user.id}" && start_time >= "${currentYear}-01-01"`});
-    }
-    ready = true
-  })
-
-  // incrementally load activities
-  afterUpdate(() => {
-    const scrollHandler = () => {
-      if (
-        window.innerHeight + window.scrollY >=
-        document.body.offsetHeight - 200
-      ) {
-        loadMoreActivities();
-      }
-    };
-
-    window.addEventListener('scroll', scrollHandler);
-
-    return () => {
-      window.removeEventListener('scroll', scrollHandler);
-    };
-  });
+	let register = false;
+	function ifRegister() {
+		if (register == false) {
+			register = true;
+		} else {
+			register = false;
+		}
+	}
 </script>
 
 {#if !ready}
-  <p class="ml-5 mt-10 text-white text-2xl">Loading activities...</p>
+	<p class="ml-5 mt-10 text-white text-2xl">Loading activities...</p>
 {/if}
 
 {#if data.user}
-  <div class="flex">
-    {#if ready}
-      <div class="w-1/4 m-5 hidden xl:block">
-        <Profile data={data} records={totals} />
-      </div>
-      <div class="flex flex-col w-full lg:w-1/2 mt-8 mx-8 lg:ml-28 lg:mr-5 xl:mx-0">
-        {#if data.gameSessions && data.gameSessions.length > 0}
-          <div class="mb-8">
-            <h2 class="text-orange-500 text-sm font-bold uppercase tracking-[0.2em] mb-4 flex items-center gap-2">
-              <span class="w-2 h-2 bg-orange-500 rounded-full animate-pulse"></span>
-              Active Games
-            </h2>
-            <div class="grid gap-4">
-              {#each data.gameSessions as session}
-                <div class="group relative overflow-hidden bg-neutral-800/50 backdrop-blur-sm border border-white/5 rounded-xl p-5 hover:border-orange-500/30 transition-all duration-300">
-                  <div class="absolute inset-0 bg-gradient-to-br from-orange-500/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity"></div>
-                  
-                  <div class="relative flex items-center justify-between gap-4">
-                    <div class="flex-1 min-w-0">
-                      <div class="flex items-center gap-2 mb-1">
-                        <h3 class="text-white font-bold truncate">{session.ap_seed_name || 'Untitled Seed'}</h3>
-                        <span class="px-2 py-0.5 rounded text-[10px] font-bold bg-orange-500/10 text-orange-400 border border-orange-500/20 uppercase tracking-wider">
-                          AP Mode
-                        </span>
-                      </div>
-                      
-                      <div class="flex flex-wrap gap-x-4 gap-y-1 text-xs text-neutral-400">
-                        <div class="flex items-center gap-1.5">
-                          <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-neutral-500"><rect width="20" height="14" x="2" y="3" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>
-                          <span class="truncate max-w-[120px]">{session.ap_server_url}</span>
-                        </div>
-                        <div class="flex items-center gap-1.5">
-                          <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-neutral-500"><path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
-                          <span>{session.ap_slot_name}</span>
-                        </div>
-                      </div>
-                    </div>
+	<div class="flex justify-center min-h-screen bg-neutral-900/50">
+		{#if ready}
+			<div class="flex flex-col w-full max-w-4xl mt-8 mx-8 lg:mx-0">
+				{#if data.gameSessions && data.gameSessions.length > 0}
+					<div class="mb-12">
+						<header class="mb-8 text-center">
+							<h2
+								class="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-orange-500/10 border border-orange-500/20 text-orange-500 text-xs font-bold uppercase tracking-[0.2em]"
+							>
+								<span class="w-1.5 h-1.5 bg-orange-500 rounded-full animate-pulse"></span>
+								Active Game Sessions
+							</h2>
+						</header>
 
-                    <a href="/game/{session.id}" class="shrink-0">
-                      <button class="bg-orange-600 hover:bg-orange-500 text-white text-xs font-bold px-4 py-2 rounded-lg transition-all shadow-lg shadow-orange-950/20 active:scale-95">
-                        Resume
-                      </button>
-                    </a>
-                  </div>
-                </div>
-              {/each}
-            </div>
-          </div>
-        {/if}
+						<div class="grid gap-6">
+							{#each data.gameSessions as session}
+								<div
+									class="group relative overflow-hidden bg-neutral-800/40 backdrop-blur-md border border-white/5 rounded-2xl p-6 hover:border-orange-500/40 transition-all duration-500 hover:translate-y-[-2px] hover:shadow-2xl hover:shadow-orange-500/10"
+								>
+									<div
+										class="absolute inset-0 bg-gradient-to-br from-orange-500/10 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500"
+									></div>
 
-        {#if records.length > 0}
-          {#each records as { start_time, name, id, tot_distance, sport, avg_speed, tot_elevation, elap_time, collectionId, img, expand, location }}
+									<div class="relative flex flex-col md:flex-row items-start md:items-center justify-between gap-6">
+										<div class="flex-1 min-w-0">
+											<div class="flex items-center gap-3 mb-3">
+												<h3 class="text-xl text-white font-bold tracking-tight truncate">
+													{session.ap_seed_name || 'Untitled Seed'}
+												</h3>
+												<span
+													class="px-2 py-0.5 rounded-md text-[10px] font-black bg-orange-500 text-white uppercase tracking-tighter"
+												>
+													AP Mode
+												</span>
+											</div>
 
-            <Activity date={start_time}
-                      name={name}
-                      id={id}
-                      distance={tot_distance}
-                      speed={avg_speed}
-                      elevation={tot_elevation}
-                      time={elap_time}
-                      collectionId={collectionId}
-                      img={img}
-                      sport={sport}
-                      user={expand.user}
-                      location={location}/>
-          {/each}
-        {:else}
-          <div class="mb-5 bg-neutral-800 p-8 rounded-lg text-center border-2 border-dashed border-neutral-600">
-            <h2 class="text-white text-2xl font-semibold mb-4">
-              No activities yet!
-            </h2>
-            <p class="text-neutral-400 mb-6">
-              Start your first game to see your activities and progress here.
-            </p>
-            <a href="/game">
-              <button class="px-6 py-3 bg-orange-600 text-white font-bold rounded-lg hover:bg-orange-700 transition-colors uppercase tracking-wider">
-                Start Playing
-              </button>
-            </a>
-          </div>
-        {/if}
+											<div class="flex flex-wrap gap-x-6 gap-y-2 text-sm text-neutral-400">
+												<div class="flex items-center gap-2 group/info">
+													<div class="p-1.5 rounded-lg bg-white/5 text-neutral-500 group-hover/info:text-orange-400 transition-colors">
+														<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="20" height="14" x="2" y="3" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>
+													</div>
+													<span class="truncate max-w-[200px] font-medium">{session.ap_server_url}</span>
+												</div>
+												<div class="flex items-center gap-2 group/info">
+													<div class="p-1.5 rounded-lg bg-white/5 text-neutral-500 group-hover/info:text-orange-400 transition-colors">
+														<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+													</div>
+													<span class="font-medium">{session.ap_slot_name}</span>
+												</div>
+											</div>
+										</div>
 
-      </div>
-        <div class="w-1/4 m-5 hidden lg:block">
-          <Statistics records={totals} month={month} year={year}/>
-      </div>
-    {/if}
-  </div>
+										<a href="/game/{session.id}" class="w-full md:w-auto shrink-0 transition-transform active:scale-95">
+											<button
+												class="w-full md:w-auto bg-orange-600 hover:bg-orange-500 text-white font-bold py-3 px-8 rounded-xl transition-all shadow-lg shadow-orange-900/20 hover:shadow-orange-500/30 flex items-center justify-center gap-2 group/btn"
+											>
+												Resume Session
+												<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" class="group-hover/btn:translate-x-1 transition-transform"><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></svg>
+											</button>
+										</a>
+									</div>
+								</div>
+							{/each}
+						</div>
+					</div>
+				{:else}
+					<div
+						class="mt-20 bg-neutral-800/30 backdrop-blur-sm p-12 rounded-3xl text-center border border-white/5 shadow-2xl relative overflow-hidden group"
+					>
+						<div class="absolute inset-0 bg-gradient-to-b from-orange-500/5 to-transparent"></div>
+						<div class="relative">
+							<div class="w-20 h-20 bg-orange-500/10 rounded-2xl flex items-center justify-center mx-auto mb-6 border border-orange-500/20 group-hover:scale-110 transition-transform duration-500">
+								<svg xmlns="http://www.w3.org/2000/svg" width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="#f97316" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12V7a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2v10a2 2 0 0 0 2 2h7"/><path d="M16 19h6"/><path d="M19 16v6"/><circle cx="9" cy="9" r="2"/></svg>
+							</div>
+							<h2 class="text-white text-3xl font-black mb-4 tracking-tight">No Active Sessions</h2>
+							<p class="text-neutral-400 mb-10 max-w-sm mx-auto leading-relaxed">
+								You haven't started any Archipelago games yet. Connect to a multiworld server to track your progress and plan routes.
+							</p>
+							<a href="/setup-session" class="inline-block transition-transform active:scale-95">
+								<button
+									class="px-10 py-4 bg-orange-600 text-white font-black rounded-xl hover:bg-orange-500 transition-all shadow-xl shadow-orange-900/30 hover:shadow-orange-500/40 uppercase tracking-widest text-sm flex items-center gap-3"
+								>
+									Start Your First Game
+									<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></svg>
+								</button>
+							</a>
+						</div>
+					</div>
+				{/if}
+			</div>
+		{/if}
+	</div>
 {:else}
-  <div class="flex grow">
-    <div class="mx-auto mt-20 h-20">
-      {#if env.PUBLIC_REGISTRATION == "true" || env.PUBLIC_REGISTRATION == undefined}
-        <button on:click={ifRegister} class="mb-2 p-1 rounded-xl bg-orange-600 text-white hover:bg-orange-700 w-20">
-          {#if !register}
-            register
-          {:else}
-            login
-          {/if}
-        </button>
-      {/if}
-      {#if !register}
-        {#if form?.login}
-          <div class="flex w-full items-center justify-center">
-            <p class="text-red-600">Incorrect credentials</p>
-          </div>
-        {/if}
-        <form action="?/login" method="POST" class="flex flex-col items-center w-full">
-          <div class="w-full mb-5">
-            <label for="username" class="pb-1 text-white">
-              <span>username</span>
-            </label>
-            <input type="text" name="username" class="w-full border p-2 rounded-xl" />
-          </div>
-          <div class="w-full mb-5">
-            <label for="password" class="pb-1 text-white">
-              <span>Password</span>
-            </label>
-            <input type="password" name="password" class="w-full border p-2 rounded-xl" />
-          </div>
-          <div>
-            <!-- submit the form -->
-            <button type="submit" class="mx-auto p-2 rounded-xl bg-orange-600 text-white hover:bg-orange-700">Login</button>
-          </div>
-        </form>
-      {:else}
-        <form action="?/register" method="POST" class="flex flex-col items-center w-full">
-          <!-- if form exist and and email is true -->
-          {#if form?.email}
-            <div class="flex w-full items-center justify-center mb-2 text-center flex-col">
-              <p class="text-red-600">Registration failed.</p>
-              {#if form?.error}
-                <p class="text-red-500 text-sm">{form.error}</p>
-              {/if}
-            </div>
-          {/if}
-          <div class="w-full mb-5">
-            <label for="username" class="pb-1 text-white">
-              <span>Username</span>
-            </label>
-            <input bind:value={username} type="text" name="username" class="w-full border p-2 rounded-xl" />
-          </div>
-          <div class="w-full mb-5">
-            <label for="name" class="pb-1 text-white">
-              <span>Name</span>
-            </label>
-            <input bind:value={name} type="text" name="name" class="w-full border p-2 rounded-xl" />
-          </div>
-          <div class="w-full mb-5">
-            {#if password != '' && password.length < 8}
-              <div class="flex justify-center items-center w-full">
-                <p class="text-red-600">Password needs to at least 8 characters long</p>
-              </div>
-            {/if}
-            <label for="password" class="pb-1 text-white">
-              <span>Password</span>
-              </label>
-              <input bind:value={password} type="password" name="password" class="w-full border p-2 rounded-xl" />
-            </div>
-            {#if password != '' && password != confirm }
-              <p class="text-red-600">Passwords do not match</p>
-            {/if}
-            <div class="w-full mb-5">
-              <label for="password" class="pb-1 text-white">
-                <span>Verify Password</span>
-              </label>
-              <input bind:value={confirm} type="password" name="passwordConfirm" class="w-full border p-2 rounded-xl" />
-            </div>
-            <div>
-              <!-- submit the form -->
-              <div style="{username != undefined && name != undefined && password != undefined && confirm != undefined && confirm == password && password.length >= 8 ? '' : 'cursor: not-allowed;'}">
-                <button type="submit" class="mx-auto p-2 rounded-xl bg-orange-600 text-white hover:bg-orange-700" style="{username != undefined && name != undefined && password != undefined && confirm != undefined && confirm == password && password.length >= 8 ? '' : 'pointer-events: none;'}">Register</button>
-              </div>
-            </div>
-          </form>
-        {/if}
-    </div>
-  </div>
+	<div class="flex grow">
+		<div class="mx-auto mt-20 h-20">
+			{#if env.PUBLIC_REGISTRATION == 'true' || env.PUBLIC_REGISTRATION == undefined}
+				<button
+					on:click={ifRegister}
+					class="mb-2 p-1 rounded-xl bg-orange-600 text-white hover:bg-orange-700 w-20"
+				>
+					{#if !register}
+						register
+					{:else}
+						login
+					{/if}
+				</button>
+			{/if}
+			{#if !register}
+				{#if form?.login}
+					<div class="flex w-full items-center justify-center">
+						<p class="text-red-600">Incorrect credentials</p>
+					</div>
+				{/if}
+				<form action="?/login" method="POST" class="flex flex-col items-center w-full">
+					<div class="w-full mb-5">
+						<label for="username" class="pb-1 text-white">
+							<span>username</span>
+						</label>
+						<input type="text" name="username" class="w-full border p-2 rounded-xl" />
+					</div>
+					<div class="w-full mb-5">
+						<label for="password" class="pb-1 text-white">
+							<span>Password</span>
+						</label>
+						<input type="password" name="password" class="w-full border p-2 rounded-xl" />
+					</div>
+					<div>
+						<!-- submit the form -->
+						<button
+							type="submit"
+							class="mx-auto p-2 rounded-xl bg-orange-600 text-white hover:bg-orange-700"
+							>Login</button
+						>
+					</div>
+				</form>
+			{:else}
+				<form action="?/register" method="POST" class="flex flex-col items-center w-full">
+					<!-- if form exist and and email is true -->
+					{#if form?.email}
+						<div class="flex w-full items-center justify-center mb-2 text-center flex-col">
+							<p class="text-red-600">Registration failed.</p>
+							{#if form?.error}
+								<p class="text-red-500 text-sm">{form.error}</p>
+							{/if}
+						</div>
+					{/if}
+					<div class="w-full mb-5">
+						<label for="username" class="pb-1 text-white">
+							<span>Username</span>
+						</label>
+						<input
+							bind:value={username}
+							type="text"
+							name="username"
+							class="w-full border p-2 rounded-xl"
+						/>
+					</div>
+					<div class="w-full mb-5">
+						<label for="name" class="pb-1 text-white">
+							<span>Name</span>
+						</label>
+						<input bind:value={name} type="text" name="name" class="w-full border p-2 rounded-xl" />
+					</div>
+					<div class="w-full mb-5">
+						{#if password != '' && password.length < 8}
+							<div class="flex justify-center items-center w-full">
+								<p class="text-red-600">Password needs to at least 8 characters long</p>
+							</div>
+						{/if}
+						<label for="password" class="pb-1 text-white">
+							<span>Password</span>
+						</label>
+						<input
+							bind:value={password}
+							type="password"
+							name="password"
+							class="w-full border p-2 rounded-xl"
+						/>
+					</div>
+					{#if password != '' && password != confirm}
+						<p class="text-red-600">Passwords do not match</p>
+					{/if}
+					<div class="w-full mb-5">
+						<label for="password" class="pb-1 text-white">
+							<span>Verify Password</span>
+						</label>
+						<input
+							bind:value={confirm}
+							type="password"
+							name="passwordConfirm"
+							class="w-full border p-2 rounded-xl"
+						/>
+					</div>
+					<div>
+						<!-- submit the form -->
+						<div
+							style={username != undefined &&
+							name != undefined &&
+							password != undefined &&
+							confirm != undefined &&
+							confirm == password &&
+							password.length >= 8
+								? ''
+								: 'cursor: not-allowed;'}
+						>
+							<button
+								type="submit"
+								class="mx-auto p-2 rounded-xl bg-orange-600 text-white hover:bg-orange-700"
+								style={username != undefined &&
+								name != undefined &&
+								password != undefined &&
+								confirm != undefined &&
+								confirm == password &&
+								password.length >= 8
+									? ''
+									: 'pointer-events: none;'}>Register</button
+							>
+						</div>
+					</div>
+				</form>
+			{/if}
+		</div>
+	</div>
 {/if}
 
 <style>
