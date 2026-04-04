@@ -43,6 +43,7 @@ export default defineConfig({
 		env: {
 			PUBLIC_GRAPHHOPPER_URL: 'https://routing.alexkibler.com/route',
 			PUBLIC_DB_URL: 'https://pb.bikeapelago.alexkibler.com',
+			PUBLIC_MOCK_MODE: 'true',
 		},
 	} : undefined,
 });

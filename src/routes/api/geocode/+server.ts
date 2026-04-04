@@ -10,6 +10,15 @@ export const GET: RequestHandler = async ({ url }) => {
 
   if (!q) return json({ hits: [] });
 
+  if (publicEnv.PUBLIC_MOCK_MODE === 'true') {
+    return json({
+      hits: [{
+        name: "Mock Location",
+        point: { lat: 40.7128, lng: -74.0060 }
+      }]
+    });
+  }
+
   const defaultUrl = 'http://127.0.0.1:8990/route';
   const effectiveUrl = publicEnv.PUBLIC_GRAPHHOPPER_URL || defaultUrl;
   const geocodeBase = effectiveUrl.replace('/route', '/geocode');

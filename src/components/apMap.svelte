@@ -228,6 +228,10 @@
         longitude: coord.lng
       }));
 
+      if (env.PUBLIC_MOCK_MODE === 'true') {
+        return locations.map(() => 100); // Dummy elevation
+      }
+
       const response = await fetch(apiUrl, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
