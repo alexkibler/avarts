@@ -490,8 +490,6 @@
         elevationControl = L.control.elevation({
           srcFolder: 'https://unpkg.com/@raruto/leaflet-elevation/src/',
           theme: 'elevation-theme-dark',
-          width: 400,
-          height: 160,
           margins: { top: 30, right: 20, bottom: 20, left: 40 },
           detached: false,
           position: "bottomright",
@@ -1702,8 +1700,14 @@
     border-radius: 6px !important; 
     overflow: hidden !important; 
     margin-bottom: 10px !important;
+    width: 100% !important;
+    max-width: none !important;
   }
+
   @media (max-width: 768px) {
+    :global(.elevation-control) {
+      width: calc(100vw - 32px) !important;
+    }
     :global(.leaflet-control-zoom) {
       display: none !important;
     }
