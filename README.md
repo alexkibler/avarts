@@ -176,7 +176,8 @@ The client connects via WebSocket using `archipelago.js`. On connection:
 - **Orange markers** — Available intersections you can ride to.
 - **Green markers** — Checked (completed) intersections.
 - Click an available marker to add it as a routing waypoint.
-- Use **Export GPX** to download the planned route to your device.
+- Use **Download GPX** to download the planned route to your device.
+*(Note: The ability to add specific non-node locations to the route planner is planned for a future update.)*
 
 ### Validating a Check
 
