@@ -1,6 +1,6 @@
 import { defineConfig, devices } from '@playwright/test';
 
-const baseURL = process.env.BASE_URL || process.env.TEST_BASE_URL || 'http://localhost:5173';
+const baseURL = process.env.BASE_URL || process.env.TEST_BASE_URL || 'http://localhost:5174';
 
 /**
  * E2E test configuration for Bikeapelago.
@@ -36,9 +36,9 @@ export default defineConfig({
 	],
 	// Only run a local webserver if the target is localhost
 	webServer: baseURL.includes('localhost') ? {
-		command: 'npm run dev',
-		url: 'http://localhost:5173',
-		reuseExistingServer: true,
+		command: 'npm run dev -- --port 5174',
+		url: 'http://localhost:5174',
+		reuseExistingServer: false,
 		timeout: 120 * 1000,
 		env: {
 			PUBLIC_GRAPHHOPPER_URL: 'https://routing.alexkibler.com/route',
