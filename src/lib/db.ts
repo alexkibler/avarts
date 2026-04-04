@@ -17,29 +17,29 @@ import { pb } from './pb';
  * @returns Game session record if found, null if new session
  */
 export async function getSessionByRoomInfo(
-  seedName: string,
-  serverUrl: string,
-  slotName: string
+	seedName: string,
+	serverUrl: string,
+	slotName: string
 ): Promise<any | null> {
-  if (!seedName || !serverUrl || !slotName) {
-    return null;
-  }
+	if (!seedName || !serverUrl || !slotName) {
+		return null;
+	}
 
-  try {
-    // Build composite filter for the three fields
-    const filter = `ap_seed_name = "${seedName}" && ap_server_url = "${serverUrl}" && ap_slot_name = "${slotName}"`;
+	try {
+		// Build composite filter for the three fields
+		const filter = `ap_seed_name = "${seedName}" && ap_server_url = "${serverUrl}" && ap_slot_name = "${slotName}"`;
 
-    const results = await pb.collection('game_sessions').getFullList({
-      filter,
-      limit: 1,
-      requestKey: null,
-    });
+		const results = await pb.collection('game_sessions').getFullList({
+			filter,
+			limit: 1,
+			requestKey: null
+		});
 
-    return results.length > 0 ? results[0] : null;
-  } catch (error) {
-    console.error('[DB] Error querying session by RoomInfo:', error);
-    return null;
-  }
+		return results.length > 0 ? results[0] : null;
+	} catch (error) {
+		console.error('[DB] Error querying session by RoomInfo:', error);
+		return null;
+	}
 }
 
 /**
@@ -55,18 +55,21 @@ export async function getSessionByRoomInfo(
  * @returns Created game_sessions record with id field
  */
 export async function createGameSessionFromAp(
-  userId: string,
-  seedName: string,
-  serverUrl: string,
-  slotName: string
+	userId: string,
+	seedName: string,
+	serverUrl: string,
+	slotName: string
 ): Promise<any> {
-  return pb.collection('game_sessions').create({
-    user: userId,
-    ap_seed_name: seedName,
-    ap_server_url: serverUrl,
-    ap_slot_name: slotName,
-    status: 'SetupInProgress'
-  }, { requestKey: null });
+	return pb.collection('game_sessions').create(
+		{
+			user: userId,
+			ap_seed_name: seedName,
+			ap_server_url: serverUrl,
+			ap_slot_name: slotName,
+			status: 'SetupInProgress'
+		},
+		{ requestKey: null }
+	);
 }
 
 /**
@@ -81,17 +84,21 @@ export async function createGameSessionFromAp(
  * @returns Updated record
  */
 export async function updateSessionWithMapDetails(
-  sessionId: string,
-  centerLat: number,
-  centerLon: number,
-  radius: number
+	sessionId: string,
+	centerLat: number,
+	centerLon: number,
+	radius: number
 ): Promise<any> {
-  return pb.collection('game_sessions').update(sessionId, {
-    center_lat: centerLat,
-    center_lon: centerLon,
-    radius: radius,
-    status: 'Active'
-  }, { requestKey: null });
+	return pb.collection('game_sessions').update(
+		sessionId,
+		{
+			center_lat: centerLat,
+			center_lon: centerLon,
+			radius: radius,
+			status: 'Active'
+		},
+		{ requestKey: null }
+	);
 }
 
 /**
@@ -101,10 +108,10 @@ export async function updateSessionWithMapDetails(
  * @returns Game session record or null if not found
  */
 export async function getSessionById(sessionId: string): Promise<any | null> {
-  try {
-    return await pb.collection('game_sessions').getOne(sessionId, { requestKey: null });
-  } catch (error) {
-    console.error('[DB] Error fetching session:', error);
-    return null;
-  }
+	try {
+		return await pb.collection('game_sessions').getOne(sessionId, { requestKey: null });
+	} catch (error) {
+		console.error('[DB] Error fetching session:', error);
+		return null;
+	}
 }

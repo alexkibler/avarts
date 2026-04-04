@@ -1,10 +1,8 @@
 graphhopper:
-
   # OpenStreetMap input file PBF or XML, can be changed via command line -Ddw.graphhopper.datareader.file=some.pbf
-  datareader.file: ""
+  datareader.file: ''
   # Local folder used by graphhopper to store its data
   graph.location: graph-cache
-
 
   ##### Routing Profiles ####
 
@@ -32,27 +30,27 @@ graphhopper:
     - name: bike
       vehicle: bike
       custom_model:
-          distance_influence: null
-          heading_penalty: null
+        distance_influence: null
+        heading_penalty: null
       areas: []
     - name: foot
       vehicle: foot
       # custom_model_files: [bike.json, bike_elevation.json]
       custom_model:
-          distance_influence: null
-          heading_penalty: null
+        distance_influence: null
+        heading_penalty: null
       areas: []
-#   - name: car
-#     vehicle: car
-#     custom_model:
-#        distance_influence: 70
-#      turn_costs: true
-#      u_turn_costs: 60
+  #   - name: car
+  #     vehicle: car
+  #     custom_model:
+  #        distance_influence: 70
+  #      turn_costs: true
+  #      u_turn_costs: 60
 
-#    - name: bike
-#      # to use the bike vehicle make sure to not ignore cycleways etc., see import.osm.ignored_highways below
-#      vehicle: bike
-#      custom_model_files: [bike.json, bike_elevation.json]
+  #    - name: bike
+  #      # to use the bike vehicle make sure to not ignore cycleways etc., see import.osm.ignored_highways below
+  #      vehicle: bike
+  #      custom_model_files: [bike.json, bike_elevation.json]
 
   # instead of the inbuilt custom models (see ./core/src/main/resources/com/graphhopper/custom_models)
   # you can specify a folder where to find your own custom model files
@@ -79,7 +77,6 @@ graphhopper:
   # for the preparation (`my_other_profile`)
   profiles_lm: []
 
-
   #### Vehicles ####
 
   # The vehicle defines the base for how the routing of a profile behaves. It can be adjusted with the turn_costs=true
@@ -87,7 +84,6 @@ graphhopper:
   # name=mycustomvehicle,turn_costs=true,transportation_mode=MOTOR_VEHICLE
   # But you should prefer to configure the turn_costs via the profile configuration.
   # Other standard vehicles: foot,bike,mtb,racingbike,wheelchair
-
 
   #### Encoded Values ####
 
@@ -110,7 +106,6 @@ graphhopper:
   # Make landmark preparation parallel if you have enough RAM. Change this only if you know what you are doing and if
   # the default worked for you.
   # prepare.lm.threads: 1
-
 
   #### Elevation ####
 
@@ -135,7 +130,6 @@ graphhopper:
   # window size in meter along a way used for averaging a node's elevation
   # graph.elevation.edge_smoothing.moving_average.window_size: 150
 
-
   # To increase elevation profile resolution, use the following two parameters to tune the extra resolution you need
   # against the additional storage space used for edge geometries. You should enable bilinear interpolation when using
   # these features (see #1953 for details).
@@ -145,38 +139,35 @@ graphhopper:
   #   elevation and will remove the extra points that long edge sampling added
   # graph.elevation.way_point_max_distance: 10
 
+  #### Country-dependent defaults for max speeds ####
 
-    #### Country-dependent defaults for max speeds ####
+  # This features sets a maximum speed in 'max_speed' encoded value if no maxspeed tag was found. It is country-dependent
+  # and based on several rules. See https://github.com/westnordost/osm-legal-default-speeds
+  # To use it uncomment the following, then enable urban density below and add 'country' to graph.encoded_values
+  # max_speed_calculator.enabled: true
 
-    # This features sets a maximum speed in 'max_speed' encoded value if no maxspeed tag was found. It is country-dependent
-    # and based on several rules. See https://github.com/westnordost/osm-legal-default-speeds
-    # To use it uncomment the following, then enable urban density below and add 'country' to graph.encoded_values
-    # max_speed_calculator.enabled: true
+  #### Urban density (built-up areas) ####
 
+  # This feature allows classifying roads into 'rural', 'residential' and 'city' areas (encoded value 'urban_density')
+  # Use 1 or more threads to enable the feature
+  # graph.urban_density.threads: 8
+  # Use higher/lower sensitivities if too little/many roads fall into the according categories.
+  # Using smaller radii will speed up the classification, but only change these values if you know what you are doing.
+  # If you do not need the (rather slow) city classification set city_radius to zero.
+  # graph.urban_density.residential_radius: 400
+  # graph.urban_density.residential_sensitivity: 6000
+  # graph.urban_density.city_radius: 1500
+  # graph.urban_density.city_sensitivity: 1000
 
-    #### Urban density (built-up areas) ####
+  #### Subnetworks ####
 
-    # This feature allows classifying roads into 'rural', 'residential' and 'city' areas (encoded value 'urban_density')
-    # Use 1 or more threads to enable the feature
-    # graph.urban_density.threads: 8
-    # Use higher/lower sensitivities if too little/many roads fall into the according categories.
-    # Using smaller radii will speed up the classification, but only change these values if you know what you are doing.
-    # If you do not need the (rather slow) city classification set city_radius to zero.
-    # graph.urban_density.residential_radius: 400
-    # graph.urban_density.residential_sensitivity: 6000
-    # graph.urban_density.city_radius: 1500
-    # graph.urban_density.city_sensitivity: 1000
-
-
-    #### Subnetworks ####
-
-    # In many cases the road network consists of independent components without any routes going in between. In
-    # the most simple case you can imagine an island without a bridge or ferry connection. The following parameter
-    # allows setting a minimum size (number of edges) for such detached components. This can be used to reduce the number
-    # of cases where a connection between locations might not be found.
+  # In many cases the road network consists of independent components without any routes going in between. In
+  # the most simple case you can imagine an island without a bridge or ferry connection. The following parameter
+  # allows setting a minimum size (number of edges) for such detached components. This can be used to reduce the number
+  # of cases where a connection between locations might not be found.
   prepare.min_network_size: 200
-  prepare.subnetworks.threads: 1
-
+  prepare.subnetworks.threads:
+    1
 
     #### Routing ####
 
@@ -214,14 +205,12 @@ graphhopper:
   # Sort the graph after import to make requests roughly ~10% faster. Note that this requires significantly more RAM on import.
   # graph.do_sort: true
 
-
   #### Custom Areas ####
 
   # GraphHopper reads GeoJSON polygon files including their properties from this directory and makes them available
   # to all tag parsers, vehicles and custom models. All GeoJSON Features require to have the "id" property.
   # Country borders are included automatically (see countries.geojson).
   # custom_areas.directory: path/to/custom_areas
-
 
   #### Country Rules ####
 
@@ -232,35 +221,35 @@ graphhopper:
 # Dropwizard server configuration
 server:
   application_connectors:
-  - type: http
-    port: 8989
-    # for security reasons bind to localhost
-    # bind_host: localhost
-    bind_host: 0.0.0.0
-    # increase GET request limit - not necessary if /maps UI is not used or used without custom models
-    max_request_header_size: 50k
+    - type: http
+      port: 8989
+      # for security reasons bind to localhost
+      # bind_host: localhost
+      bind_host: 0.0.0.0
+      # increase GET request limit - not necessary if /maps UI is not used or used without custom models
+      max_request_header_size: 50k
   request_log:
-      appenders: []
+    appenders: []
   admin_connectors:
-  - type: http
-    port: 8990
-    bind_host: localhost
+    - type: http
+      port: 8990
+      bind_host: localhost
 # See https://www.dropwizard.io/en/latest/manual/core.html#logging
 logging:
   appenders:
     - type: file
       time_zone: UTC
       current_log_filename: logs/graphhopper.log
-      log_format: "%d{yyyy-MM-dd HH:mm:ss.SSS} [%thread] %-5level %logger{36} - %msg%n"
+      log_format: '%d{yyyy-MM-dd HH:mm:ss.SSS} [%thread] %-5level %logger{36} - %msg%n'
       archive: true
       archived_log_filename_pattern: ./logs/graphhopper-%d.log.gz
       archived_file_count: 30
       never_block: true
     - type: console
       time_zone: UTC
-      log_format: "%d{yyyy-MM-dd HH:mm:ss.SSS} [%thread] %-5level %logger{36} - %msg%n"
+      log_format: '%d{yyyy-MM-dd HH:mm:ss.SSS} [%thread] %-5level %logger{36} - %msg%n'
   loggers:
-    "com.graphhopper.osm_warnings":
+    'com.graphhopper.osm_warnings':
       level: DEBUG
       additive: false
       appenders:

@@ -210,7 +210,7 @@ describe('serializeNonPOJOs', () => {
 			created: '2023-01-01T00:00:00Z',
 			updated: '2023-01-01T00:00:00Z',
 			emailVisibility: false,
-			verified: false,
+			verified: false
 		};
 		const result = serializeNonPOJOs(model);
 		expect(result).toEqual(model);

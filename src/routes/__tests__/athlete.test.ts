@@ -21,7 +21,7 @@ const mockError = vi.fn((status: number, message: string) => {
 
 vi.mock('@sveltejs/kit', () => ({
 	redirect: (status: number, location: string) => mockRedirect(status, location),
-	error: (status: number, message: string) => mockError(status, message),
+	error: (status: number, message: string) => mockError(status, message)
 }));
 
 describe('athlete update action', () => {
@@ -36,7 +36,7 @@ describe('athlete update action', () => {
 		const updateFn = vi.fn().mockResolvedValue({
 			name: 'Updated Name',
 			avatar: 'new_avatar.jpg',
-			weight: 72.5,
+			weight: 72.5
 		});
 		const pb = { collection: vi.fn(() => ({ update: updateFn })) };
 		const locals = { pb, user: { id: userId, name: '', avatar: '', weight: 0 } };
@@ -57,7 +57,7 @@ describe('athlete update action', () => {
 		const updateFn = vi.fn().mockResolvedValue({
 			name: 'Alice',
 			avatar: 'alice_avatar.png',
-			weight: 65.0,
+			weight: 65.0
 		});
 		const pb = { collection: vi.fn(() => ({ update: updateFn })) };
 		const locals = { pb, user: { name: '', avatar: '', weight: 0 } };
@@ -87,8 +87,8 @@ describe('athlete update action', () => {
 		const userId = 'user_123';
 		const pb = {
 			collection: vi.fn(() => ({
-				update: vi.fn().mockResolvedValue({ name: 'Bob', avatar: '', weight: 80 }),
-			})),
+				update: vi.fn().mockResolvedValue({ name: 'Bob', avatar: '', weight: 80 })
+			}))
 		};
 		const locals = { pb, user: { name: '', avatar: '', weight: 0 } };
 
@@ -109,8 +109,8 @@ describe('athlete update action', () => {
 		const userId = 'user_error_test';
 		const pb = {
 			collection: vi.fn(() => ({
-				update: vi.fn().mockRejectedValue(new Error('Connection refused')),
-			})),
+				update: vi.fn().mockRejectedValue(new Error('Connection refused'))
+			}))
 		};
 		const locals = { pb, user: {} };
 
@@ -122,7 +122,7 @@ describe('athlete update action', () => {
 
 		await expect(actions.update({ request, locals } as any)).rejects.toMatchObject({
 			type: 'error',
-			status: 500,
+			status: 500
 		});
 	});
 
@@ -156,7 +156,7 @@ describe('POST /logout', () => {
 		const clearFn = vi.fn();
 		const locals: any = {
 			pb: { authStore: { clear: clearFn } },
-			user: { id: 'user1' },
+			user: { id: 'user1' }
 		};
 
 		const { POST } = await import('../logout/+server.js');
@@ -164,7 +164,7 @@ describe('POST /logout', () => {
 		await expect(POST({ locals } as any)).rejects.toEqual({
 			type: 'redirect',
 			status: 303,
-			location: '/',
+			location: '/'
 		});
 
 		expect(clearFn).toHaveBeenCalledOnce();
@@ -173,7 +173,7 @@ describe('POST /logout', () => {
 	it('sets locals.user to undefined after logout', async () => {
 		const locals: any = {
 			pb: { authStore: { clear: vi.fn() } },
-			user: { id: 'user_to_clear' },
+			user: { id: 'user_to_clear' }
 		};
 
 		const { POST } = await import('../logout/+server.js');

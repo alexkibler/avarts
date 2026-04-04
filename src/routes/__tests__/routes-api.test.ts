@@ -37,7 +37,7 @@ describe('POST /create (route creation endpoint)', () => {
 		const createFn = vi.fn().mockResolvedValue({ id: routeId });
 		const getList = vi.fn().mockResolvedValue({ items: [{ id: routeId }] });
 		const pb = {
-			collection: vi.fn(() => ({ create: createFn, getList })),
+			collection: vi.fn(() => ({ create: createFn, getList }))
 		};
 		const locals = { pb };
 
@@ -56,8 +56,8 @@ describe('POST /create (route creation endpoint)', () => {
 		const pb = {
 			collection: vi.fn(() => ({
 				create: vi.fn().mockResolvedValue({}),
-				getList: vi.fn().mockResolvedValue({ items: [{ id: routeId }] }),
-			})),
+				getList: vi.fn().mockResolvedValue({ items: [{ id: routeId }] })
+			}))
 		};
 		const locals = { pb };
 
@@ -85,8 +85,8 @@ describe('POST /create (route creation endpoint)', () => {
 				getList: vi.fn((...args: any[]) => {
 					capturedGetListArgs = args;
 					return Promise.resolve({ items: [{ id: routeId }] });
-				}),
-			})),
+				})
+			}))
 		};
 		const locals = { pb };
 
@@ -119,8 +119,8 @@ describe('POST /update (route update endpoint)', () => {
 		const pb = {
 			collection: vi.fn(() => ({
 				update: updateFn,
-				getList: vi.fn().mockResolvedValue({ items: [{ id: routeId }] }),
-			})),
+				getList: vi.fn().mockResolvedValue({ items: [{ id: routeId }] })
+			}))
 		};
 		const locals = { pb };
 
@@ -141,8 +141,8 @@ describe('POST /update (route update endpoint)', () => {
 		const pb = {
 			collection: vi.fn(() => ({
 				update: updateFn,
-				getList: vi.fn().mockResolvedValue({ items: [{ id: routeId }] }),
-			})),
+				getList: vi.fn().mockResolvedValue({ items: [{ id: routeId }] })
+			}))
 		};
 		const locals = { pb };
 
@@ -161,8 +161,8 @@ describe('POST /update (route update endpoint)', () => {
 		const pb = {
 			collection: vi.fn(() => ({
 				update: vi.fn().mockResolvedValue({}),
-				getList: vi.fn().mockResolvedValue({ items: [{ id: routeId }] }),
-			})),
+				getList: vi.fn().mockResolvedValue({ items: [{ id: routeId }] })
+			}))
 		};
 		const locals = { pb };
 
@@ -190,8 +190,8 @@ describe('POST /update (route update endpoint)', () => {
 				getList: vi.fn((...args: any[]) => {
 					capturedGetListArgs = args;
 					return Promise.resolve({ items: [{ id: routeId }] });
-				}),
-			})),
+				})
+			}))
 		};
 		const locals = { pb };
 

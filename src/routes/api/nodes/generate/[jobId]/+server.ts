@@ -21,58 +21,58 @@ import { getJob, updateJob } from '$lib/jobTracker';
  * }
  */
 export const GET: RequestHandler = async ({ params }) => {
-  try {
-    const { jobId } = params;
+	try {
+		const { jobId } = params;
 
-    // Validate jobId format (basic UUID check)
-    if (!jobId || typeof jobId !== 'string') {
-      return json(
-        {
-          error: 'invalid_job_id',
-          message: 'Job ID is required and must be a string',
-        },
-        { status: 400 }
-      );
-    }
+		// Validate jobId format (basic UUID check)
+		if (!jobId || typeof jobId !== 'string') {
+			return json(
+				{
+					error: 'invalid_job_id',
+					message: 'Job ID is required and must be a string'
+				},
+				{ status: 400 }
+			);
+		}
 
-    // Get job state
-    const job = await getJob(jobId);
+		// Get job state
+		const job = await getJob(jobId);
 
-    if (!job) {
-      return json(
-        {
-          error: 'job_not_found',
-          message: `Job ${jobId} not found`,
-        },
-        { status: 404 }
-      );
-    }
+		if (!job) {
+			return json(
+				{
+					error: 'job_not_found',
+					message: `Job ${jobId} not found`
+				},
+				{ status: 404 }
+			);
+		}
 
-    // Calculate percentage
-    const percentage =
-      job.progress.total > 0 ? Math.round((job.progress.completed / job.progress.total) * 100) : 0;
+		// Calculate percentage
+		const percentage =
+			job.progress.total > 0 ? Math.round((job.progress.completed / job.progress.total) * 100) : 0;
 
-    return json({
-      jobId: job.jobId,
-      status: job.status,
-      progress: {
-        completed: job.progress.completed,
-        total: job.progress.total,
-        percentage,
-      },
-      sessionId: job.sessionId || null,
-      error: job.error,
-    });
-  } catch (error) {
-    console.error('[API] Error polling job status:', error);
-    return json(
-      {
-        error: 'server_error',
-        message: 'Failed to get job status',
-      },
-      { status: 500 }
-    );
-  }
+		return json({
+			jobId: job.jobId,
+			status: job.status,
+			progress: {
+				completed: job.progress.completed,
+				total: job.progress.total,
+				percentage
+			},
+			sessionId: job.sessionId || null,
+			error: job.error
+		});
+	} catch (error) {
+		console.error('[API] Error polling job status:', error);
+		return json(
+			{
+				error: 'server_error',
+				message: 'Failed to get job status'
+			},
+			{ status: 500 }
+		);
+	}
 };
 
 /**
@@ -89,50 +89,50 @@ export const GET: RequestHandler = async ({ params }) => {
  * }
  */
 export const DELETE: RequestHandler = async ({ params }) => {
-  try {
-    const { jobId } = params;
+	try {
+		const { jobId } = params;
 
-    const job = await getJob(jobId);
+		const job = await getJob(jobId);
 
-    if (!job) {
-      return json(
-        {
-          error: 'job_not_found',
-          message: `Job ${jobId} not found`,
-        },
-        { status: 404 }
-      );
-    }
+		if (!job) {
+			return json(
+				{
+					error: 'job_not_found',
+					message: `Job ${jobId} not found`
+				},
+				{ status: 404 }
+			);
+		}
 
-    // Can only cancel pending or processing jobs
-    if (job.status !== 'pending' && job.status !== 'processing') {
-      return json(
-        {
-          error: 'invalid_operation',
-          message: `Cannot cancel job with status '${job.status}'`,
-        },
-        { status: 400 }
-      );
-    }
+		// Can only cancel pending or processing jobs
+		if (job.status !== 'pending' && job.status !== 'processing') {
+			return json(
+				{
+					error: 'invalid_operation',
+					message: `Cannot cancel job with status '${job.status}'`
+				},
+				{ status: 400 }
+			);
+		}
 
-    // Mark as cancelled
-    await updateJob(jobId, { status: 'cancelled' }, true);
+		// Mark as cancelled
+		await updateJob(jobId, { status: 'cancelled' }, true);
 
-    console.log(`[API] Job cancelled: ${jobId}`);
+		console.log(`[API] Job cancelled: ${jobId}`);
 
-    return json({
-      jobId,
-      status: 'cancelled',
-      message: 'Job cancelled successfully',
-    });
-  } catch (error) {
-    console.error('[API] Error cancelling job:', error);
-    return json(
-      {
-        error: 'server_error',
-        message: 'Failed to cancel job',
-      },
-      { status: 500 }
-    );
-  }
+		return json({
+			jobId,
+			status: 'cancelled',
+			message: 'Job cancelled successfully'
+		});
+	} catch (error) {
+		console.error('[API] Error cancelling job:', error);
+		return json(
+			{
+				error: 'server_error',
+				message: 'Failed to cancel job'
+			},
+			{ status: 500 }
+		);
+	}
 };

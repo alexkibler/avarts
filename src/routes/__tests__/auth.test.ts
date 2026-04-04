@@ -18,7 +18,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 
 // Mock $env/dynamic/public before importing the module
 vi.mock('$env/dynamic/public', () => ({
-	env: { PUBLIC_REGISTRATION: 'true' },
+	env: { PUBLIC_REGISTRATION: 'true' }
 }));
 
 // Mock @sveltejs/kit redirect/error
@@ -31,7 +31,7 @@ const mockError = vi.fn((status: number, message: string) => {
 
 vi.mock('@sveltejs/kit', () => ({
 	redirect: (status: number, location: string) => mockRedirect(status, location),
-	error: (status: number, message: string) => mockError(status, message),
+	error: (status: number, message: string) => mockError(status, message)
 }));
 
 // Helpers to build mock locals and requests
@@ -40,8 +40,8 @@ function buildMockPb(overrides: Record<string, any> = {}) {
 		collection: vi.fn(() => ({
 			authWithPassword: vi.fn().mockResolvedValue({ token: 'fake-token', record: {} }),
 			create: vi.fn().mockResolvedValue({ id: 'user123', username: 'testuser' }),
-			...overrides,
-		})),
+			...overrides
+		}))
 	};
 }
 
@@ -73,7 +73,7 @@ describe('login action', () => {
 		await expect(actions.login({ request, locals } as any)).rejects.toEqual({
 			type: 'redirect',
 			status: 303,
-			location: '/',
+			location: '/'
 		});
 
 		expect(pb.collection).toHaveBeenCalledWith('users');
@@ -85,8 +85,8 @@ describe('login action', () => {
 		const authError = Object.assign(new Error('Invalid credentials'), { status: 400 });
 		const pb = {
 			collection: vi.fn(() => ({
-				authWithPassword: vi.fn().mockRejectedValue(authError),
-			})),
+				authWithPassword: vi.fn().mockRejectedValue(authError)
+			}))
 		};
 		locals = { pb };
 
@@ -101,8 +101,8 @@ describe('login action', () => {
 		const authError = Object.assign(new Error('Unauthorized'), { status: 401 });
 		const pb = {
 			collection: vi.fn(() => ({
-				authWithPassword: vi.fn().mockRejectedValue(authError),
-			})),
+				authWithPassword: vi.fn().mockRejectedValue(authError)
+			}))
 		};
 		locals = { pb };
 
@@ -117,8 +117,8 @@ describe('login action', () => {
 		const serverError = Object.assign(new Error('DB is down'), { status: 500 });
 		const pb = {
 			collection: vi.fn(() => ({
-				authWithPassword: vi.fn().mockRejectedValue(serverError),
-			})),
+				authWithPassword: vi.fn().mockRejectedValue(serverError)
+			}))
 		};
 		locals = { pb };
 
@@ -127,7 +127,7 @@ describe('login action', () => {
 
 		await expect(actions.login({ request, locals } as any)).rejects.toMatchObject({
 			type: 'error',
-			status: 500,
+			status: 500
 		});
 	});
 });
@@ -158,7 +158,7 @@ describe('register action', () => {
 		await expect(actions.register({ request, locals } as any)).rejects.toEqual({
 			type: 'redirect',
 			status: 303,
-			location: '/',
+			location: '/'
 		});
 
 		const collectionMethods = pb.collection.mock.results[0].value;
@@ -182,8 +182,8 @@ describe('register action', () => {
 		const pb = {
 			collection: vi.fn(() => ({
 				create: vi.fn().mockResolvedValue({ id: 'u1', username: 'newuser' }),
-				authWithPassword,
-			})),
+				authWithPassword
+			}))
 		};
 		const locals = { pb };
 
@@ -209,8 +209,8 @@ describe('register action', () => {
 		const conflictError = Object.assign(new Error('Username already taken'), { status: 400 });
 		const pb = {
 			collection: vi.fn(() => ({
-				create: vi.fn().mockRejectedValue(conflictError),
-			})),
+				create: vi.fn().mockRejectedValue(conflictError)
+			}))
 		};
 		const locals = { pb };
 
@@ -253,8 +253,8 @@ describe('register action', () => {
 		const serverError = Object.assign(new Error('DB offline'), { status: 500 });
 		const pb = {
 			collection: vi.fn(() => ({
-				create: vi.fn().mockRejectedValue(serverError),
-			})),
+				create: vi.fn().mockRejectedValue(serverError)
+			}))
 		};
 		const locals = { pb };
 
@@ -268,7 +268,7 @@ describe('register action', () => {
 
 		await expect(actions.register({ request, locals } as any)).rejects.toMatchObject({
 			type: 'error',
-			status: 500,
+			status: 500
 		});
 	});
 });

@@ -7,9 +7,9 @@ export const apClient = new Client();
 
 export type ChatMessageType = 'chat' | 'item' | 'system' | 'server';
 export interface ChatMessage {
-  id: number;
-  text: string;
-  type: ChatMessageType;
+	id: number;
+	text: string;
+	type: ChatMessageType;
 }
 
 export const chatMessages = writable<ChatMessage[]>([]);
@@ -19,7 +19,7 @@ export const locationSwaps = writable<number>(0);
 
 let _activeSessionId = '';
 let _msgId = 0;
-let _hooksRegistered = false;
+const _hooksRegistered = false;
 let _pendingType: ChatMessageType = 'server';
 let _listenersRegistered = false;
 let _listenerUnsubscribers: Array<() => void> = [];
@@ -41,9 +41,9 @@ let _hasPendingSync = false;
  * Useful for reconnection scenarios where listeners need to be cleared.
  */
 function teardownListeners() {
-  _listenerUnsubscribers.forEach(unsub => unsub());
-  _listenerUnsubscribers = [];
-  _listenersRegistered = false;
+	_listenerUnsubscribers.forEach((unsub) => unsub());
+	_listenerUnsubscribers = [];
+	_listenersRegistered = false;
 }
 
 /**
@@ -52,41 +52,59 @@ function teardownListeners() {
  * Listeners are stored so they can be torn down and re-registered if needed.
  */
 function setupListeners() {
-  if (_listenersRegistered) return;
-  _listenersRegistered = true;
+	if (_listenersRegistered) return;
+	_listenersRegistered = true;
 
-  // Generic message hooks
-  apClient.messages.on('itemSent',    () => { _pendingType = 'item'; });
-  apClient.messages.on('itemCheated', () => { _pendingType = 'item'; });
-  apClient.messages.on('itemHinted',  () => { _pendingType = 'item'; });
-  apClient.messages.on('chat',        () => { _pendingType = 'chat'; });
-  apClient.messages.on('connected',   () => { _pendingType = 'system'; });
-  apClient.messages.on('disconnected',() => { _pendingType = 'system'; });
-  apClient.messages.on('goaled',      () => { _pendingType = 'system'; });
-  apClient.messages.on('released',    () => { _pendingType = 'system'; });
-  apClient.messages.on('collected',   () => { _pendingType = 'system'; });
+	// Generic message hooks
+	apClient.messages.on('itemSent', () => {
+		_pendingType = 'item';
+	});
+	apClient.messages.on('itemCheated', () => {
+		_pendingType = 'item';
+	});
+	apClient.messages.on('itemHinted', () => {
+		_pendingType = 'item';
+	});
+	apClient.messages.on('chat', () => {
+		_pendingType = 'chat';
+	});
+	apClient.messages.on('connected', () => {
+		_pendingType = 'system';
+	});
+	apClient.messages.on('disconnected', () => {
+		_pendingType = 'system';
+	});
+	apClient.messages.on('goaled', () => {
+		_pendingType = 'system';
+	});
+	apClient.messages.on('released', () => {
+		_pendingType = 'system';
+	});
+	apClient.messages.on('collected', () => {
+		_pendingType = 'system';
+	});
 
-  apClient.messages.on('message', (text: string) => {
-    chatMessages.update(msgs => [...msgs, { id: ++_msgId, text, type: _pendingType }]);
-    _pendingType = 'server';
-  });
+	apClient.messages.on('message', (text: string) => {
+		chatMessages.update((msgs) => [...msgs, { id: ++_msgId, text, type: _pendingType }]);
+		_pendingType = 'server';
+	});
 
-  // Data sync hooks
-  apClient.items.on('itemsReceived', async () => {
-    await syncArchipelagoState(_activeSessionId);
-  });
+	// Data sync hooks
+	apClient.items.on('itemsReceived', async () => {
+		await syncArchipelagoState(_activeSessionId);
+	});
 
-  apClient.room.on('locationsChecked', async () => {
-    await syncArchipelagoState(_activeSessionId);
-  });
+	apClient.room.on('locationsChecked', async () => {
+		await syncArchipelagoState(_activeSessionId);
+	});
 }
 
 export interface ApConnectionOptions {
-  url: string;      // e.g. "archipelago.gg:64962"
-  game: string;
-  name: string;
-  password?: string;
-  sessionId: string; // PocketBase game_session id
+	url: string; // e.g. "archipelago.gg:64962"
+	game: string;
+	name: string;
+	password?: string;
+	sessionId: string; // PocketBase game_session id
 }
 
 /**
@@ -113,62 +131,61 @@ export interface ApConnectionOptions {
  * @returns true on success, false on failure
  */
 export async function connectToAp(options: ApConnectionOptions) {
-  setupListeners();
-  _activeSessionId = options.sessionId;
-  _connectedUrl = options.url;
-  _connectedSlotName = options.name;
+	setupListeners();
+	_activeSessionId = options.sessionId;
+	_connectedUrl = options.url;
+	_connectedSlotName = options.name;
 
-  const connectionOptions: any = {
-    slotData: true,
-    version: {
-      major: 0,
-      minor: 6,
-      build: 2,
-    },
-  };
+	const connectionOptions: any = {
+		slotData: true,
+		version: {
+			major: 0,
+			minor: 6,
+			build: 2
+		}
+	};
 
-  if (options.password) {
-    connectionOptions.password = options.password;
-  }
+	if (options.password) {
+		connectionOptions.password = options.password;
+	}
 
-  const cleanUrl = options.url.replace(/^wss?:\/\//i, '').trim();
+	const cleanUrl = options.url.replace(/^wss?:\/\//i, '').trim();
 
-  // Test environment bypass checks BOTH 'test' url and global test engine flag
-  const isTestForce = (typeof globalThis !== 'undefined' && (globalThis as any).PLAYWRIGHT_TEST) || (typeof window !== 'undefined' && (window as any).PLAYWRIGHT_TEST);
-  const isMockMode = env.PUBLIC_MOCK_MODE === 'true';
+	// Test environment bypass checks BOTH 'test' url and global test engine flag
+	const isTestForce =
+		(typeof globalThis !== 'undefined' && (globalThis as any).PLAYWRIGHT_TEST) ||
+		(typeof window !== 'undefined' && (window as any).PLAYWRIGHT_TEST);
+	const isMockMode = env.PUBLIC_MOCK_MODE === 'true';
 
-  if (cleanUrl === 'test' || isTestForce || isMockMode) {
-      console.log('[AP] Test/Mock mode bypass engaged.');
-      _testMode = true;
-      _testSessionId = options.sessionId;
-      return true;
-  }
+	if (cleanUrl === 'test' || isTestForce || isMockMode) {
+		console.log('[AP] Test/Mock mode bypass engaged.');
+		_testMode = true;
+		_testSessionId = options.sessionId;
+		return true;
+	}
 
-  try {
-    console.log(`[AP] Connecting to: ${cleanUrl} as ${options.name}`);
+	try {
+		console.log(`[AP] Connecting to: ${cleanUrl} as ${options.name}`);
 
-    await apClient.login(
-      cleanUrl,
-      options.name,
-      options.game,
-      connectionOptions
-    );
+		await apClient.login(cleanUrl, options.name, options.game, connectionOptions);
 
-    console.log('[AP] Connected successfully!');
-    console.log(`[AP] Slot Data:`, apClient.room.slotData);
-    console.log(`[AP] Items received: ${apClient.items.received.length}, Checked locations: ${apClient.room.checkedLocations.length}`);
+		console.log('[AP] Connected successfully!');
+		console.log(`[AP] Slot Data:`, apClient.room.slotData);
+		console.log(
+			`[AP] Items received: ${apClient.items.received.length}, Checked locations: ${apClient.room.checkedLocations.length}`
+		);
 
-    // Perform initial full sync
-    // At this point, apClient.items.received should be populated from AP server
-    await syncArchipelagoState(options.sessionId);
+		// Perform initial full sync
+		// At this point, apClient.items.received should be populated from AP server
+		await syncArchipelagoState(options.sessionId);
 
-    return true;
-  } catch (error: any) {
-    console.error('[AP] Failed to connect:', error?.message ?? error);
-    // Log more details if available
-    if (error?.stack) console.error(error.stack);
-    return false;
-  }
+		return true;
+	} catch (error: any) {
+		console.error('[AP] Failed to connect:', error?.message ?? error);
+		// Log more details if available
+		if (error?.stack) console.error(error.stack);
+		return false;
+	}
 }
 
 /**
@@ -189,93 +206,97 @@ export async function connectToAp(options: ApConnectionOptions) {
  * @throws Logs errors but doesn't throw (graceful degradation)
  */
 async function syncArchipelagoState(sessionId: string) {
-  if (!sessionId || sessionId !== _activeSessionId) return;
+	if (!sessionId || sessionId !== _activeSessionId) return;
 
-  if (_isSyncing) {
-    _hasPendingSync = true;
-    return;
-  }
+	if (_isSyncing) {
+		_hasPendingSync = true;
+		return;
+	}
 
-  _isSyncing = true;
-  try {
-    do {
-      _hasPendingSync = false;
-      await _doSyncArchipelagoState(sessionId);
-    } while (_hasPendingSync && sessionId === _activeSessionId);
-  } finally {
-    _isSyncing = false;
-  }
+	_isSyncing = true;
+	try {
+		do {
+			_hasPendingSync = false;
+			await _doSyncArchipelagoState(sessionId);
+		} while (_hasPendingSync && sessionId === _activeSessionId);
+	} finally {
+		_isSyncing = false;
+	}
 }
 
 async function _doSyncArchipelagoState(sessionId: string) {
-  try {
-    const [nodes, session] = await Promise.all([
-      pb.collection('map_nodes').getFullList({
-        filter: `session = "${sessionId}"`,
-        sort: '+ap_location_id',
-        requestKey: null,
-      }),
-      pb.collection('game_sessions').getOne(sessionId, {
-        requestKey: null,
-      })
-    ]);
+	try {
+		const [nodes, session] = await Promise.all([
+			pb.collection('map_nodes').getFullList({
+				filter: `session = "${sessionId}"`,
+				sort: '+ap_location_id',
+				requestKey: null
+			}),
+			pb.collection('game_sessions').getOne(sessionId, {
+				requestKey: null
+			})
+		]);
 
-    const checkedLocationIds = apClient.room.checkedLocations;
-    const receivedItems = apClient.items.received;
+		const checkedLocationIds = apClient.room.checkedLocations;
+		const receivedItems = apClient.items.received;
 
-    const receivedItemIds = new Set(receivedItems.map((i: any) => i.id));
+		const receivedItemIds = new Set(receivedItems.map((i: any) => i.id));
 
-    // Create a set of updates to perform
-    const updates: Promise<any>[] = [];
-    let updateCount = 0;
+		// Create a set of updates to perform
+		const updates: Promise<any>[] = [];
+		let updateCount = 0;
 
-    for (let i = 0; i < nodes.length; i++) {
-      const node = nodes[i];
-      let newState: 'Hidden' | 'Available' | 'Checked' = 'Hidden';
+		for (let i = 0; i < nodes.length; i++) {
+			const node = nodes[i];
+			let newState: 'Hidden' | 'Available' | 'Checked' = 'Hidden';
 
-      const isChecked = checkedLocationIds.includes(node.ap_location_id);
-      const isUnlockedByItem = receivedItemIds.has(node.ap_location_id);
+			const isChecked = checkedLocationIds.includes(node.ap_location_id);
+			const isUnlockedByItem = receivedItemIds.has(node.ap_location_id);
 
-      if (isChecked) {
-        newState = 'Checked';
-      } else if (isUnlockedByItem) {
-        newState = 'Available';
-      } else {
-        newState = 'Hidden';
-      }
+			if (isChecked) {
+				newState = 'Checked';
+			} else if (isUnlockedByItem) {
+				newState = 'Available';
+			} else {
+				newState = 'Hidden';
+			}
 
-      if (node.state !== newState) {
-        console.log(`[AP Sync] Correcting node ${node.ap_location_id} from ${node.state} to ${newState}`);
-        updates.push(pb.collection('map_nodes').update(node.id, { state: newState }, { requestKey: null }));
-        updateCount++;
-      }
-    }
+			if (node.state !== newState) {
+				console.log(
+					`[AP Sync] Correcting node ${node.ap_location_id} from ${node.state} to ${newState}`
+				);
+				updates.push(
+					pb.collection('map_nodes').update(node.id, { state: newState }, { requestKey: null })
+				);
+				updateCount++;
+			}
+		}
 
-    if (updates.length > 0) {
-      await Promise.all(updates);
-    }
+		if (updates.length > 0) {
+			await Promise.all(updates);
+		}
 
-    // Warn if there's a significant mismatch between local nodes and AP items
-    if (nodes.length !== receivedItemIds.size) {
-      console.warn(
-        `[AP Sync] Node count mismatch: bikeapelago has ${nodes.length} nodes, ` +
-        `but AP provides ${receivedItemIds.size} unlockable items. ` +
-        `This may indicate the session was created with a different check count than the AP multiworld expects.`
-      );
-    }
+		// Warn if there's a significant mismatch between local nodes and AP items
+		if (nodes.length !== receivedItemIds.size) {
+			console.warn(
+				`[AP Sync] Node count mismatch: bikeapelago has ${nodes.length} nodes, ` +
+					`but AP provides ${receivedItemIds.size} unlockable items. ` +
+					`This may indicate the session was created with a different check count than the AP multiworld expects.`
+			);
+		}
 
-    // Sync Location Swaps
-    const totalSwapsFound = receivedItems.filter((i: any) => i.id === 802003).length;
-    const usedSwaps = session.location_swaps_used || 0;
-    locationSwaps.set(Math.max(0, totalSwapsFound - usedSwaps));
+		// Sync Location Swaps
+		const totalSwapsFound = receivedItems.filter((i: any) => i.id === 802003).length;
+		const usedSwaps = session.location_swaps_used || 0;
+		locationSwaps.set(Math.max(0, totalSwapsFound - usedSwaps));
 
-    console.log(
-      `[AP Sync] Session ${sessionId} reconciled: ${checkedLocationIds.length} checked, ` +
-      `${receivedItemIds.size} total unlocked items, ${updateCount} state updates applied.`
-    );
-  } catch (e) {
-    console.error('[AP Sync] Error during state reconciliation:', e);
-  }
+		console.log(
+			`[AP Sync] Session ${sessionId} reconciled: ${checkedLocationIds.length} checked, ` +
+				`${receivedItemIds.size} total unlocked items, ${updateCount} state updates applied.`
+		);
+	} catch (e) {
+		console.error('[AP Sync] Error during state reconciliation:', e);
+	}
 }
 
 /**
@@ -291,37 +312,37 @@ async function _doSyncArchipelagoState(sessionId: string) {
  * @returns Warning message if mismatch detected, null if counts match
  */
 export function validateNodeCountVsApItems(nodeCount: number): string | null {
-  const apItemCount = apClient.items.received.length;
+	const apItemCount = apClient.items.received.length;
 
-  if (nodeCount === apItemCount) {
-    return null;
-  }
+	if (nodeCount === apItemCount) {
+		return null;
+	}
 
-  const diff = Math.abs(nodeCount - apItemCount);
-  const percentDiff = Math.round((diff / Math.max(nodeCount, apItemCount)) * 100);
+	const diff = Math.abs(nodeCount - apItemCount);
+	const percentDiff = Math.round((diff / Math.max(nodeCount, apItemCount)) * 100);
 
-  if (percentDiff > 20) {
-    // Significant mismatch (>20% difference)
-    return (
-      `Significant mismatch detected: bikeapelago has ${nodeCount} nodes, ` +
-      `but Archipelago provides ${apItemCount} items. ` +
-      `This session may have been created with an incorrect check count. ` +
-      `Nodes without corresponding AP items will never unlock, and AP items without nodes cannot be found.`
-    );
-  }
+	if (percentDiff > 20) {
+		// Significant mismatch (>20% difference)
+		return (
+			`Significant mismatch detected: bikeapelago has ${nodeCount} nodes, ` +
+			`but Archipelago provides ${apItemCount} items. ` +
+			`This session may have been created with an incorrect check count. ` +
+			`Nodes without corresponding AP items will never unlock, and AP items without nodes cannot be found.`
+		);
+	}
 
-  if (nodeCount < apItemCount) {
-    return (
-      `Bikeapelago has ${nodeCount} nodes, but Archipelago has ${apItemCount} items. ` +
-      `${apItemCount - nodeCount} items cannot be collected on this map.`
-    );
-  }
+	if (nodeCount < apItemCount) {
+		return (
+			`Bikeapelago has ${nodeCount} nodes, but Archipelago has ${apItemCount} items. ` +
+			`${apItemCount - nodeCount} items cannot be collected on this map.`
+		);
+	}
 
-  // nodeCount > apItemCount
-  return (
-    `Bikeapelago has ${nodeCount} nodes, but Archipelago only has ${apItemCount} items. ` +
-    `${nodeCount - apItemCount} nodes will never unlock.`
-  );
+	// nodeCount > apItemCount
+	return (
+		`Bikeapelago has ${nodeCount} nodes, but Archipelago only has ${apItemCount} items. ` +
+		`${nodeCount - apItemCount} nodes will never unlock.`
+	);
 }
 
 /**
@@ -337,86 +358,96 @@ export function validateNodeCountVsApItems(nodeCount: number): string | null {
  *
  * @returns Session key object with seed_name, server_url, slot_name, or null if unavailable
  */
-export function getRoomInfoSessionKey(): { seed_name: string; server_url: string; slot_name: string } | null {
-  if (!apClient.authenticated || !_connectedUrl || !_connectedSlotName) {
-    return null;
-  }
+export function getRoomInfoSessionKey(): {
+	seed_name: string;
+	server_url: string;
+	slot_name: string;
+} | null {
+	if (!apClient.authenticated || !_connectedUrl || !_connectedSlotName) {
+		return null;
+	}
 
-  return {
-    seed_name: apClient.room.seedName,
-    server_url: _connectedUrl,
-    slot_name: _connectedSlotName
-  };
+	return {
+		seed_name: apClient.room.seedName,
+		server_url: _connectedUrl,
+		slot_name: _connectedSlotName
+	};
 }
 
 /**
  * Gets the current AP connection state summary for logging/debugging.
  * @returns Summary of items received and checked locations
  */
-export function getApConnectionState(): { itemsReceived: number; checkedLocations: number; authenticated: boolean } {
-  return {
-    itemsReceived: apClient.items.received.length,
-    checkedLocations: apClient.room.checkedLocations.length,
-    authenticated: apClient.authenticated
-  };
+export function getApConnectionState(): {
+	itemsReceived: number;
+	checkedLocations: number;
+	authenticated: boolean;
+} {
+	return {
+		itemsReceived: apClient.items.received.length,
+		checkedLocations: apClient.room.checkedLocations.length,
+		authenticated: apClient.authenticated
+	};
 }
 
 export function sendLocationChecks(locationIds: number[]) {
-  if (_testMode) {
-    console.log(`[AP] Test mode: MOCKING ${locationIds.length} location checks.`);
-    setTimeout(async () => {
-      try {
-        // Step 1: Mark each checked location as Checked (idempotent — validation.ts may have
-        // already done this, but we ensure consistency if sendLocationChecks is called directly).
-        const nodesInSession = await pb.collection('map_nodes').getFullList({
-          filter: `session = "${_testSessionId}"`,
-          requestKey: null,
-        });
+	if (_testMode) {
+		console.log(`[AP] Test mode: MOCKING ${locationIds.length} location checks.`);
+		setTimeout(async () => {
+			try {
+				// Step 1: Mark each checked location as Checked (idempotent — validation.ts may have
+				// already done this, but we ensure consistency if sendLocationChecks is called directly).
+				const nodesInSession = await pb.collection('map_nodes').getFullList({
+					filter: `session = "${_testSessionId}"`,
+					requestKey: null
+				});
 
-        const nodesToMarkChecked = nodesInSession.filter(
-          (node: any) => locationIds.includes(node.ap_location_id) && node.state !== 'Checked'
-        );
+				const nodesToMarkChecked = nodesInSession.filter(
+					(node: any) => locationIds.includes(node.ap_location_id) && node.state !== 'Checked'
+				);
 
-        if (nodesToMarkChecked.length > 0) {
-          await Promise.all(
-            nodesToMarkChecked.map((node) =>
-              pb.collection('map_nodes').update(node.id, { state: 'Checked' }, { requestKey: null })
-            )
-          );
-          nodesToMarkChecked.forEach((node) =>
-            console.log(`[AP Mock] Marked node ${node.id} (loc ${node.ap_location_id}) as Checked`)
-          );
-        }
+				if (nodesToMarkChecked.length > 0) {
+					await Promise.all(
+						nodesToMarkChecked.map((node) =>
+							pb.collection('map_nodes').update(node.id, { state: 'Checked' }, { requestKey: null })
+						)
+					);
+					nodesToMarkChecked.forEach((node) =>
+						console.log(`[AP Mock] Marked node ${node.id} (loc ${node.ap_location_id}) as Checked`)
+					);
+				}
 
-        // Step 2: Simulate receiving one unlock item per checked location.
-        const hiddenNodes = await pb.collection('map_nodes').getFullList({
-          filter: `session = "${_testSessionId}" && state = "Hidden"`,
-          sort: '+ap_location_id',
-          requestKey: null,
-        });
+				// Step 2: Simulate receiving one unlock item per checked location.
+				const hiddenNodes = await pb.collection('map_nodes').getFullList({
+					filter: `session = "${_testSessionId}" && state = "Hidden"`,
+					sort: '+ap_location_id',
+					requestKey: null
+				});
 
-        const nodesToUnlockMock = hiddenNodes.slice(0, locationIds.length);
+				const nodesToUnlockMock = hiddenNodes.slice(0, locationIds.length);
 
-        if (nodesToUnlockMock.length > 0) {
-          await Promise.all(
-            nodesToUnlockMock.map((node) =>
-              pb.collection('map_nodes').update(node.id, { state: 'Available' }, { requestKey: null })
-            )
-          );
-          nodesToUnlockMock.forEach((node) =>
-            console.log(`[AP Mock] Unlocked node ${node.id} to Available`)
-          );
-        }
-      } catch (e) {
-        console.error('Mock unlock failed', e);
-      }
-    }, 500);
-    return;
-  }
+				if (nodesToUnlockMock.length > 0) {
+					await Promise.all(
+						nodesToUnlockMock.map((node) =>
+							pb
+								.collection('map_nodes')
+								.update(node.id, { state: 'Available' }, { requestKey: null })
+						)
+					);
+					nodesToUnlockMock.forEach((node) =>
+						console.log(`[AP Mock] Unlocked node ${node.id} to Available`)
+					);
+				}
+			} catch (e) {
+				console.error('Mock unlock failed', e);
+			}
+		}, 500);
+		return;
+	}
 
-  if (apClient.authenticated) {
-    apClient.check(...locationIds);
-  } else {
-    console.error('Cannot send checks — client is not authenticated.');
-  }
+	if (apClient.authenticated) {
+		apClient.check(...locationIds);
+	} else {
+		console.error('Cannot send checks — client is not authenticated.');
+	}
 }

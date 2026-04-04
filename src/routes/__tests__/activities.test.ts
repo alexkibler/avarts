@@ -27,7 +27,7 @@ const mockError = vi.fn((status: number, message: string) => {
 
 vi.mock('@sveltejs/kit', () => ({
 	redirect: (status: number, location: string) => mockRedirect(status, location),
-	error: (status: number, message: string) => mockError(status, message),
+	error: (status: number, message: string) => mockError(status, message)
 }));
 
 // ---------------------------------------------------------------------------
@@ -44,8 +44,8 @@ describe('activity edit action (update)', () => {
 		const activityId = 'activity123abc';
 		const pb = {
 			collection: vi.fn(() => ({
-				update: vi.fn().mockResolvedValue({ id: activityId }),
-			})),
+				update: vi.fn().mockResolvedValue({ id: activityId })
+			}))
 		};
 		const locals = { pb };
 		const params = { id: activityId };
@@ -59,7 +59,7 @@ describe('activity edit action (update)', () => {
 		await expect(actions.update({ request, locals, params } as any)).rejects.toEqual({
 			type: 'redirect',
 			status: 303,
-			location: `/activities/${activityId}`,
+			location: `/activities/${activityId}`
 		});
 
 		const collectionMethods = pb.collection.mock.results[0].value;
@@ -71,8 +71,8 @@ describe('activity edit action (update)', () => {
 		const pbError = Object.assign(new Error('Record not found'), { status: 404 });
 		const pb = {
 			collection: vi.fn(() => ({
-				update: vi.fn().mockRejectedValue(pbError),
-			})),
+				update: vi.fn().mockRejectedValue(pbError)
+			}))
 		};
 		const locals = { pb };
 		const params = { id: activityId };
@@ -84,7 +84,7 @@ describe('activity edit action (update)', () => {
 
 		await expect(actions.update({ request, locals, params } as any)).rejects.toMatchObject({
 			type: 'error',
-			status: 404,
+			status: 404
 		});
 	});
 
@@ -92,7 +92,7 @@ describe('activity edit action (update)', () => {
 		const activityId = 'specific_id_999';
 		const updateFn = vi.fn().mockResolvedValue({ id: activityId });
 		const pb = {
-			collection: vi.fn(() => ({ update: updateFn })),
+			collection: vi.fn(() => ({ update: updateFn }))
 		};
 		const locals = { pb };
 		const params = { id: activityId };

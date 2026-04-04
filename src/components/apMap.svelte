@@ -151,6 +151,8 @@
   let locating = false;
   let expandedAccordion: 'Available' | 'Checked' | 'Hidden' | null = 'Available';
   
+  const accordionStates: ('Available' | 'Checked' | 'Hidden')[] = ['Available', 'Checked', 'Hidden'];
+  
   if (typeof window !== 'undefined') {
     isTestMode = (window as any).PLAYWRIGHT_TEST || false;
   }
@@ -723,7 +725,7 @@
         <div class="panel-title">
           {#if activeTab === 'chat'}Chat
           {:else if activeTab === 'upload'}Upload GPX
-          {:else}Route Planning{/if}
+          {:else}Route Builder{/if}
         </div>
         <button class="panel-close" on:click={() => panelOpen = false}>
           <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
@@ -739,7 +741,7 @@
           <button on:click={clearRoute} class="btn-clear-route">Clear Route</button>
 
           <div class="accordions" style="margin-top: 16px;">
-            {#each ['Available', 'Checked', 'Hidden'] as state}
+            {#each accordionStates as state}
               <div class="accordion">
                 <button class="accordion-header" on:click={() => expandedAccordion = expandedAccordion === state ? null : state}>
                   <div style="display: flex; align-items: center; gap: 8px;">

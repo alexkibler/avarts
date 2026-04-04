@@ -16,12 +16,12 @@ export default defineConfig({
 		baseURL,
 		trace: 'on-first-retry',
 		screenshot: 'only-on-failure',
-		video: 'off',
+		video: 'off'
 	},
 	projects: [
 		{
 			name: 'chromium',
-			use: { ...devices['Desktop Chrome'] },
+			use: { ...devices['Desktop Chrome'] }
 		},
 		{
 			name: 'mobile',
@@ -30,20 +30,23 @@ export default defineConfig({
 				deviceScaleFactor: 3,
 				isMobile: true,
 				hasTouch: true,
-				userAgent: 'Mozilla/5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/18.0 Mobile/15E148 Safari/604.1',
-			},
-		},
+				userAgent:
+					'Mozilla/5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/18.0 Mobile/15E148 Safari/604.1'
+			}
+		}
 	],
 	// Only run a local webserver if the target is localhost
-	webServer: baseURL.includes('localhost') ? {
-		command: 'npm run dev -- --port 5174',
-		url: 'http://localhost:5174',
-		reuseExistingServer: false,
-		timeout: 120 * 1000,
-		env: {
-			PUBLIC_GRAPHHOPPER_URL: 'https://routing.alexkibler.com/route',
-			PUBLIC_DB_URL: 'https://pb.bikeapelago.alexkibler.com',
-			PUBLIC_MOCK_MODE: 'true',
-		},
-	} : undefined,
+	webServer: baseURL.includes('localhost')
+		? {
+				command: 'npm run dev -- --port 5174',
+				url: 'http://localhost:5174',
+				reuseExistingServer: false,
+				timeout: 120 * 1000,
+				env: {
+					PUBLIC_GRAPHHOPPER_URL: 'https://routing.alexkibler.com/route',
+					PUBLIC_DB_URL: 'https://pb.bikeapelago.alexkibler.com',
+					PUBLIC_MOCK_MODE: 'true'
+				}
+			}
+		: undefined
 });

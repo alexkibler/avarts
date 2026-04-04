@@ -5,6 +5,7 @@
 **The git repository root is `bikeapelago-src/`, not the parent `avarts/` directory.**
 
 This is critical for:
+
 - **GitHub Actions workflows**: All paths in `.github/workflows/*.yml` must be relative to `bikeapelago-src/`
   - ✅ Correct: `./db/pocketbase`, `./tests/setup-test-db.ts`, `./pocketbase/pb_schema.json`
   - ❌ Wrong: `./bikeapelago-src/db/pocketbase`
@@ -14,6 +15,7 @@ This is critical for:
 ## E2E Testing
 
 ### GitHub Actions Workflow
+
 - **File**: `.github/workflows/scheduled-e2e.yml`
 - **Runs**: Daily at 8:00 AM UTC (4:00 AM EST)
 - **What it does**:
@@ -23,6 +25,7 @@ This is critical for:
   4. Runs full E2E test suite against isolated PocketBase instance
 
 ### Local E2E Testing (if needed)
+
 Normally you won't need to run tests locally, but if you do:
 
 ```bash
