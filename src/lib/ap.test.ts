@@ -33,14 +33,18 @@ describe('ap.ts module', () => {
   let getFullListMock: any;
   let updateMock: any;
 
+  let getOneMock: any;
+
   beforeEach(() => {
     vi.clearAllMocks();
 
     getFullListMock = vi.fn().mockResolvedValue([]);
     updateMock = vi.fn().mockResolvedValue({});
+    getOneMock = vi.fn().mockResolvedValue({ location_swaps_used: 0 });
     (pb.collection as any).mockReturnValue({
       getFullList: getFullListMock,
       update: updateMock,
+      getOne: getOneMock,
     });
 
     // Reset client mocked values
@@ -115,7 +119,7 @@ describe('ap.ts module', () => {
 
   describe('processReceivedItems via connectToAp', () => {
     it('ignores when unlockItemsCount is 0', async () => {
-      apClient.items.received = [{ id: 700000 }, { id: 900000 }]; // Not in range 800001 - 801000
+      apClient.items.received = [{ id: 700000 }, { id: 900000 }]; // Not in range 800001 - 802000
 
       await connectToAp({
         url: 'archipelago.gg:38281',
@@ -124,7 +128,10 @@ describe('ap.ts module', () => {
         sessionId: 'session-id'
       });
 
-      expect(pb.collection).not.toHaveBeenCalled();
+      // game_sessions.getOne is always called to update locationSwaps store
+      expect(pb.collection).toHaveBeenCalledWith('game_sessions');
+      // map_nodes should NOT be queried when no unlock items
+      expect(pb.collection).not.toHaveBeenCalledWith('map_nodes');
     });
 
     it('updates node state to Available up to unlockItemsCount', async () => {
@@ -187,13 +194,13 @@ describe('ap.ts module', () => {
         });
 
         getFullListMock.mockImplementation((opts: any) => {
-            if (opts.filter.includes('ap_location_id = 101')) {
-                return Promise.resolve([{ id: 'mock-node-1', state: 'Available' }]);
+            if (opts?.filter?.includes('state = "Hidden"')) {
+                return Promise.resolve([{ id: 'mock-node-2', ap_location_id: 999, state: 'Hidden' }]);
             }
-            if (opts.filter.includes('state = "Hidden"')) {
-                return Promise.resolve([{ id: 'mock-node-2', state: 'Hidden' }]);
-            }
-            return Promise.resolve([]);
+            // Default: return all nodes in session (used by step 1)
+            return Promise.resolve([
+                { id: 'mock-node-1', ap_location_id: 101, state: 'Available' },
+            ]);
         });
 
         sendLocationChecks([101]);
