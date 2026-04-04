@@ -217,8 +217,8 @@ async function syncArchipelagoState(sessionId: string) {
 	try {
 		do {
 			_hasPendingSync = false;
-			await _doSyncArchipelagoState(sessionId);
-		} while (_hasPendingSync && sessionId === _activeSessionId);
+			await _doSyncArchipelagoState(_activeSessionId);
+		} while (_hasPendingSync);
 	} finally {
 		_isSyncing = false;
 	}

@@ -156,9 +156,9 @@ describe('ap.ts module', () => {
 				sessionId: 'session-id'
 			});
 
-			expect(updateMock).toHaveBeenCalledWith('node1', { state: 'Available' });
-			expect(updateMock).toHaveBeenCalledWith('node2', { state: 'Hidden' });
-			expect(updateMock).toHaveBeenCalledWith('node3', { state: 'Available' });
+			expect(updateMock).toHaveBeenCalledWith('node1', { state: 'Available' }, { requestKey: null });
+			expect(updateMock).toHaveBeenCalledWith('node2', { state: 'Hidden' }, { requestKey: null });
+			expect(updateMock).toHaveBeenCalledWith('node3', { state: 'Available' }, { requestKey: null });
 			expect(updateMock).toHaveBeenCalledTimes(3);
 		});
 
@@ -179,9 +179,9 @@ describe('ap.ts module', () => {
 				sessionId: 'session-id'
 			});
 
-			expect(updateMock).toHaveBeenCalledWith('node1', { state: 'Checked' });
-			expect(updateMock).toHaveBeenCalledWith('node2', { state: 'Checked' });
-			expect(updateMock).toHaveBeenCalledWith('node3', { state: 'Hidden' });
+			expect(updateMock).toHaveBeenCalledWith('node1', { state: 'Checked' }, { requestKey: null });
+			expect(updateMock).toHaveBeenCalledWith('node2', { state: 'Checked' }, { requestKey: null });
+			expect(updateMock).toHaveBeenCalledWith('node3', { state: 'Hidden' }, { requestKey: null });
 		});
 
 		it('registers event listeners via setupListeners', async () => {
@@ -232,8 +232,8 @@ describe('ap.ts module', () => {
 
 			await vi.runAllTimersAsync();
 
-			expect(updateMock).toHaveBeenCalledWith('mock-node-1', { state: 'Checked' });
-			expect(updateMock).toHaveBeenCalledWith('mock-node-2', { state: 'Available' });
+			expect(updateMock).toHaveBeenCalledWith('mock-node-1', { state: 'Checked' }, { requestKey: null });
+			expect(updateMock).toHaveBeenCalledWith('mock-node-2', { state: 'Available' }, { requestKey: null });
 
 			vi.useRealTimers();
 		});
@@ -302,12 +302,12 @@ describe('ap.ts module', () => {
 			});
 
 			// Only nodes 1, 3, 5 should be updated to Available (those with items)
-			expect(updateMock).toHaveBeenCalledWith('node1', { state: 'Available' });
-			expect(updateMock).toHaveBeenCalledWith('node3', { state: 'Available' });
-			expect(updateMock).toHaveBeenCalledWith('node5', { state: 'Available' });
+			expect(updateMock).toHaveBeenCalledWith('node1', { state: 'Available' }, { requestKey: null });
+			expect(updateMock).toHaveBeenCalledWith('node3', { state: 'Available' }, { requestKey: null });
+			expect(updateMock).toHaveBeenCalledWith('node5', { state: 'Available' }, { requestKey: null });
 			// Nodes 2 and 4 should NOT be unlocked
-			expect(updateMock).not.toHaveBeenCalledWith('node2', { state: 'Available' });
-			expect(updateMock).not.toHaveBeenCalledWith('node4', { state: 'Available' });
+			expect(updateMock).not.toHaveBeenCalledWith('node2', { state: 'Available' }, { requestKey: null });
+			expect(updateMock).not.toHaveBeenCalledWith('node4', { state: 'Available' }, { requestKey: null });
 		});
 
 		it('handles gaps in item distribution with sparse AP items', async () => {
@@ -329,8 +329,8 @@ describe('ap.ts module', () => {
 			});
 
 			// Only nodes with items should be updated
-			expect(updateMock).toHaveBeenCalledWith('node1', { state: 'Available' });
-			expect(updateMock).toHaveBeenCalledWith('node3', { state: 'Available' });
+			expect(updateMock).toHaveBeenCalledWith('node1', { state: 'Available' }, { requestKey: null });
+			expect(updateMock).toHaveBeenCalledWith('node3', { state: 'Available' }, { requestKey: null });
 			// Node 2 has no item and starts as Hidden, so no update needed
 			expect(updateMock).toHaveBeenCalledTimes(2);
 		});
@@ -362,8 +362,8 @@ describe('ap.ts module', () => {
 
 			// All 10 local nodes should be unlocked (they match AP items)
 			expect(updateMock).toHaveBeenCalledTimes(10);
-			expect(updateMock).toHaveBeenCalledWith('node1', { state: 'Available' });
-			expect(updateMock).toHaveBeenCalledWith('node10', { state: 'Available' });
+			expect(updateMock).toHaveBeenCalledWith('node1', { state: 'Available' }, { requestKey: null });
+			expect(updateMock).toHaveBeenCalledWith('node10', { state: 'Available' }, { requestKey: null });
 
 			// Sync should log that AP has more items than local nodes
 			expect(consoleSpy).toHaveBeenCalledWith(
@@ -397,7 +397,7 @@ describe('ap.ts module', () => {
 			// Only first 10 nodes should be updated (to Available - they have AP items)
 			// Nodes 11-50 already start as Hidden, so no update needed
 			for (let i = 0; i < 10; i++) {
-				expect(updateMock).toHaveBeenCalledWith(`node${i + 1}`, { state: 'Available' });
+				expect(updateMock).toHaveBeenCalledWith(`node${i + 1}`, { state: 'Available' }, { requestKey: null });
 			}
 
 			// Total calls should be 10 (only the unlockable nodes)
@@ -491,7 +491,7 @@ describe('ap.ts module', () => {
 			});
 
 			expect(updateMock).toHaveBeenCalledTimes(1);
-			expect(updateMock).toHaveBeenCalledWith('node1', { state: 'Available' });
+			expect(updateMock).toHaveBeenCalledWith('node1', { state: 'Available' }, { requestKey: null });
 
 			// Get the itemsReceived callback before clearing mocks
 			const itemsReceivedCallback = (apClient.items.on as any).mock.calls.find(
