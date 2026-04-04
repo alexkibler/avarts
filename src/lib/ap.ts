@@ -114,12 +114,16 @@ export async function connectToAp(options: ApConnectionOptions) {
  * Flat logic: total received item count determines how many nodes become Available.
  */
 async function processReceivedItems(sessionId: string, items: any[]) {
-  // Location Swap items (START_ID + MAX_CHECKS + 3 = 802003)
-  const swapsCount = items.filter((i: any) => i.id === 802003).length;
-  locationSwaps.set(swapsCount);
-
   // Items in our range: START_ID 800001 – 802000 (MAX_CHECKS)
   const unlockItemsCount = items.filter((i: any) => i.id > 800000 && i.id <= 802000).length;
+
+  // Location Swap items (START_ID + MAX_CHECKS + 3 = 802003)
+  const totalSwapsFound = items.filter((i: any) => i.id === 802003).length;
+
+  const session = await pb.collection('game_sessions').getOne(sessionId);
+  const usedSwaps = session.location_swaps_used || 0;
+
+  locationSwaps.set(Math.max(0, totalSwapsFound - usedSwaps));
 
   if (unlockItemsCount === 0) return;
 

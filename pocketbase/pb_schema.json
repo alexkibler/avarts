@@ -687,6 +687,16 @@
           "maxSelect": 1,
           "values": ["Active", "Completed"]
         }
+      },
+      {
+        "system": false,
+        "id": "gsfield0009",
+        "name": "location_swaps_used",
+        "type": "number",
+        "required": false,
+        "presentable": false,
+        "unique": false,
+        "options": { "min": null, "max": null, "noDecimal": false }
       }
     ],
     "indexes": [],
