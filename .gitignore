@@ -13,3 +13,4 @@ vite.config.ts.timestamp-*
 /graphhopper/*
 !/graphhopper/config-example.yml
 playwright-report/
+coverage/
