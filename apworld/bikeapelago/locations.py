@@ -12,7 +12,7 @@ class BikeapelagoLocation(Location):
 
 
 # Similar to items, we need a static location_name_to_id mapping.
-MAX_CHECKS = 1000
+MAX_CHECKS = 2000
 START_ID = 800000
 
 location_table: Dict[str, LocationData] = {

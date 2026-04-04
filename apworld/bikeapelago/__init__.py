@@ -2,7 +2,7 @@ from BaseClasses import Region
 from worlds.AutoWorld import WebWorld, World
 from worlds.generic.Rules import set_rule
 
-from .items import BikeapelagoItem, item_table, MAX_CHECKS
+from .items import BikeapelagoItem, item_table, MAX_CHECKS, LOCATION_SWAP_RATIO
 from .locations import BikeapelagoLocation, location_table
 from .options import BikeapelagoOptions
 
@@ -52,6 +52,7 @@ class BikeapelagoWorld(World):
     # Allows set_rules to count any "Node Unlock X" item with has_group()
     item_name_groups = {
         "Node Unlock": {f"Node Unlock {i}" for i in range(1, MAX_CHECKS + 1)},
+        "Location Swap": {"Location Swap"},
     }
 
     options_dataclass = BikeapelagoOptions
@@ -59,17 +60,22 @@ class BikeapelagoWorld(World):
     def create_items(self) -> None:
         check_count = self.options.check_count.value
         starting_nodes = self.options.starting_nodes.value
+        num_swaps = int(check_count * LOCATION_SWAP_RATIO)
         for i in range(1, starting_nodes + 1):
             self.multiworld.push_precollected(self.create_item(f"Node Unlock {i}"))
-        # Pool must cover all check_count locations; starting_nodes slots are filled with
-        # duplicates of the last unlock so the counts balance (they'll act as filler).
+        # Pool must cover all check_count + num_swaps locations; starting_nodes slots are filled with
+        # Wheel Patch Kits so the counts balance.
         for i in range(starting_nodes + 1, check_count + 1):
             self.multiworld.itempool.append(self.create_item(f"Node Unlock {i}"))
+        for _ in range(num_swaps):
+            self.multiworld.itempool.append(self.create_item("Location Swap"))
         for _ in range(starting_nodes):
             self.multiworld.itempool.append(self.create_item("Wheel Patch Kit"))
 
     def create_regions(self) -> None:
         check_count = self.options.check_count.value
+        num_swaps = int(check_count * LOCATION_SWAP_RATIO)
+        total_locations = check_count + num_swaps
 
         menu_region = Region("Menu", self.player, self.multiworld)
         self.multiworld.regions.append(menu_region)
@@ -78,7 +84,7 @@ class BikeapelagoWorld(World):
         menu_region.connect(map_region)
         self.multiworld.regions.append(map_region)
 
-        for i in range(1, check_count + 1):
+        for i in range(1, total_locations + 1):
             loc_name = f"Intersection {i}"
             loc = BikeapelagoLocation(
                 self.player, loc_name, self.location_name_to_id[loc_name], map_region

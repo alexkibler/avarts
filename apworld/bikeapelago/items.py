@@ -17,7 +17,7 @@ class BikeapelagoItem(Item):
 # However, Archipelago expects a static item_name_to_id mapping.
 # Let's assume a maximum of 1000 checks for now.
 
-MAX_CHECKS = 1000
+MAX_CHECKS = 2000
 START_ID = 800000
 
 item_table: Dict[str, ItemData] = {
@@ -26,3 +26,6 @@ item_table: Dict[str, ItemData] = {
 }
 item_table["Victory"] = ItemData(START_ID + MAX_CHECKS + 1, ItemClassification.progression)
 item_table["Wheel Patch Kit"] = ItemData(START_ID + MAX_CHECKS + 2, ItemClassification.filler)
+item_table["Location Swap"] = ItemData(START_ID + MAX_CHECKS + 3, ItemClassification.useful)
+
+LOCATION_SWAP_RATIO = 0.1

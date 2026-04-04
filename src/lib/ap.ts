@@ -13,6 +13,9 @@ export interface ChatMessage {
 
 export const chatMessages = writable<ChatMessage[]>([]);
 
+// Location Swap has ID START_ID + MAX_CHECKS + 3 = 802003
+export const locationSwaps = writable<number>(0);
+
 let _msgId = 0;
 let _hooksRegistered = false;
 let _pendingType: ChatMessageType = 'server';
@@ -111,8 +114,12 @@ export async function connectToAp(options: ApConnectionOptions) {
  * Flat logic: total received item count determines how many nodes become Available.
  */
 async function processReceivedItems(sessionId: string, items: any[]) {
-  // Items in our range: START_ID 800001 – 801000
-  const unlockItemsCount = items.filter((i: any) => i.id > 800000 && i.id <= 801000).length;
+  // Location Swap items (START_ID + MAX_CHECKS + 3 = 802003)
+  const swapsCount = items.filter((i: any) => i.id === 802003).length;
+  locationSwaps.set(swapsCount);
+
+  // Items in our range: START_ID 800001 – 802000 (MAX_CHECKS)
+  const unlockItemsCount = items.filter((i: any) => i.id > 800000 && i.id <= 802000).length;
 
   if (unlockItemsCount === 0) return;
 
