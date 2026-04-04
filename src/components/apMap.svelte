@@ -140,9 +140,6 @@
           marker.setStyle(markerOptions(node.state, true));
         }
       });
-
-      // Auto-switch back to the map by closing the panel
-      activeGameTab.set(null);
     });
   }
 
@@ -1608,6 +1605,9 @@
     .elevation-graph-container {
       width: 100%;
       height: 60px;
+      min-height: 60px;
+      max-height: 60px;
+      overflow: hidden;
     }
     .bottom-row-mobile {
       display: flex !important;
