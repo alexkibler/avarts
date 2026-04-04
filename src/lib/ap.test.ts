@@ -139,14 +139,14 @@ describe('ap.ts module', () => {
       expect(updateMock).not.toHaveBeenCalled();
     });
 
-    it('corrects node states to match Archipelago ground truth (Available)', async () => {
-      apClient.items.received = [{ id: 800001 }, { id: 800002 }]; // 2 unlock items
+    it('corrects node states to match Archipelago ground truth (ID-based Available)', async () => {
+      apClient.items.received = [{ id: 800001 }, { id: 800003 }]; // Items for 1 and 3
       apClient.room.checkedLocations = [];
 
       getFullListMock.mockResolvedValue([
-        { id: 'node1', ap_location_id: 800001, state: 'Checked' },   // Incorrect (not checked in AP) -> should become Available
-        { id: 'node2', ap_location_id: 800002, state: 'Hidden' },    // Should become Available
-        { id: 'node3', ap_location_id: 800003, state: 'Available' }, // Incorrect (not in unlock range) -> should become Hidden
+        { id: 'node1', ap_location_id: 800001, state: 'Hidden' },    // Has item -> Available
+        { id: 'node2', ap_location_id: 800002, state: 'Available' }, // No item -> Hidden
+        { id: 'node3', ap_location_id: 800003, state: 'Hidden' },    // Has item -> Available
       ]);
 
       await connectToAp({
@@ -157,19 +157,19 @@ describe('ap.ts module', () => {
       });
 
       expect(updateMock).toHaveBeenCalledWith('node1', { state: 'Available' });
-      expect(updateMock).toHaveBeenCalledWith('node2', { state: 'Available' });
-      expect(updateMock).toHaveBeenCalledWith('node3', { state: 'Hidden' });
+      expect(updateMock).toHaveBeenCalledWith('node2', { state: 'Hidden' });
+      expect(updateMock).toHaveBeenCalledWith('node3', { state: 'Available' });
       expect(updateMock).toHaveBeenCalledTimes(3);
     });
 
     it('corrects node states to match Archipelago ground truth (Checked)', async () => {
-      apClient.items.received = [{ id: 800001 }]; // 1 unlock item
-      apClient.room.checkedLocations = [800001, 800002]; // 2 checks (non-linear)
+      apClient.items.received = [{ id: 800001 }];
+      apClient.room.checkedLocations = [800001, 800002]; // 800002 checked without item (e.g. admin/cheat)
 
       getFullListMock.mockResolvedValue([
         { id: 'node1', ap_location_id: 800001, state: 'Available' }, // Should become Checked
         { id: 'node2', ap_location_id: 800002, state: 'Hidden' },    // Should become Checked
-        { id: 'node3', ap_location_id: 800003, state: 'Available' }, // Should become Hidden
+        { id: 'node3', ap_location_id: 800003, state: 'Available' }, // Should become Hidden (no item)
       ]);
 
       await connectToAp({

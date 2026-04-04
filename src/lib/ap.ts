@@ -141,27 +141,26 @@ async function syncArchipelagoState(sessionId: string) {
     const checkedLocationIds = apClient.room.checkedLocations;
     const receivedItems = apClient.items.received;
 
-    // Items in our range: START_ID 800001 – 802000 (MAX_CHECKS)
-    const unlockItemsCount = receivedItems.filter((i: any) => i.id > 800000 && i.id <= 802000).length;
-
+    const receivedItemIds = new Set(receivedItems.map((i: any) => i.id));
+ 
     // Create a set of updates to perform
     const updates: Promise<any>[] = [];
-
+ 
     for (let i = 0; i < nodes.length; i++) {
       const node = nodes[i];
       let newState: 'Hidden' | 'Available' | 'Checked' = 'Hidden';
-
+ 
       const isChecked = checkedLocationIds.includes(node.ap_location_id);
-      const isUnlockedByCount = (i < unlockItemsCount);
-
+      const isUnlockedByItem = receivedItemIds.has(node.ap_location_id);
+ 
       if (isChecked) {
         newState = 'Checked';
-      } else if (isUnlockedByCount) {
+      } else if (isUnlockedByItem) {
         newState = 'Available';
       } else {
         newState = 'Hidden';
       }
-
+ 
       if (node.state !== newState) {
         console.log(`[AP Sync] Correcting node ${node.ap_location_id} from ${node.state} to ${newState}`);
         updates.push(pb.collection('map_nodes').update(node.id, { state: newState }));
@@ -177,7 +176,7 @@ async function syncArchipelagoState(sessionId: string) {
     const usedSwaps = session.location_swaps_used || 0;
     locationSwaps.set(Math.max(0, totalSwapsFound - usedSwaps));
 
-    console.log(`[AP Sync] Session ${sessionId} reconciled: ${checkedLocationIds.length} checked, ${unlockItemsCount} total unlocked items.`);
+    console.log(`[AP Sync] Session ${sessionId} reconciled: ${checkedLocationIds.length} checked, ${receivedItemIds.size} total unlocked items.`);
   } catch (e) {
     console.error('[AP Sync] Error during state reconciliation:', e);
   }
