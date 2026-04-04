@@ -38,6 +38,7 @@
 	let elevationControl: any = null;
 	let myLocationMarker: any = null;
 	let activeWaypointIds = new Set<string>();
+	let isMounted = false;
 
 	// ── Route Optimization ───────────────────────────────────────────────────────
 
@@ -354,6 +355,7 @@
 	// ── Lifecycle ────────────────────────────────────────────────────────────────
 
 	onMount(async () => {
+		isMounted = true;
 		const leafletMod = await import('leaflet');
 		L = leafletMod.default ?? leafletMod;
 		window.L = L;
@@ -589,13 +591,24 @@
 		});
 		renderPins();
 
-		unsubscribePb = await pb.collection('map_nodes').subscribe('*', (e: any) => {
-			if (e.record.session !== sessionId) return;
-			if (e.action === 'update') {
-				nodes = nodes.map((n: any) => (n.id === e.record.id ? e.record : n));
-				renderPins();
+		// Be smart about subscribing: only if we're authenticated and the component is still mounted.
+		// We use a small delay to ensure the page has finished its initial load sequence
+		// to avoid "connection interrupted while page was loading" errors in Firefox.
+		setTimeout(async () => {
+			if (!isMounted || !pb.authStore.isValid) return;
+
+			try {
+				unsubscribePb = await pb.collection('map_nodes').subscribe('*', (e: any) => {
+					if (e.record.session !== sessionId) return;
+					if (e.action === 'update') {
+						nodes = nodes.map((n: any) => (n.id === e.record.id ? e.record : n));
+						renderPins();
+					}
+				});
+			} catch (err) {
+				console.warn('[Realtime] Failed to subscribe to map_nodes:', err);
 			}
-		});
+		}, 250);
 	});
 
 	function handleMyLocation(callback?: (coords?: { lat: number; lon: number }) => void) {
@@ -669,6 +682,7 @@
 	}
 
 	onDestroy(() => {
+		isMounted = false;
 		unsubscribePb?.();
 		map?.remove();
 	});

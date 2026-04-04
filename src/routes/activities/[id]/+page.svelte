@@ -1,12 +1,12 @@
 <script lang="ts">
 	import { formatDate } from '$lib/utils';
-	import type { Exercise, UserData } from '$lib/types';
+	import type { Exercise, UserData, User } from '$lib/types';
 	import Leaflet from '$components/leafletView.svelte';
 	import { pb } from '$lib/database';
 	import { userCookie } from '$lib/stores';
 	import { env } from '$env/dynamic/public';
 
-	let user: UserData = $userCookie.user;
+	let user: User | undefined = $userCookie?.user;
 	export let data: Exercise;
 
 	let url: string;
@@ -16,7 +16,7 @@
 		url = 'http://127.0.0.1:8090';
 	}
 
-	let gpx = data.url;
+	let gpx = data.url ?? '';
 	let confirm = false;
 	const initialView = [0, 0];
 
@@ -49,7 +49,7 @@
 		</ul>
 		<ul class="mt-5 flex text-white border border-neutral-500 bg-neutral-800">
 			<!-- <a href="/" class="w-1/2"> -->
-			{#if data.expand.user.id == user.id}
+			{#if data.expand.user.id == user?.id}
 				<a href="/activities/{data.id}/edit" class="w-full">
 					<li
 						class="p-3 pl-5 border-e border-neutral-500 flex items-center justify-center hover:bg-neutral-900 hover:text-orange-500"
@@ -100,7 +100,7 @@
 					</div>
 					<div class="">
 						<lu class="h-full flex text-white list-none">
-							{#if data.expand.user.id == user.id}
+							{#if data.expand.user.id == user?.id}
 								{#if confirm == false}
 									<button
 										class="w-12 h-full border-s border-neutral-500 hover:text-orange-500 hover:bg-neutral-800"
@@ -177,7 +177,7 @@
 							style={data.description ? 'padding-top: 0.25rem;' : 'padding-top: 1.25rem;'}
 						>
 							<span>
-								{formatDate(data.start_time)}
+								{formatDate(data.start_time ? data.start_time.toString() : '')}
 							</span>
 							<span class="text-3xl font-semibold">
 								{data.name}
