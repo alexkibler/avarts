@@ -1,5 +1,6 @@
 import PocketBase from 'pocketbase';
 import { env } from '$env/dynamic/public'
+import { MockPocketBase } from './mock';
 
 let url: string;
 if (env.PUBLIC_DB_URL) {
@@ -9,7 +10,9 @@ if (env.PUBLIC_DB_URL) {
 
 }
 
-export const pb = new PocketBase(url);
+export const pb = env.PUBLIC_MOCK_MODE === 'true'
+  ? new MockPocketBase() as unknown as PocketBase
+  : new PocketBase(url);
 
 pb.autoCancellation(false);
 
