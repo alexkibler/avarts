@@ -11,6 +11,9 @@
   import ApDropzone from '$components/apDropzone.svelte';
   import { activeGameTab } from '$lib/stores';
   import { locationSwaps } from '$lib/ap';
+  import { getDistance, findOptimalRoute } from '$lib/map/routing';
+  import { getElevationData } from '$lib/map/elevation';
+  import { generateGPX } from '$lib/map/gpx';
 
   import '@raruto/leaflet-elevation/src/index.css';
 
@@ -40,64 +43,6 @@
   let activeWaypointIds = new Set<string>();
 
   // ── Route Optimization ───────────────────────────────────────────────────────
-
-  function getDistance(coord1: {lat: number, lon: number}, coord2: {lat: number, lon: number}) {
-    const R = 6371; // Radius of the earth in km
-    const dLat = (coord2.lat - coord1.lat) * (Math.PI / 180);
-    const dLon = (coord2.lon - coord1.lon) * (Math.PI / 180);
-
-    const a =
-      Math.sin(dLat / 2) * Math.sin(dLat / 2) +
-      Math.cos(coord1.lat * (Math.PI / 180)) * Math.cos(coord2.lat * (Math.PI / 180)) *
-      Math.sin(dLon / 2) * Math.sin(dLon / 2);
-
-    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-    return R * c;
-  }
-
-  function getPermutations(arr: any[]) {
-    if (arr.length <= 1) return [arr];
-    const result: any[] = [];
-
-    for (let i = 0; i < arr.length; i++) {
-      const current = arr[i];
-      const remaining = arr.slice(0, i).concat(arr.slice(i + 1));
-      const remainingPerms = getPermutations(remaining) as any[];
-
-      for (let j = 0; j < remainingPerms.length; j++) {
-        result.push([current].concat(remainingPerms[j]));
-      }
-    }
-    return result;
-  }
-
-  function findOptimalRoute(startPoint: {lat: number, lon: number}, destinations: any[]) {
-    const permutations = getPermutations(destinations);
-    let shortestDistance = Infinity;
-    let bestRoute: any[] = [];
-
-    for (const route of permutations) {
-      let currentDistance = 0;
-      let currentLocation = startPoint;
-
-      for (const stop of route) {
-        currentDistance += getDistance(currentLocation, stop);
-        currentLocation = stop;
-
-        if (currentDistance >= shortestDistance) break;
-      }
-
-      if (currentDistance < shortestDistance) {
-        shortestDistance = currentDistance;
-        bestRoute = route;
-      }
-    }
-
-    return {
-      optimalOrder: [startPoint, ...bestRoute],
-      totalDistanceKm: shortestDistance
-    };
-  }
 
   function routeToAvailable() {
     handleMyLocation((coords) => {
@@ -221,64 +166,9 @@
 
   // ── Routing & Elevation ──────────────────────────────────────────────────────
 
-  async function getElevationData(coordinates: Coordinates) {
-    try {
-      const apiUrl = 'https://api.open-elevation.com/api/v1/lookup';
-      const locations = coordinates.map(coord => ({
-        latitude: coord.lat,
-        longitude: coord.lng
-      }));
-
-      if (env.PUBLIC_MOCK_MODE === 'true') {
-        return locations.map(() => 100); // Dummy elevation
-      }
-
-      const response = await fetch(apiUrl, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ locations }),
-      });
-
-      if (response.ok) {
-        const data: ElevationResponse = await response.json();
-        return data.results.map(result => result.elevation);
-      } else {
-        throw new Error('Failed to fetch elevation data');
-      }
-    } catch (error) {
-      console.error('Error in getElevationData:', error);
-      throw error;
-    }
-  }
-
-  function generateGPX(routeData: Route) {
-    const user = $userCookie?.user;
-    const userName = user?.name || "Player";
-    const userId = user?.id || "";
-
-    const combinedName = `${sessionName}_${apSlot}`;
-
-    const gpx = `<?xml version='1.0' encoding='UTF-8'?>
-<gpx version="1.1" creator="${userName}" xmlns="http://www.topografix.com/GPX/1/1" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.topografix.com/GPX/1/1 http://www.topografix.com/GPX/1/1/gpx.xsd">
-  <metadata>
-    <name>${combinedName}</name>
-    <author><name>${userName}</name><link href="${userId}" /></author>
-    <copyright author="OpenStreetMap contributors"><license>https://www.openstreetmap.org/copyright</license></copyright>
-  </metadata>
-  <trk>
-    <name>${combinedName}</name>
-    <type>cycling</type>
-    <trkseg>
-      ${routeData.coordinates.map((coord: any) => `<trkpt lat="${coord.lat}" lon="${coord.lng}"><ele>${coord.meta?.elevation || 0}</ele></trkpt>`).join('\n')}
-    </trkseg>
-  </trk>
-</gpx>`;
-    return gpx;
-  }
-
   function exportToGPX() {
     if (route) {
-      const gpxData = generateGPX(route);
+      const gpxData = generateGPX(route, sessionName, apSlot, $userCookie?.user);
       const blob = new Blob([gpxData], { type: 'application/gpx+xml' });
       const link = document.createElement('a');
       link.href = window.URL.createObjectURL(blob);
