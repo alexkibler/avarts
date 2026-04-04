@@ -159,7 +159,7 @@
         center_lon: centerLon,
         radius: radius,
         status: 'Active'
-      });
+      }, { requestKey: null });
 
       // 4. Batch Insert Map Nodes into PocketBase
       // To get the address names and not overwhelm the geocoder or cause rate limits,

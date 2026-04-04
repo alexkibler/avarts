@@ -10,6 +10,8 @@ export const pb = env.PUBLIC_MOCK_MODE === 'true'
   ? new MockPocketBase() as unknown as PocketBase
   : new PocketBase(pbUrl);
 
+pb.autoCancellation(false);
+
 if (browser) {
   pb.authStore.loadFromCookie(document.cookie);
 }

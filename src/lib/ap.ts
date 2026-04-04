@@ -32,6 +32,10 @@ let _connectedSlotName = '';
 let _testMode = false;
 let _testSessionId = '';
 
+// Sync state management to prevent concurrent reconciliation and auto-cancellation
+let _isSyncing = false;
+let _hasPendingSync = false;
+
 /**
  * Unregister all previously registered event listeners.
  * Useful for reconnection scenarios where listeners need to be cleared.
@@ -151,6 +155,7 @@ export async function connectToAp(options: ApConnectionOptions) {
     );
 
     console.log('[AP] Connected successfully!');
+    console.log(`[AP] Slot Data:`, apClient.room.slotData);
     console.log(`[AP] Items received: ${apClient.items.received.length}, Checked locations: ${apClient.room.checkedLocations.length}`);
 
     // Perform initial full sync
@@ -186,13 +191,33 @@ export async function connectToAp(options: ApConnectionOptions) {
 async function syncArchipelagoState(sessionId: string) {
   if (!sessionId || sessionId !== _activeSessionId) return;
 
+  if (_isSyncing) {
+    _hasPendingSync = true;
+    return;
+  }
+
+  _isSyncing = true;
+  try {
+    do {
+      _hasPendingSync = false;
+      await _doSyncArchipelagoState(sessionId);
+    } while (_hasPendingSync && sessionId === _activeSessionId);
+  } finally {
+    _isSyncing = false;
+  }
+}
+
+async function _doSyncArchipelagoState(sessionId: string) {
   try {
     const [nodes, session] = await Promise.all([
       pb.collection('map_nodes').getFullList({
         filter: `session = "${sessionId}"`,
         sort: '+ap_location_id',
+        requestKey: null,
       }),
-      pb.collection('game_sessions').getOne(sessionId)
+      pb.collection('game_sessions').getOne(sessionId, {
+        requestKey: null,
+      })
     ]);
 
     const checkedLocationIds = apClient.room.checkedLocations;
@@ -221,7 +246,7 @@ async function syncArchipelagoState(sessionId: string) {
 
       if (node.state !== newState) {
         console.log(`[AP Sync] Correcting node ${node.ap_location_id} from ${node.state} to ${newState}`);
-        updates.push(pb.collection('map_nodes').update(node.id, { state: newState }));
+        updates.push(pb.collection('map_nodes').update(node.id, { state: newState }, { requestKey: null }));
         updateCount++;
       }
     }
@@ -345,6 +370,7 @@ export function sendLocationChecks(locationIds: number[]) {
         // already done this, but we ensure consistency if sendLocationChecks is called directly).
         const nodesInSession = await pb.collection('map_nodes').getFullList({
           filter: `session = "${_testSessionId}"`,
+          requestKey: null,
         });
 
         const nodesToMarkChecked = nodesInSession.filter(
@@ -354,7 +380,7 @@ export function sendLocationChecks(locationIds: number[]) {
         if (nodesToMarkChecked.length > 0) {
           await Promise.all(
             nodesToMarkChecked.map((node) =>
-              pb.collection('map_nodes').update(node.id, { state: 'Checked' })
+              pb.collection('map_nodes').update(node.id, { state: 'Checked' }, { requestKey: null })
             )
           );
           nodesToMarkChecked.forEach((node) =>
@@ -366,6 +392,7 @@ export function sendLocationChecks(locationIds: number[]) {
         const hiddenNodes = await pb.collection('map_nodes').getFullList({
           filter: `session = "${_testSessionId}" && state = "Hidden"`,
           sort: '+ap_location_id',
+          requestKey: null,
         });
 
         const nodesToUnlockMock = hiddenNodes.slice(0, locationIds.length);
@@ -373,7 +400,7 @@ export function sendLocationChecks(locationIds: number[]) {
         if (nodesToUnlockMock.length > 0) {
           await Promise.all(
             nodesToUnlockMock.map((node) =>
-              pb.collection('map_nodes').update(node.id, { state: 'Available' })
+              pb.collection('map_nodes').update(node.id, { state: 'Available' }, { requestKey: null })
             )
           );
           nodesToUnlockMock.forEach((node) =>

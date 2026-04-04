@@ -537,6 +537,7 @@
     nodes = await pb.collection('map_nodes').getFullList({
       filter: `session = "${sessionId}"`,
       sort: '+ap_location_id',
+      requestKey: null,
     });
     renderPins();
 
@@ -666,13 +667,13 @@
 
     try {
       // Get fresh session to accurately increment swaps_used
-      const session = await pb.collection('game_sessions').getOne(sessionId);
+      const session = await pb.collection('game_sessions').getOne(sessionId, { requestKey: null });
       const usedSwaps = session.location_swaps_used || 0;
 
       await Promise.all([
-        pb.collection('map_nodes').update(node.id, { state: 'Hidden' }),
-        pb.collection('map_nodes').update(randomHidden.id, { state: 'Available' }),
-        pb.collection('game_sessions').update(sessionId, { location_swaps_used: usedSwaps + 1 })
+        pb.collection('map_nodes').update(node.id, { state: 'Hidden' }, { requestKey: null }),
+        pb.collection('map_nodes').update(randomHidden.id, { state: 'Available' }, { requestKey: null }),
+        pb.collection('game_sessions').update(sessionId, { location_swaps_used: usedSwaps + 1 }, { requestKey: null })
       ]);
 
       locationSwaps.update(n => Math.max(0, n - 1));

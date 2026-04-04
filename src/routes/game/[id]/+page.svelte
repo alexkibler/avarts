@@ -1,5 +1,6 @@
 <script lang="ts">
   import { onMount } from 'svelte';
+  import { goto } from '$app/navigation';
   import { pb } from '$lib/pb';
   import ApMap from '$components/apMap.svelte';
   import { connectToAp, apClient } from '$lib/ap';
@@ -29,6 +30,14 @@
   onMount(async () => {
     try {
       session = await pb.collection('game_sessions').getOne(data.sessionId);
+
+      // Immediate redirect if we know setup is needed and have the seed name
+      if (session.status === 'SetupInProgress' && session.ap_seed_name) {
+        console.log(`[Game] Session ${session.id} needs setup. Redirecting to setup-session/${session.ap_seed_name}...`);
+        goto(`/setup-session/${session.ap_seed_name}`);
+        return;
+      }
+
       apUrl = session.ap_server_url || localStorage.getItem('last_ap_url') || 'archipelago.gg:38281';
       apSlot = session.ap_slot_name || '';
 
@@ -54,6 +63,14 @@
     };
     const ok = await connectToAp(options);
     if (ok) {
+      // Re-check status in case it was updated, or if we need to get seedId from AP connection
+      if (session.status === 'SetupInProgress') {
+        const seedId = session.ap_seed_name || apClient.room.seedName;
+        console.log(`[Game] Connection successful, but session needs setup. Redirecting to setup-session/${seedId}...`);
+        goto(`/setup-session/${seedId}`);
+        return;
+      }
+
       activeConnectionOptions = options;
       isConnected = true;
       localStorage.setItem('last_ap_url', options.url);

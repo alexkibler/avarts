@@ -1,5 +1,5 @@
 import { pb } from './pb';
-import { v4 as uuidv4 } from 'crypto';
+import { randomUUID as uuidv4 } from 'crypto';
 
 /**
  * In-memory job state for fast progress updates during generation.
@@ -77,7 +77,7 @@ export async function getJob(jobId: string): Promise<JobState | null> {
   if (!job) {
     // Try PocketBase as fallback
     try {
-      const record = await pb.collection('generation_jobs').getOne(jobId);
+      const record = await pb.collection('generation_jobs').getOne(jobId, { requestKey: null });
       job = recordToJobState(record);
     } catch (e) {
       console.warn(`[JobTracker] Job not found: ${jobId}`);
@@ -226,11 +226,11 @@ async function persistJob(job: JobState): Promise<void> {
       completed_at: job.completedAt ? new Date(job.completedAt).toISOString() : '',
     };
 
-    const existing = await pb.collection('generation_jobs').getOne(job.jobId).catch(() => null);
+    const existing = await pb.collection('generation_jobs').getOne(job.jobId, { requestKey: null }).catch(() => null);
     if (existing) {
-      await pb.collection('generation_jobs').update(job.jobId, payload);
+      await pb.collection('generation_jobs').update(job.jobId, payload, { requestKey: null });
     } else {
-      await pb.collection('generation_jobs').create(payload);
+      await pb.collection('generation_jobs').create(payload, { requestKey: null });
     }
   } catch (error) {
     console.error('[JobTracker] Failed to persist job:', error);

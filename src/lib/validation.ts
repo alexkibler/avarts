@@ -72,6 +72,7 @@ export async function validateFitFile(file: File, sessionId: string): Promise<st
           // Fetch all available nodes for this session
           const availableNodes = await pb.collection('map_nodes').getFullList({
             filter: `session = "${sessionId}" && state = "Available"`,
+            requestKey: null,
           });
 
           if (availableNodes.length === 0) {
@@ -100,7 +101,7 @@ export async function validateFitFile(file: File, sessionId: string): Promise<st
           if (newlyCheckedNodeIds.length > 0) {
             // Update DB
             const updatePromises = newlyCheckedNodeIds.map(id =>
-              pb.collection('map_nodes').update(id, { state: 'Checked' })
+              pb.collection('map_nodes').update(id, { state: 'Checked' }, { requestKey: null })
             );
             await Promise.all(updatePromises);
 

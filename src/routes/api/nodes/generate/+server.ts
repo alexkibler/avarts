@@ -1,6 +1,5 @@
 import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
-import { pb } from '$lib/pb';
 import { createJob, getActiveJobCount, canAcceptNewJob, startJob } from '$lib/jobTracker';
 import { generateNodes } from '$lib/nodeGeneration';
 
@@ -27,7 +26,7 @@ import { generateNodes } from '$lib/nodeGeneration';
  *   "message": "Node generation job queued"
  * }
  */
-export const POST: RequestHandler = async ({ request, locals }) => {
+export const POST: RequestHandler = async ({ request, locals, url }) => {
   try {
     // Verify user is authenticated
     if (!locals.user) {
@@ -91,6 +90,8 @@ export const POST: RequestHandler = async ({ request, locals }) => {
       serverUrl,
       slotName,
       userId: locals.user.id,
+      authToken: locals.pb.authStore.token,
+      appUrl: url.origin,
     }).catch((error) => {
       console.error(`[API] Background job error: ${error}`);
     });

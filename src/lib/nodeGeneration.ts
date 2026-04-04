@@ -1,4 +1,5 @@
-import { pb } from './pb';
+import PocketBase from 'pocketbase';
+import { env } from '$env/dynamic/public';
 import { fetchCyclingIntersections, shuffleArray } from './osm';
 import { updateJob, completeJob, failJob, startJob } from './jobTracker';
 
@@ -14,6 +15,8 @@ export interface GenerateNodesRequest {
   serverUrl: string;
   slotName: string;
   userId: string;
+  authToken: string;
+  appUrl: string;
 }
 
 /**
@@ -30,6 +33,13 @@ export interface GenerateNodesRequest {
  * 7. Mark complete
  */
 export async function generateNodes(jobId: string, request: GenerateNodesRequest): Promise<void> {
+  // Create a per-job authenticated PocketBase client.
+  // nodeGeneration runs server-side where the module-level pb singleton has no auth,
+  // so we build a fresh client and load the caller's token directly.
+  const pbUrl = env.PUBLIC_DB_URL || 'http://127.0.0.1:8090';
+  const pb = new PocketBase(pbUrl);
+  pb.authStore.save(request.authToken);
+
   try {
     // Mark job as started
     await startJob(jobId);
@@ -82,7 +92,7 @@ export async function generateNodes(jobId: string, request: GenerateNodesRequest
       center_lon: request.centerLon,
       radius: request.radius,
       status: 'SetupInProgress',
-    });
+    }, { requestKey: null });
 
     console.log(`[NodeGen] Created session: ${sessionRecord.id}`);
 
@@ -100,7 +110,7 @@ export async function generateNodes(jobId: string, request: GenerateNodesRequest
       for (let retry = 0; retry < maxRetries; retry++) {
         try {
           const res = await fetch(
-            `/api/geocode?q=${node.lat},${node.lon}&limit=1&locale=en`,
+            `${request.appUrl}/api/geocode?q=${node.lat},${node.lon}&limit=1&locale=en`,
             { signal: AbortSignal.timeout(5000) } // 5s timeout per request
           );
 
@@ -134,7 +144,7 @@ export async function generateNodes(jobId: string, request: GenerateNodesRequest
           lat: node.lat,
           lon: node.lon,
           state: 'Hidden',
-        });
+        }, { requestKey: null });
       } catch (error) {
         throw new Error(`Failed to create node ${i + 1}: ${error}`);
       }
@@ -152,7 +162,7 @@ export async function generateNodes(jobId: string, request: GenerateNodesRequest
     // Step 5: Mark session as complete
     await pb.collection('game_sessions').update(sessionRecord.id, {
       status: 'Active',
-    });
+    }, { requestKey: null });
 
     // Mark job complete
     await completeJob(jobId, sessionRecord.id);

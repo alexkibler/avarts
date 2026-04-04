@@ -36,7 +36,7 @@
         user: userId,
         ap_server_url: apUrl.trim(),
         ap_slot_name: apSlot.trim(),
-        status: 'Connecting',
+        status: 'SetupInProgress',
         center_lat: 0,
         center_lon: 0,
         radius: 5000
@@ -97,8 +97,15 @@
       } else {
         // Session already exists — delete temp and go to existing
         await pb.collection('game_sessions').delete(tempSession.id);
-        console.log('[Connect] Existing session found, syncing...');
-        goto(`/game/${existingSession.id}`);
+        console.log('[Connect] Existing session found, status:', existingSession.status);
+        
+        if (existingSession.status === 'SetupInProgress') {
+          console.log('[Connect] Existing session needs setup, redirecting...');
+          goto(`/setup-session/${roomKey.seed_name}`);
+        } else {
+          console.log('[Connect] Existing session is active, syncing...');
+          goto(`/game/${existingSession.id}`);
+        }
       }
     } catch (error: any) {
       console.error('[Connect] Error during connection:', error);

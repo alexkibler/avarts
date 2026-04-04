@@ -620,7 +620,7 @@
         "id": "gsfield0002",
         "name": "ap_seed_name",
         "type": "text",
-        "required": true,
+        "required": false,
         "presentable": false,
         "unique": false,
         "options": { "min": null, "max": null, "pattern": "" }
@@ -650,7 +650,7 @@
         "id": "gsfield0005",
         "name": "center_lat",
         "type": "number",
-        "required": true,
+        "required": false,
         "presentable": false,
         "unique": false,
         "options": { "min": null, "max": null, "noDecimal": false }
@@ -660,7 +660,7 @@
         "id": "gsfield0006",
         "name": "center_lon",
         "type": "number",
-        "required": true,
+        "required": false,
         "presentable": false,
         "unique": false,
         "options": { "min": null, "max": null, "noDecimal": false }
@@ -685,7 +685,7 @@
         "unique": false,
         "options": {
           "maxSelect": 1,
-          "values": ["Active", "Completed"]
+          "values": ["SetupInProgress", "Active", "Completed"]
         }
       },
       {
@@ -893,6 +893,120 @@
     "createRule": "",
     "updateRule": null,
     "deleteRule": null,
+    "options": {}
+  },
+  {
+    "id": "gen_jobs_000001",
+    "name": "generation_jobs",
+    "type": "base",
+    "system": false,
+    "schema": [
+      {
+        "system": false,
+        "id": "gjfield0001",
+        "name": "user",
+        "type": "relation",
+        "required": true,
+        "presentable": false,
+        "unique": false,
+        "options": {
+          "collectionId": "_pb_users_auth_",
+          "cascadeDelete": true,
+          "minSelect": null,
+          "maxSelect": 1,
+          "displayFields": null
+        }
+      },
+      {
+        "system": false,
+        "id": "gjfield0002",
+        "name": "session_id",
+        "type": "text",
+        "required": false,
+        "presentable": false,
+        "unique": false,
+        "options": { "min": null, "max": null, "pattern": "" }
+      },
+      {
+        "system": false,
+        "id": "gjfield0003",
+        "name": "status",
+        "type": "select",
+        "required": true,
+        "presentable": false,
+        "unique": false,
+        "options": {
+          "maxSelect": 1,
+          "values": ["pending", "processing", "completed", "failed", "cancelled"]
+        }
+      },
+      {
+        "system": false,
+        "id": "gjfield0004",
+        "name": "progress_completed",
+        "type": "number",
+        "required": false,
+        "presentable": false,
+        "unique": false,
+        "options": { "min": null, "max": null, "noDecimal": true }
+      },
+      {
+        "system": false,
+        "id": "gjfield0005",
+        "name": "progress_total",
+        "type": "number",
+        "required": false,
+        "presentable": false,
+        "unique": false,
+        "options": { "min": null, "max": null, "noDecimal": true }
+      },
+      {
+        "system": false,
+        "id": "gjfield0006",
+        "name": "error_message",
+        "type": "text",
+        "required": false,
+        "presentable": false,
+        "unique": false,
+        "options": { "min": null, "max": null, "pattern": "" }
+      },
+      {
+        "system": false,
+        "id": "gjfield0007",
+        "name": "started_at",
+        "type": "date",
+        "required": false,
+        "presentable": false,
+        "unique": false,
+        "options": { "min": "", "max": "" }
+      },
+      {
+        "system": false,
+        "id": "gjfield0008",
+        "name": "completed_at",
+        "type": "date",
+        "required": false,
+        "presentable": false,
+        "unique": false,
+        "options": { "min": "", "max": "" }
+      },
+      {
+        "system": false,
+        "id": "gjfield0009",
+        "name": "created_at",
+        "type": "date",
+        "required": false,
+        "presentable": false,
+        "unique": false,
+        "options": { "min": "", "max": "" }
+      }
+    ],
+    "indexes": [],
+    "listRule": "@request.auth.id = user.id",
+    "viewRule": "@request.auth.id = user.id",
+    "createRule": "@request.auth.id != ''",
+    "updateRule": "@request.auth.id = user.id",
+    "deleteRule": "@request.auth.id = user.id",
     "options": {}
   }
 ]

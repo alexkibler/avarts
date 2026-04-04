@@ -31,7 +31,8 @@ export async function getSessionByRoomInfo(
 
     const results = await pb.collection('game_sessions').getFullList({
       filter,
-      limit: 1
+      limit: 1,
+      requestKey: null,
     });
 
     return results.length > 0 ? results[0] : null;
@@ -65,7 +66,7 @@ export async function createGameSessionFromAp(
     ap_server_url: serverUrl,
     ap_slot_name: slotName,
     status: 'SetupInProgress'
-  });
+  }, { requestKey: null });
 }
 
 /**
@@ -90,7 +91,7 @@ export async function updateSessionWithMapDetails(
     center_lon: centerLon,
     radius: radius,
     status: 'Active'
-  });
+  }, { requestKey: null });
 }
 
 /**
@@ -101,7 +102,7 @@ export async function updateSessionWithMapDetails(
  */
 export async function getSessionById(sessionId: string): Promise<any | null> {
   try {
-    return await pb.collection('game_sessions').getOne(sessionId);
+    return await pb.collection('game_sessions').getOne(sessionId, { requestKey: null });
   } catch (error) {
     console.error('[DB] Error fetching session:', error);
     return null;
