@@ -2,11 +2,7 @@
   import { onMount } from 'svelte';
   import { goto } from '$app/navigation';
   import { page } from '$app/stores';
-  import { pb } from '$lib/pb';
-  import { userCookie } from '$lib/stores';
   import { apClient } from '$lib/ap';
-  import { fetchCyclingIntersections, shuffleArray } from '$lib/osm';
-  import { updateSessionWithMapDetails } from '$lib/db';
   import 'leaflet/dist/leaflet.css';
 
   const seedId = $page.params.seedId;
@@ -29,16 +25,20 @@
   let geocodeError = '';
   let isLocating = false;
   let locationError = '';
+
+  // Generation state
   let isGenerating = false;
   let generationError = '';
-
-  // Progress tracking
+  let jobId = '';
   let generationStatus = '';
   let generationProgress = 0; // 0-100
+  let generationTotal = 0;
+  let generationCompleted = 0;
 
-  // Session data
-  let sessionId = '';
+  // AP state
   let apItemCount = 0;
+
+  let pollInterval: ReturnType<typeof setInterval>;
 
   onMount(async () => {
     try {
@@ -74,6 +74,10 @@
         centerLon = e.latlng.lng;
         updateMapPin(centerLat, centerLon);
       });
+
+      return () => {
+        if (pollInterval) clearInterval(pollInterval);
+      };
     } catch (error: any) {
       loadError = error?.message || 'Failed to initialize setup page.';
       console.error('[Setup] Init error:', error);
@@ -164,113 +168,97 @@
     isGenerating = true;
     generationError = '';
     generationProgress = 0;
-    generationStatus = '';
+    generationStatus = 'Sending request to server...';
 
     try {
-      const userId = $userCookie?.user?.id;
-      if (!userId) {
-        throw new Error('Not logged in.');
-      }
-
-      // Step 1: Fetch intersections
-      generationStatus = 'Fetching cycling intersections...';
-      generationProgress = 25;
-
-      const intersections = await fetchCyclingIntersections(centerLat, centerLon, radius);
-
-      if (intersections.length < apItemCount) {
-        generationError = `Found only ${intersections.length} intersections, but AP has ${apItemCount} items. Increase radius or decrease the AP check count.`;
-        isGenerating = false;
-        return;
-      }
-
-      // Step 2: Create game session
-      generationStatus = 'Creating game session...';
-      generationProgress = 40;
-
-      const sessionRecord = await pb.collection('game_sessions').create({
-        user: userId,
-        ap_seed_name: seedId,
-        ap_server_url: apClient.room.seedName ? 'connected' : '',  // Placeholder
-        ap_slot_name: 'Setup',
-        status: 'SetupInProgress',
-        center_lat: centerLat,
-        center_lon: centerLon,
-        radius: radius
+      // Step 1: Call API to start generation
+      const res = await fetch('/api/nodes/generate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          centerLat,
+          centerLon,
+          radius,
+          checkCount: apItemCount,
+          seedName: seedId,
+          serverUrl: 'connected', // Placeholder - could store actual URL if needed
+          slotName: 'setup'  // Placeholder
+        })
       });
 
-      sessionId = sessionRecord.id;
+      if (res.status === 202) {
+        const data = await res.json();
+        jobId = data.jobId;
+        console.log(`[Setup] Started job: ${jobId}`);
+        generationStatus = 'Job queued, waiting to start...';
 
-      // Step 3: Create nodes
-      generationStatus = `Creating ${apItemCount} nodes...`;
-      generationProgress = 50;
-
-      const selectedNodes = shuffleArray(intersections).slice(0, apItemCount);
-
-      for (let i = 0; i < selectedNodes.length; i++) {
-        const node = selectedNodes[i];
-        let nodeName = `OSM Node ${node.id}`;
-
-        try {
-          const res = await fetch(
-            `/api/geocode?q=${node.lat},${node.lon}&limit=1&locale=en`
-          );
-          if (res.ok) {
-            const data = await res.json();
-            if (data.hits && data.hits.length > 0) {
-              nodeName = data.hits[0].name;
-            }
-          }
-        } catch (e) {
-          console.warn('Reverse geocode failed for node', node.id, e);
-        }
-
-        await pb.collection('map_nodes').create({
-          session: sessionId,
-          ap_location_id: 800000 + (i + 1),
-          osm_node_id: node.id.toString(),
-          name: nodeName,
-          lat: node.lat,
-          lon: node.lon,
-          state: 'Hidden'
-        }, { requestKey: `map_node_${i}` });
-
-        // Update progress
-        const nodeProgress = ((i + 1) / selectedNodes.length) * 40; // 40% for nodes
-        generationProgress = 50 + nodeProgress;
-
-        // Small delay to avoid overwhelming the API
-        await new Promise(r => setTimeout(r, 50));
+        // Step 2: Start polling for progress
+        pollProgress();
+      } else {
+        const error = await res.json();
+        throw new Error(error.message || `HTTP ${res.status}`);
       }
-
-      // Step 4: Sync state with AP
-      generationStatus = 'Syncing with Archipelago...';
-      generationProgress = 95;
-
-      // Call syncArchipelagoState to set initial node states
-      const { syncArchipelagoState } = await import('$lib/ap');
-      // Note: syncArchipelagoState is private, so this might not work
-      // Instead, we'll rely on the game page to sync on load
-
-      // Step 5: Update session to Active
-      generationStatus = 'Finalizing...';
-      generationProgress = 99;
-
-      await updateSessionWithMapDetails(sessionId, centerLat, centerLon, radius);
-
-      generationProgress = 100;
-      generationStatus = 'Session created!';
-
-      // Redirect to game
-      setTimeout(() => {
-        goto(`/game/${sessionId}`);
-      }, 500);
     } catch (error: any) {
-      console.error('[Setup] Generation error:', error);
-      generationError = error?.message || 'Failed to create session.';
-    } finally {
+      console.error('[Setup] Error starting generation:', error);
+      generationError = error?.message || 'Failed to start node generation.';
       isGenerating = false;
     }
+  }
+
+  async function pollProgress() {
+    let consecutiveErrors = 0;
+    const MAX_ERRORS = 10;
+
+    pollInterval = setInterval(async () => {
+      try {
+        const res = await fetch(`/api/nodes/generate/${jobId}`);
+
+        if (!res.ok) {
+          consecutiveErrors++;
+          if (consecutiveErrors > MAX_ERRORS) {
+            throw new Error(`Server error: ${res.status}`);
+          }
+          return;
+        }
+
+        consecutiveErrors = 0;
+        const data = await res.json();
+
+        // Update progress
+        generationProgress = data.progress.percentage;
+        generationTotal = data.progress.total;
+        generationCompleted = data.progress.completed;
+
+        switch (data.status) {
+          case 'pending':
+            generationStatus = 'Waiting in queue...';
+            break;
+          case 'processing':
+            generationStatus = `Creating nodes: ${generationCompleted}/${generationTotal}`;
+            break;
+          case 'completed':
+            generationStatus = 'Setup complete!';
+            clearInterval(pollInterval);
+            console.log(`[Setup] Generation complete, session: ${data.sessionId}`);
+            // Redirect to game after a brief delay
+            setTimeout(() => {
+              goto(`/game/${data.sessionId}`);
+            }, 500);
+            break;
+          case 'failed':
+            clearInterval(pollInterval);
+            throw new Error(data.error || 'Generation failed');
+          case 'cancelled':
+            clearInterval(pollInterval);
+            throw new Error('Generation was cancelled');
+        }
+      } catch (error: any) {
+        clearInterval(pollInterval);
+        console.error('[Setup] Poll error:', error);
+        generationError = error?.message || 'Lost connection to server.';
+        isGenerating = false;
+      }
+    }, 2000); // Poll every 2 seconds
   }
 </script>
 
@@ -389,7 +377,7 @@
           disabled={isGenerating}
           class="w-full bg-orange-600 hover:bg-orange-500 text-white font-bold py-3 px-4 rounded transition disabled:opacity-50"
         >
-          {isGenerating ? 'Generating…' : 'Create Session & Play'}
+          {isGenerating ? `Generating… (${generationCompleted}/${generationTotal})` : 'Create Session & Play'}
         </button>
 
         <p class="text-xs text-neutral-400">Click on the map to set the center point for node generation.</p>
