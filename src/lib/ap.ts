@@ -17,23 +17,24 @@ export const chatMessages = writable<ChatMessage[]>([]);
 // Location Swap has ID START_ID + MAX_CHECKS + 3 = 802003
 export const locationSwaps = writable<number>(0);
 
+let _activeSessionId = '';
 let _msgId = 0;
 let _hooksRegistered = false;
 let _pendingType: ChatMessageType = 'server';
+let _listenersRegistered = false;
 
 // Test mode variables
 let _testMode = false;
 let _testSessionId = '';
 
 /**
- * Register message event hooks on the singleton apClient once.
- * Specific events fire before the generic "message" event (MessageManager emits them first),
- * so we set _pendingType in the specific handler and consume it in the generic one.
+ * Register event listeners on the singleton apClient once.
  */
-function setupMessageHooks() {
-  if (_hooksRegistered) return;
-  _hooksRegistered = true;
+function setupListeners() {
+  if (_listenersRegistered) return;
+  _listenersRegistered = true;
 
+  // Generic message hooks
   apClient.messages.on('itemSent',    () => { _pendingType = 'item'; });
   apClient.messages.on('itemCheated', () => { _pendingType = 'item'; });
   apClient.messages.on('itemHinted',  () => { _pendingType = 'item'; });
@@ -48,6 +49,15 @@ function setupMessageHooks() {
     chatMessages.update(msgs => [...msgs, { id: ++_msgId, text, type: _pendingType }]);
     _pendingType = 'server';
   });
+
+  // Data sync hooks
+  apClient.items.on('itemsReceived', async () => {
+    await syncArchipelagoState(_activeSessionId);
+  });
+
+  apClient.room.on('locationsChecked', async () => {
+    await syncArchipelagoState(_activeSessionId);
+  });
 }
 
 export interface ApConnectionOptions {
@@ -59,7 +69,8 @@ export interface ApConnectionOptions {
 }
 
 export async function connectToAp(options: ApConnectionOptions) {
-  setupMessageHooks();
+  setupListeners();
+  _activeSessionId = options.sessionId;
 
   const connectionOptions: any = {
     slotData: true,
@@ -88,7 +99,7 @@ export async function connectToAp(options: ApConnectionOptions) {
   }
 
   try {
-    console.log(`[AP] Connecting to: ${cleanUrl}`);
+    console.log(`[AP] Connecting to: ${cleanUrl} as ${options.name}`);
 
     await apClient.login(
       cleanUrl,
@@ -99,86 +110,76 @@ export async function connectToAp(options: ApConnectionOptions) {
 
     console.log('[AP] Connected successfully!');
 
-    await processReceivedItems(options.sessionId, apClient.items.received);
-    await syncCheckedLocations(options.sessionId, apClient.room.checkedLocations);
-
-    apClient.items.on('itemsReceived', async () => {
-      await processReceivedItems(options.sessionId, apClient.items.received);
-    });
-
-    apClient.room.on('locationsChecked', async (newlyChecked: number[]) => {
-      await syncCheckedLocations(options.sessionId, newlyChecked);
-    });
+    // Perform initial full sync
+    await syncArchipelagoState(options.sessionId);
 
     return true;
   } catch (error: any) {
     console.error('[AP] Failed to connect:', error?.message ?? error);
+    // Log more details if available
+    if (error?.stack) console.error(error.stack);
     return false;
   }
 }
 
 /**
- * Unlock map nodes sequentially based on how many Node Unlock items have been received.
- * Flat logic: total received item count determines how many nodes become Available.
+ * Reconciles the local PocketBase state with the current Archipelago state.
+ * Marks checked locations first, then unlocks the correct number of additional nodes.
  */
-async function processReceivedItems(sessionId: string, items: any[]) {
-  // Items in our range: START_ID 800001 – 802000 (MAX_CHECKS)
-  const unlockItemsCount = items.filter((i: any) => i.id > 800000 && i.id <= 802000).length;
+async function syncArchipelagoState(sessionId: string) {
+  if (!sessionId || sessionId !== _activeSessionId) return;
 
-  // Location Swap items (START_ID + MAX_CHECKS + 3 = 802003)
-  const totalSwapsFound = items.filter((i: any) => i.id === 802003).length;
+  try {
+    const [nodes, session] = await Promise.all([
+      pb.collection('map_nodes').getFullList({
+        filter: `session = "${sessionId}"`,
+        sort: '+ap_location_id',
+      }),
+      pb.collection('game_sessions').getOne(sessionId)
+    ]);
 
-  const session = await pb.collection('game_sessions').getOne(sessionId);
-  const usedSwaps = session.location_swaps_used || 0;
+    const checkedLocationIds = apClient.room.checkedLocations;
+    const receivedItems = apClient.items.received;
 
-  locationSwaps.set(Math.max(0, totalSwapsFound - usedSwaps));
+    // Items in our range: START_ID 800001 – 802000 (MAX_CHECKS)
+    const unlockItemsCount = receivedItems.filter((i: any) => i.id > 800000 && i.id <= 802000).length;
 
-  if (unlockItemsCount === 0) return;
+    // Create a set of updates to perform
+    const updates: Promise<any>[] = [];
 
-  const nodes = await pb.collection('map_nodes').getFullList({
-    filter: `session = "${sessionId}"`,
-    sort: '+ap_location_id',
-  });
+    for (let i = 0; i < nodes.length; i++) {
+      const node = nodes[i];
+      let newState: 'Hidden' | 'Available' | 'Checked' = 'Hidden';
 
-  let unlockedCount = nodes.filter(
-    (n: any) => n.state === 'Available' || n.state === 'Checked'
-  ).length;
+      const isChecked = checkedLocationIds.includes(node.ap_location_id);
+      const isUnlockedByCount = (i < unlockItemsCount);
 
-  const nodesToUnlock = [];
-  for (const node of nodes) {
-    if (unlockedCount >= unlockItemsCount) break;
-    if (node.state === 'Hidden') {
-      nodesToUnlock.push(node.id);
-      unlockedCount++;
+      if (isChecked) {
+        newState = 'Checked';
+      } else if (isUnlockedByCount) {
+        newState = 'Available';
+      } else {
+        newState = 'Hidden';
+      }
+
+      if (node.state !== newState) {
+        console.log(`[AP Sync] Correcting node ${node.ap_location_id} from ${node.state} to ${newState}`);
+        updates.push(pb.collection('map_nodes').update(node.id, { state: newState }));
+      }
     }
-  }
 
-  if (nodesToUnlock.length > 0) {
-    await Promise.all(
-      nodesToUnlock.map((id) => pb.collection('map_nodes').update(id, { state: 'Available' }))
-    );
-  }
-}
+    if (updates.length > 0) {
+      await Promise.all(updates);
+    }
 
-/**
- * Reconcile AP's checked locations with local node states.
- * Any node whose ap_location_id appears in the AP-checked list should be Checked in PocketBase.
- */
-async function syncCheckedLocations(sessionId: string, checkedLocationIds: number[]) {
-  if (!checkedLocationIds.length) return;
+    // 3. Sync Location Swaps
+    const totalSwapsFound = receivedItems.filter((i: any) => i.id === 802003).length;
+    const usedSwaps = session.location_swaps_used || 0;
+    locationSwaps.set(Math.max(0, totalSwapsFound - usedSwaps));
 
-  const nodes = await pb.collection('map_nodes').getFullList({
-    filter: `session = "${sessionId}"`,
-  });
-
-  const toMark = nodes.filter(
-    (n: any) => checkedLocationIds.includes(n.ap_location_id) && n.state !== 'Checked'
-  );
-
-  if (toMark.length > 0) {
-    await Promise.all(
-      toMark.map((n: any) => pb.collection('map_nodes').update(n.id, { state: 'Checked' }))
-    );
+    console.log(`[AP Sync] Session ${sessionId} reconciled: ${checkedLocationIds.length} checked, ${unlockItemsCount} total unlocked items.`);
+  } catch (e) {
+    console.error('[AP Sync] Error during state reconciliation:', e);
   }
 }
 
