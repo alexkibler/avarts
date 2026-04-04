@@ -13,10 +13,12 @@
 		"test": "vitest run",
 		"test:watch": "vitest",
 		"test:coverage": "vitest run --coverage",
-		"test:all": "npm run test"
+		"test:e2e": "playwright test",
+		"test:all": "npm run test && npm run test:e2e"
 	},
 	"devDependencies": {
 		"@markw65/fit-file-writer": "^0.1.9",
+		"@playwright/test": "^1.59.1",
 		"@sveltejs/adapter-auto": "^3.0.0",
 		"@sveltejs/kit": "^2.0.0",
 		"@sveltejs/vite-plugin-svelte": "^3.0.0",
