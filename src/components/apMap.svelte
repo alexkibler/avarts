@@ -421,7 +421,6 @@
         // Use our internal API proxy to avoid CORS issues with local/different ports
         const url = `/api/geocode?q=${encodeURIComponent(query)}&limit=5&locale=en`;
         
-        console.log('[Geocoder] Geocoding:', query);
         fetch(url)
           .then(res => res.json())
           .then(data => {
@@ -445,7 +444,6 @@
         // We add a 300ms debounce to prevent spamming the geocoding service.
         if (this._timer) clearTimeout(this._timer);
         this._timer = setTimeout(() => {
-          console.log('[Geocoder] Suggesting:', query);
           this.geocode(query, cb, context);
         }, 300);
       }
