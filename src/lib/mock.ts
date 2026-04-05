@@ -51,8 +51,9 @@ export class MockPocketBase {
 		session: 'mock_session_123',
 		ap_location_id: 800001 + i,
 		name: `Intersection ${i + 1}`,
-		lat: 40.7128 + (Math.random() - 0.5) * 0.05,
-		lon: -74.006 + (Math.random() - 0.5) * 0.05,
+		// Ensure first node is exactly at center for testing
+		lat: i === 0 ? 40.7128 : 40.7128 + (Math.random() - 0.5) * 0.05,
+		lon: i === 0 ? -74.006 : -74.006 + (Math.random() - 0.5) * 0.05,
 		state: i < 5 ? 'Available' : i < 10 ? 'Checked' : 'Hidden'
 	}));
 
@@ -63,10 +64,16 @@ export class MockPocketBase {
 			getFullList: async (options?: any) => {
 				if (name === 'game_sessions') return this._sessions;
 				if (name === 'map_nodes') {
-					if (options?.filter?.includes('mock_session_123')) {
-						return this._nodes;
+					let filtered = [...this._nodes];
+					if (options?.filter) {
+						if (options.filter.includes('session = "mock_session_123"')) {
+							filtered = filtered.filter(n => n.session === 'mock_session_123');
+						}
+						if (options.filter.includes('state = "Available"')) {
+							filtered = filtered.filter(n => n.state === 'Available');
+						}
 					}
-					return [];
+					return filtered;
 				}
 				if (name === 'activities') return [];
 				return [];
@@ -78,6 +85,9 @@ export class MockPocketBase {
 				if (name === 'game_sessions') {
 					const s = this._sessions.find((s) => s.id === id);
 					return s || this._sessions[0];
+				}
+				if (name === 'map_nodes') {
+					return this._nodes.find(n => n.id === id) || { id };
 				}
 				return { id };
 			},
@@ -95,6 +105,11 @@ export class MockPocketBase {
 					const s = this._sessions.find((s) => s.id === id);
 					if (s) Object.assign(s, data);
 					return s || { id, ...data };
+				}
+				if (name === 'map_nodes') {
+					const n = this._nodes.find(node => node.id === id);
+					if (n) Object.assign(n, data);
+					return n || { id, ...data };
 				}
 				return { id, ...data };
 			},

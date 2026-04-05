@@ -40,9 +40,9 @@ Use the built-in **Route Builder** (powered by a self-hosted GraphHopper engine)
 </p>
 
 ### 6. Validate Your Ride
-After your ride, drag and drop your `.fit` activity file. The app analyzes your GPS track and automatically completes checks for every intersection you successfully reached (within a 30m tolerance).
+After your ride, drag and drop your `.fit` activity file. Review your ride stats—including distance, elevation, power, and heart rate—and see which Archipelago locations will be cleared before you confirm.
 <p align="center">
-  <img src="static/docs/screenshots/7_Game_Upload_Tab.png" alt="FIT Validation" width="600">
+  <img src="static/docs/screenshots/7_Ride_Summary.png" alt="Ride Summary Dashboard" width="800">
 </p>
 
 ### 7. Track Your Progress
