@@ -58,16 +58,15 @@
 
 <style>
 	.route-stats {
-		height: 60px;
 		background: var(--bg-surface);
 		border-top: 1px solid var(--border);
 		display: flex;
-		align-items: center;
-		padding: 0 16px;
-		gap: 20px;
+		flex-direction: column;
+		padding: 12px 16px;
+		gap: 12px;
 		flex-shrink: 0;
 		position: relative;
-		z-index: 1;
+		z-index: 10;
 	}
 
 	.stats-container {
@@ -104,11 +103,15 @@
 	}
 
 	.elevation-graph-container {
-		flex: 1;
-		height: 100%;
-		min-width: 0;
+		width: 100%;
+		height: 80px;
+		min-height: 80px;
+		max-height: 80px;
 		display: flex;
 		align-items: center;
+		background: rgba(0, 0, 0, 0.2);
+		border-radius: 4px;
+		overflow: hidden;
 	}
 
 	#elevation-container {
@@ -157,18 +160,7 @@
 
 	@media (max-width: 600px) {
 		.route-stats {
-			flex-direction: column;
-			height: auto;
-			padding: 8px 12px;
-			gap: 8px;
-			align-items: stretch;
-		}
-		.elevation-graph-container {
-			width: 100%;
-			height: 80px;
-			min-height: 80px;
-			max-height: 80px;
-			overflow: hidden;
+			padding-bottom: calc(72px + env(safe-area-inset-bottom, 0px));
 		}
 		.stats-container {
 			gap: 12px;
@@ -177,8 +169,8 @@
 			font-size: 13px;
 		}
 		.btn-export {
-			padding: 6px 10px;
-			font-size: 11px;
+			padding: 8px 12px;
+			font-size: 12px;
 		}
 	}
 </style>

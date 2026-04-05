@@ -95,11 +95,13 @@
 						/>
 					{/if}
 				</div>
+
+				{#if activeTab === 'route'}
+					<RouteStatsBar on:exportToGPX={() => dispatch('exportToGPX')} />
+				{/if}
 			</div>
 		{/if}
 	</div>
-
-	<RouteStatsBar on:exportToGPX={() => dispatch('exportToGPX')} />
 </div>
 
 <style>
