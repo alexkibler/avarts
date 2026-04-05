@@ -3,7 +3,22 @@ import { FitWriter } from '@markw65/fit-file-writer';
 import * as fs from 'fs';
 import * as path from 'path';
 
-test('Capture Ride Summary Screenshot', async ({ page }) => {
+test('Capture Ride Summary Screenshot', async ({ context, page }) => {
+    // Set auth cookie
+	await context.addCookies([{
+		name: 'mock_pb_auth',
+		value: JSON.stringify({
+			token: 'mock_token',
+			model: {
+				id: 'mock_user_123',
+				username: 'mockuser',
+				email: 'mock@example.com'
+			}
+		}),
+		domain: 'localhost',
+		path: '/'
+	}]);
+
     // Ensure mock mode
     await page.addInitScript(() => {
         (window as any).PLAYWRIGHT_TEST = true;
@@ -23,6 +38,7 @@ test('Capture Ride Summary Screenshot', async ({ page }) => {
     writer.writeMessage('file_id', { type: 'activity', manufacturer: 'development', product: 0, serial_number: 999, time_created: writer.time(new Date()) });
     const startTime = new Date();
     writer.writeMessage('activity', { timestamp: writer.time(startTime), num_sessions: 1, type: 'manual', event: 'activity', event_type: 'start' });
+    writer.writeMessage('event', { timestamp: writer.time(startTime), event: 'timer', event_type: 'start', event_group: 0 });
     writer.writeMessage('session', { timestamp: writer.time(startTime), start_time: writer.time(startTime), sport: 'cycling', total_elapsed_time: 3600, total_timer_time: 3600, total_distance: 25000, total_ascent: 450 });
     writer.writeMessage('lap', { timestamp: writer.time(startTime), start_time: writer.time(startTime), total_elapsed_time: 3600, total_timer_time: 3600, total_distance: 25000, total_ascent: 450 });
     
@@ -41,10 +57,10 @@ test('Capture Ride Summary Screenshot', async ({ page }) => {
 
     const fitData = writer.finish();
     const fitFilePath = path.join(process.cwd(), 'temp_capture.fit');
-    fs.writeFileSync(fitFilePath, new Uint8Array(fitData.buffer));
+    fs.writeFileSync(fitFilePath, Buffer.from(fitData.buffer, fitData.byteOffset, fitData.byteLength));
 
     // Upload
-    await page.getByRole('button', { name: /Upload/i }).click();
+    await page.locator('button:has-text("Upload")').filter({ visible: true }).click();
     await page.locator('input#file-upload').setInputFiles(fitFilePath);
     await page.click('button:has-text("Analyze Ride")');
 

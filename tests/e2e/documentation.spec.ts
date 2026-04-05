@@ -22,7 +22,22 @@ test.describe('Walkthrough Documentation Screenshots', () => {
         console.log(`Saved screenshot: ${name}${suffix}.png`);
     }
 
-    test.beforeEach(async ({ page }) => {
+    test.beforeEach(async ({ context, page }) => {
+        // Set auth cookie
+		await context.addCookies([{
+			name: 'mock_pb_auth',
+			value: JSON.stringify({
+				token: 'mock_token',
+                model: {
+                    id: 'mock_user_123',
+                    username: 'mockuser',
+                    email: 'mock@example.com'
+                }
+			}),
+			domain: 'localhost',
+			path: '/'
+		}]);
+
         await page.addInitScript(() => {
             (window as any).PLAYWRIGHT_TEST = true;
         });
@@ -75,18 +90,18 @@ test.describe('Walkthrough Documentation Screenshots', () => {
 
         // 4. Chat Tab
         console.log('[Test] Capturing Chat Tab...');
-        await page.getByRole('button', { name: /Chat/i }).click();
+        await page.locator('button:has-text("Chat")').filter({ visible: true }).click();
         await capture(page, '8_Game_Chat_Tab');
 
         // 5. Route Tab
         console.log('[Test] Capturing Route Tab...');
-        await page.getByRole('button', { name: /Route/i }).click();
+        await page.locator('button:has-text("Route")').filter({ visible: true }).click();
         await page.waitForSelector('.node-item', { timeout: 15000 });
         await capture(page, '6_Game_Route_Tab');
 
         // 6. Upload Tab & Ride Summary
         console.log('[Test] Capturing Ride Summary...');
-        await page.getByRole('button', { name: /Upload/i }).click();
+        await page.locator('button:has-text("Upload")').filter({ visible: true }).click();
         
         // Generate a FIT file for center of NYC
         const toSemicircles = (deg: number) => Math.round(deg * (Math.pow(2, 31) / 180));
@@ -94,12 +109,13 @@ test.describe('Walkthrough Documentation Screenshots', () => {
         writer.writeMessage('file_id', { type: 'activity', manufacturer: 'development', product: 0, serial_number: 555, time_created: writer.time(new Date()) });
         const startTime = new Date();
         writer.writeMessage('activity', { timestamp: writer.time(startTime), num_sessions: 1, type: 'manual', event: 'activity', event_type: 'start' });
+        writer.writeMessage('event', { timestamp: writer.time(startTime), event: 'timer', event_type: 'start', event_group: 0 });
         writer.writeMessage('session', { timestamp: writer.time(startTime), start_time: writer.time(startTime), sport: 'cycling', total_elapsed_time: 10, total_timer_time: 10, total_distance: 100, total_ascent: 5 });
         writer.writeMessage('lap', { timestamp: writer.time(startTime), start_time: writer.time(startTime), total_elapsed_time: 10, total_timer_time: 10, total_distance: 100, total_ascent: 5 });
         writer.writeMessage('record', { timestamp: writer.time(startTime), position_lat: toSemicircles(40.7128), position_long: toSemicircles(-74.006), altitude: 250 });
         const fitData = writer.finish();
         const fitFilePath = path.join(process.cwd(), 'temp_walkthrough.fit');
-        fs.writeFileSync(fitFilePath, new Uint8Array(fitData.buffer));
+        fs.writeFileSync(fitFilePath, Buffer.from(fitData.buffer, fitData.byteOffset, fitData.byteLength));
 
         await page.locator('input#file-upload').setInputFiles(fitFilePath);
         await page.click('button:has-text("Analyze Ride")');
