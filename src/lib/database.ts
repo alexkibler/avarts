@@ -10,10 +10,13 @@ if (env.PUBLIC_DB_URL) {
 	url = 'http://127.0.0.1:8090';
 }
 
-export const pb =
-	env.PUBLIC_MOCK_MODE === 'true'
-		? (new MockPocketBase() as unknown as PocketBase)
-		: new PocketBase(url);
+const isMockMode =
+	env.PUBLIC_MOCK_MODE === 'true' ||
+	(typeof window !== 'undefined' && (window as any).PLAYWRIGHT_TEST);
+
+export const pb = isMockMode
+	? (new MockPocketBase() as unknown as PocketBase)
+	: new PocketBase(url);
 
 pb.autoCancellation(false);
 

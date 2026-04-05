@@ -23,6 +23,14 @@ test.describe('Visual UX Capture (Mock Mode)', () => {
 	}
 
 	test('Capture key UI states', async ({ page }, testInfo) => {
+		page.on('console', (msg) => console.log(`[Browser] ${msg.type()}: ${msg.text()}`));
+		page.on('pageerror', (err) => console.error(`[Browser Error] ${err.message}`));
+
+		// Ensure mock mode is engaged
+		await page.addInitScript(() => {
+			(window as any).PLAYWRIGHT_TEST = true;
+		});
+
 		// 1. Dashboard
 		await page.goto('/');
 		await page.waitForLoadState('networkidle');
@@ -45,13 +53,24 @@ test.describe('Visual UX Capture (Mock Mode)', () => {
 		await page.click('button:has-text("Generate Session")');
 		await page.waitForURL('**/game/*');
 		await page.waitForLoadState('networkidle');
+		await page.waitForTimeout(2000); // Wait for the game session to fully initialize
 		await captureAndAttach(page, testInfo, '4_Game_Initial_State');
 
 		// 3. Game UI Tabs (Since we mock AP, clicking Connect should immediately transition state)
 		const connectButton = page.locator('button:has-text("Connect & Play")');
-		if (await connectButton.isVisible()) {
+		const isConnectVisible = await connectButton.isVisible();
+		console.log(`[Test] Connect & Play visible: ${isConnectVisible}`);
+
+		if (isConnectVisible) {
 			await connectButton.click();
-			await page.waitForTimeout(1000);
+			// Wait for the map to appear
+			await page.waitForSelector('.map-container', { timeout: 10000 });
+			await page.waitForTimeout(3000); // Give Leaflet and tiles extra time to settle
+			await captureAndAttach(page, testInfo, '5_Game_Connected_State');
+		} else {
+			// Already connected or transitioned
+			await page.waitForSelector('.map-container', { timeout: 10000 });
+			await page.waitForTimeout(3000);
 			await captureAndAttach(page, testInfo, '5_Game_Connected_State');
 		}
 
