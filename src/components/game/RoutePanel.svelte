@@ -1,10 +1,14 @@
 <script lang="ts">
 	import { mapNodes, activeWaypointIds } from '$lib/mapState';
-	import { locationSwaps } from '$lib/ap';
 	import { pb } from '$lib/database';
-	import { createEventDispatcher } from 'svelte';
+	import { get } from 'svelte/store';
+	import { getContext as svelteGetContext, createEventDispatcher } from 'svelte';
+	import type { IGameEngine } from '$lib/engine/IGameEngine';
 
 	export let sessionId: string;
+
+	let gameEngine = svelteGetContext<IGameEngine>('gameEngine');
+	let locationSwaps = gameEngine.locationSwaps;
 
 	const dispatch = createEventDispatcher<{
 		routeToAvailable: void;
@@ -58,7 +62,7 @@
 					.update(sessionId, { location_swaps_used: usedSwaps + 1 }, { requestKey: null })
 			]);
 
-			locationSwaps.update((n) => Math.max(0, n - 1));
+			locationSwaps.update((n: number) => Math.max(0, n - 1));
 		} catch (e) {
 			console.error('Failed to perform location swap:', e);
 			alert('Failed to swap location.');

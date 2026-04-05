@@ -8,8 +8,9 @@
 	import MapCore from './game/MapCore.svelte';
 	import GameHUD from './game/GameHUD.svelte';
 	import VictoryScreen from '$components/VictoryScreen.svelte';
-	import { isGoalReached } from '$lib/ap';
 	import { get } from 'svelte/store';
+	import { getContext } from 'svelte';
+	import type { IGameEngine } from '$lib/engine/IGameEngine';
 
 	export let sessionId: string;
 	export let sessionName: string = '';
@@ -26,6 +27,9 @@
 	let mapCore: MapCore;
 	let unsubscribePb: (() => void) | null = null;
 	let showVictory = false;
+
+	let gameEngine = getContext<IGameEngine>('gameEngine');
+	let isGoalReached = gameEngine.isGoalReached;
 
 	$: if ($isGoalReached) {
 		showVictory = true;

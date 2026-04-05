@@ -1,9 +1,13 @@
 <script lang="ts">
 	import { nodeStats } from '$lib/mapState';
-	import { locationSwaps } from '$lib/ap';
+	import { getContext } from 'svelte';
+	import type { IGameEngine } from '$lib/engine/IGameEngine';
 
 	export let sessionName: string = '';
 	export let apServerUrl: string = '';
+
+	let gameEngine = getContext<IGameEngine>('gameEngine');
+	let locationSwaps = gameEngine.locationSwaps;
 </script>
 
 <div class="topnav">

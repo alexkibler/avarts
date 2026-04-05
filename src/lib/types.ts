@@ -1,3 +1,10 @@
+export type ChatMessageType = 'chat' | 'item' | 'system' | 'server';
+export interface ChatMessage {
+	id: number;
+	text: string;
+	type: ChatMessageType;
+}
+
 export interface GameSession {
 	id: string;
 	status: string;

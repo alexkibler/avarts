@@ -2,6 +2,7 @@
 	import { afterUpdate, onMount } from 'svelte';
 	import { pb } from '$lib/database';
 	import { env } from '$env/dynamic/public';
+	import { invalidateAll } from '$app/navigation';
 
 	export let data;
 	export let form;
@@ -10,6 +11,22 @@
 		password: string = '',
 		confirm: string;
 	let ready: boolean = true;
+
+	async function convertToSinglePlayer(sessionId: string) {
+		if (window.confirm('Are you sure you want to convert this Archipelago save to a Single Player save? This action is permanent and cannot be reversed.')) {
+			try {
+				await pb.collection('game_sessions').update(sessionId, {
+					ap_server_url: null,
+					ap_slot_name: null,
+					ap_seed_name: null
+				});
+				await invalidateAll();
+			} catch (e) {
+				console.error('Failed to convert to single player', e);
+				alert('Failed to convert. Check console for details.');
+			}
+		}
+	}
 
 	let register = false;
 	function ifRegister() {
@@ -58,34 +75,46 @@
 												<span
 													class="px-2 py-0.5 rounded-md text-[10px] font-black bg-orange-500 text-white uppercase tracking-tighter"
 												>
-													AP Mode
+													{session.ap_server_url ? 'AP Mode' : 'Single Player'}
 												</span>
 											</div>
 
-											<div class="flex flex-wrap gap-x-6 gap-y-2 text-sm text-neutral-400">
-												<div class="flex items-center gap-2 group/info">
-													<div class="p-1.5 rounded-lg bg-white/5 text-neutral-500 group-hover/info:text-orange-400 transition-colors">
-														<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="20" height="14" x="2" y="3" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>
+											{#if session.ap_server_url}
+												<div class="flex flex-wrap gap-x-6 gap-y-2 text-sm text-neutral-400">
+													<div class="flex items-center gap-2 group/info">
+														<div class="p-1.5 rounded-lg bg-white/5 text-neutral-500 group-hover/info:text-orange-400 transition-colors">
+															<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="20" height="14" x="2" y="3" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>
+														</div>
+														<span class="truncate max-w-[200px] font-medium">{session.ap_server_url}</span>
 													</div>
-													<span class="truncate max-w-[200px] font-medium">{session.ap_server_url}</span>
-												</div>
-												<div class="flex items-center gap-2 group/info">
-													<div class="p-1.5 rounded-lg bg-white/5 text-neutral-500 group-hover/info:text-orange-400 transition-colors">
-														<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+													<div class="flex items-center gap-2 group/info">
+														<div class="p-1.5 rounded-lg bg-white/5 text-neutral-500 group-hover/info:text-orange-400 transition-colors">
+															<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+														</div>
+														<span class="font-medium">{session.ap_slot_name}</span>
 													</div>
-													<span class="font-medium">{session.ap_slot_name}</span>
 												</div>
-											</div>
+											{/if}
 										</div>
 
-										<a href="/game/{session.id}" class="w-full md:w-auto shrink-0 transition-transform active:scale-95">
-											<button
-												class="w-full md:w-auto bg-orange-600 hover:bg-orange-500 text-white font-bold py-3 px-8 rounded-xl transition-all shadow-lg shadow-orange-900/20 hover:shadow-orange-500/30 flex items-center justify-center gap-2 group/btn"
-											>
-												Resume Session
-												<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" class="group-hover/btn:translate-x-1 transition-transform"><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></svg>
-											</button>
-										</a>
+										<div class="flex flex-col gap-2 w-full md:w-auto shrink-0">
+											<a href="/game/{session.id}" class="w-full transition-transform active:scale-95">
+												<button
+													class="w-full bg-orange-600 hover:bg-orange-500 text-white font-bold py-3 px-8 rounded-xl transition-all shadow-lg shadow-orange-900/20 hover:shadow-orange-500/30 flex items-center justify-center gap-2 group/btn"
+												>
+													Resume Session
+													<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" class="group-hover/btn:translate-x-1 transition-transform"><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></svg>
+												</button>
+											</a>
+											{#if session.ap_server_url}
+												<button
+													class="w-full text-xs text-neutral-400 hover:text-white transition-colors"
+													on:click={() => convertToSinglePlayer(session.id)}
+												>
+													Convert to Single Player
+												</button>
+											{/if}
+										</div>
 									</div>
 								</div>
 							{/each}
