@@ -13,3 +13,5 @@ export const nodeStats = derived(mapNodes, ($nodes) => ({
 export const currentRoute = writable<Route | null>(null);
 export const routeDistance = writable<number>(0);
 export const elevationGain = writable<number>(0);
+
+export const userLocation = writable<{ lat: number; lon: number } | null>(null);

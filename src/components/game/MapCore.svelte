@@ -8,7 +8,8 @@
 		activeWaypointIds,
 		currentRoute,
 		routeDistance,
-		elevationGain
+		elevationGain,
+		userLocation
 	} from '$lib/mapState';
 	import type { Coordinates, ElevationResponse, Route } from '$lib/types';
 	import { getElevationData } from '$lib/routing';
@@ -154,9 +155,16 @@
 		}
 	}
 
-	function handleMyLocation(callback?: (coords?: { lat: number; lon: number }) => void) {
+	function handleMyLocation(
+		options: {
+			silent?: boolean;
+			callback?: (coords?: { lat: number; lon: number }) => void;
+		} = {}
+	) {
+		const { silent = false, callback } = options;
+
 		if (!navigator.geolocation) {
-			alert('Geolocation is not supported by your browser.');
+			if (!silent) alert('Geolocation is not supported by your browser.');
 			callback?.();
 			return;
 		}
@@ -164,8 +172,11 @@
 		navigator.geolocation.getCurrentPosition(
 			(pos) => {
 				const coords = { lat: pos.coords.latitude, lon: pos.coords.longitude };
+				userLocation.set(coords);
+
 				if (map && L) {
-					map.setView([coords.lat, coords.lon], 16);
+					if (!silent) map.setView([coords.lat, coords.lon], 16);
+
 					if (myLocationMarker) myLocationMarker.remove();
 					myLocationMarker = L.circleMarker([coords.lat, coords.lon], {
 						radius: 10,
@@ -181,9 +192,11 @@
 				callback?.(coords);
 			},
 			(err) => {
-				const msg = 'Location request timed out. Using map center as fallback.';
-				console.error('Geolocation error:', err);
-				alert(msg);
+				if (!silent) {
+					const msg = 'Location request timed out. Using map center as fallback.';
+					console.error('Geolocation error:', err);
+					alert(msg);
+				}
 				callback?.();
 			},
 			{ enableHighAccuracy: true, timeout: 5000, maximumAge: 0 }
@@ -191,7 +204,7 @@
 	}
 
 	export function triggerMyLocation(cb?: any) {
-		handleMyLocation(cb);
+		handleMyLocation({ callback: cb });
 	}
 
 	// ── Reactivity ──────────────────────────────────────────────────────────────
@@ -232,7 +245,7 @@
 				btn.onclick = (e: any) => {
 					L.DomEvent.stopPropagation(e);
 					btn.classList.add('locating');
-					handleMyLocation(() => btn.classList.remove('locating'));
+					handleMyLocation({ callback: () => btn.classList.remove('locating') });
 				};
 				return btn;
 			}
@@ -325,6 +338,9 @@
 			});
 			activeWaypointIds.set(newActive);
 		});
+
+		// Fetch user location into state on load
+		handleMyLocation({ silent: true });
 	});
 
 	onDestroy(() => {
