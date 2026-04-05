@@ -1,5 +1,7 @@
 <script lang="ts">
 	import { onMount, onDestroy, createEventDispatcher, tick } from 'svelte';
+	import 'leaflet/dist/leaflet.css';
+	import '@raruto/leaflet-elevation/dist/leaflet-elevation.css';
 	import { env } from '$env/dynamic/public';
 	import {
 		mapNodes,
@@ -214,7 +216,7 @@
 		const leafletMod = await import('leaflet');
 		L = leafletMod.default ?? leafletMod;
 		window.L = L;
-		await import('@raruto/leaflet-elevation/src/index.js');
+		await import('@raruto/leaflet-elevation');
 		await import('leaflet-routing-machine');
 		await import('leaflet-control-geocoder');
 		await import('lrm-graphhopper');
@@ -283,6 +285,7 @@
 			.addTo(map);
 
 		elevationControl = (L as any).control.elevation({
+			srcFolder: 'https://unpkg.com/@raruto/leaflet-elevation/src/',
 			detached: true,
 			elevationDiv: '#elevation-container',
 			followMarker: false,
