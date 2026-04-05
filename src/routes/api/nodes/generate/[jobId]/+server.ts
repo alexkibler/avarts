@@ -20,8 +20,12 @@ import { getJob, updateJob } from '$lib/jobTracker';
  *   "error": string | null
  * }
  */
-export const GET: RequestHandler = async ({ params }) => {
+export const GET: RequestHandler = async ({ params, locals }) => {
 	try {
+		if (!locals.user) {
+			return json({ error: 'unauthorized', message: 'Must be logged in' }, { status: 401 });
+		}
+
 		const { jobId } = params;
 
 		// Validate jobId format (basic UUID check)
@@ -38,7 +42,7 @@ export const GET: RequestHandler = async ({ params }) => {
 		// Get job state
 		const job = await getJob(jobId);
 
-		if (!job) {
+		if (!job || job.userId !== locals.user.id) {
 			return json(
 				{
 					error: 'job_not_found',
@@ -88,13 +92,17 @@ export const GET: RequestHandler = async ({ params }) => {
  *   "message": "Job cancelled successfully"
  * }
  */
-export const DELETE: RequestHandler = async ({ params }) => {
+export const DELETE: RequestHandler = async ({ params, locals }) => {
 	try {
+		if (!locals.user) {
+			return json({ error: 'unauthorized', message: 'Must be logged in' }, { status: 401 });
+		}
+
 		const { jobId } = params;
 
 		const job = await getJob(jobId);
 
-		if (!job) {
+		if (!job || job.userId !== locals.user.id) {
 			return json(
 				{
 					error: 'job_not_found',

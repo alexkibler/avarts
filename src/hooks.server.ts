@@ -1,12 +1,12 @@
 // @ts-nocheck
 import { serializeNonPOJOs } from '$lib/utils';
-import { pb } from '$lib/database';
+import { createPbClient } from '$lib/database';
 import type { Handle } from '@sveltejs/kit';
 
 import { env } from '$env/dynamic/public';
 
 export const handle: Handle = async ({ event, resolve }) => {
-	event.locals.pb = pb;
+	event.locals.pb = createPbClient();
 
 	if (env.PUBLIC_MOCK_MODE === 'true') {
 		event.locals.user = serializeNonPOJOs(event.locals.pb.authStore.model);

@@ -24,6 +24,18 @@ if (browser && isMockMode) {
 
 pb.autoCancellation(false);
 
+/**
+ * Creates a fresh, unauthenticated PocketBase client.
+ * Use this for per-request server-side clients to avoid shared auth state.
+ */
+export function createPbClient(): PocketBase {
+	const client = isMockMode
+		? (new MockPocketBase() as unknown as PocketBase)
+		: new PocketBase(url);
+	client.autoCancellation(false);
+	return client;
+}
+
 if (browser) {
 	pb.authStore.loadFromCookie(document.cookie);
 }
