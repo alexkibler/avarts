@@ -51,17 +51,6 @@ test.describe('Victory Screen Verification', () => {
         // CHEAT: Trigger the isGoalReached store directly!
         console.log('[Test] Triggering victory via store cheat...');
         await page.evaluate(() => {
-            const apMod = (window as any).ap; // I need to make sure this is exported
-            // Actually, I can just import it in the console if I have to, 
-            // but let's try a better way: expose the store to window in ap.ts
-        });
-
-        // Alternate cheat: Use the MockDB to clear everything and then refreshNodes
-        // This is what I tried before but maybe the state transition was the issue.
-        // Let's try driving the store directly if I can.
-        
-        // Wait, I'll just expose isGoalReached to window in ap.ts
-        await page.evaluate(() => {
             if ((window as any).isGoalReached) {
                 (window as any).isGoalReached.set(true);
             } else {

@@ -56,7 +56,9 @@ export class MockPocketBase {
 		state: i >= 2 ? 'Available' : 'Hidden'
 	}));
 
-	autoCancellation(cancel: boolean) {}
+	autoCancellation(cancel: boolean) {
+		return this;
+	}
 
 	collection(name: string) {
 		return {
@@ -66,18 +68,21 @@ export class MockPocketBase {
 					let filtered = [...this._nodes];
 					if (options?.filter) {
 						if (options.filter.includes('session = "mock_session_123"')) {
-							filtered = filtered.filter(n => n.session === 'mock_session_123');
+							filtered = filtered.filter((n) => n.session === 'mock_session_123');
 						}
 						if (options.filter.includes('state = "Available"')) {
-							filtered = filtered.filter(n => n.state === 'Available');
+							filtered = filtered.filter((n) => n.state === 'Available');
 						}
 						if (options.filter.includes('state = "Hidden"')) {
-							filtered = filtered.filter(n => n.state === 'Hidden');
+							filtered = filtered.filter((n) => n.state === 'Hidden');
 						}
 					}
 					return filtered;
 				}
 				return [];
+			},
+			getList: async (page: number, perPage: number, options?: any) => {
+				return { items: [], totalItems: 0, totalPages: 0, page: 1, perPage };
 			},
 			getOne: async (id: string, options?: any) => {
 				if (name === 'game_sessions') {
@@ -85,9 +90,19 @@ export class MockPocketBase {
 					return s || this._sessions[0];
 				}
 				if (name === 'map_nodes') {
-					return this._nodes.find(n => n.id === id) || { id };
+					return this._nodes.find((n) => n.id === id) || { id };
 				}
 				return { id };
+			},
+			getFirstListItem: async (filter: string, options?: any) => {
+				if (name === 'game_sessions') return this._sessions[0];
+				return { id: 'mock_id' };
+			},
+			create: async (data: any) => {
+				const newItem = { id: `mock_new_${Math.random()}`, ...data };
+				if (name === 'game_sessions') this._sessions.push(newItem);
+				if (name === 'map_nodes') this._nodes.push(newItem);
+				return newItem;
 			},
 			update: async (id: string, data: any) => {
 				if (name === 'game_sessions') {
@@ -96,14 +111,20 @@ export class MockPocketBase {
 					return s || { id, ...data };
 				}
 				if (name === 'map_nodes') {
-					const n = this._nodes.find(node => node.id === id);
+					const n = this._nodes.find((node) => node.id === id);
 					if (n) Object.assign(n, data);
 					return n || { id, ...data };
 				}
 				return { id, ...data };
 			},
+			delete: async (id: string) => {
+				return true;
+			},
 			subscribe: async (topic: string, callback: (data: any) => void) => {
-				return () => {}; 
+				return () => {};
+			},
+			authWithPassword: async (username: string, pass: string) => {
+				return { token: 'mock_token', record: this.authStore.model };
 			}
 		};
 	}

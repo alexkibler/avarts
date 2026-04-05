@@ -3,7 +3,7 @@ import { FitWriter } from '@markw65/fit-file-writer';
 import * as fs from 'fs';
 import * as path from 'path';
 
-test('Verify .fit upload unlocks new nodes on the map', async ({ page }) => {
+test('Verify .fit upload unlocks new nodes on the map', async ({ page }, testInfo) => {
 	// Enable browser logging for debugging
 	page.on('console', (msg) => {
 		console.log(`[Browser ${msg.type()}] ${msg.text()}`);
@@ -16,25 +16,24 @@ test('Verify .fit upload unlocks new nodes on the map', async ({ page }) => {
 
 	await page.goto('/game/mock_session_123');
 	await page.waitForLoadState('networkidle');
-	await page.waitForSelector('.leaflet-interactive', { timeout: 15000 });
 
 	const connectButton = page.locator('button:has-text("Connect & Play")');
 	if (await connectButton.isVisible()) {
 		await connectButton.click();
 	}
-	await expect(page.locator('text=Upload .fit')).toBeVisible({ timeout: 15000 });
+	
+	// Open the panel if it's not already open (especially on mobile)
+	const uploadTab = page.locator('button:has-text("Upload")').filter({ visible: true });
+	await uploadTab.click();
+	await expect(page.locator('.panel-title')).toContainText('Upload', { timeout: 15000 });
 
 	// 1. Initial State: Identify an available node
-	// In mock mode, mock_session_123 center is NYC: { lat: 40.7128, lon: -74.006 }
 	const centerNode = { lat: 40.7128, lon: -74.006 };
 
-	// 2. Count Available/Hidden nodes before upload
-	// We can't easily count markers in the DOM because Leaflet uses Canvas for CircleMarkers by default,
-	// but we can check the 'Routes' tab which lists available nodes if we were to open it, 
-	// or just rely on the logic verification.
-	// Actually, let's open the Route tab to see the list.
-	await page.getByRole('button', { name: /Route/i }).click();
-	const initialAvailableCount = await page.locator('.btn-waypoint-toggle').count();
+	// 2. Count Available nodes before upload
+	await page.locator('button:has-text("Route")').filter({ visible: true }).click();
+	await page.waitForSelector('.node-item', { timeout: 10000 });
+	const initialAvailableCount = await page.locator('.node-item').count();
 	console.log(`[Test] Initial available nodes listed: ${initialAvailableCount}`);
 
 	// 3. Generate and Upload FIT file
@@ -45,13 +44,13 @@ test('Verify .fit upload unlocks new nodes on the map', async ({ page }) => {
 	writer.writeMessage('activity', { timestamp: writer.time(startTime), num_sessions: 1, type: 'manual', event: 'activity', event_type: 'start' });
 	writer.writeMessage('session', { timestamp: writer.time(startTime), start_time: writer.time(startTime), sport: 'cycling', total_elapsed_time: 10, total_timer_time: 10, total_distance: 100, total_ascent: 5 });
 	writer.writeMessage('lap', { timestamp: writer.time(startTime), start_time: writer.time(startTime), total_elapsed_time: 10, total_timer_time: 10, total_distance: 100, total_ascent: 5 });
-	// Hit the center node
+	// Hit the center node (node_2 in mock)
 	writer.writeMessage('record', { timestamp: writer.time(startTime), position_lat: toSemicircles(centerNode.lat), position_long: toSemicircles(centerNode.lon), altitude: 250 });
 	const fitData = writer.finish();
 	const fitFilePath = path.join(process.cwd(), 'temp_unlock_test.fit');
-	fs.writeFileSync(fitFilePath, new Uint8Array(fitData.buffer));
+	fs.writeFileSync(fitFilePath, Buffer.from(fitData.buffer, fitData.byteOffset, fitData.byteLength));
 
-	await page.getByRole('button', { name: /Upload/i }).click();
+	await page.locator('button:has-text("Upload")').filter({ visible: true }).click();
 	await page.locator('input#file-upload').setInputFiles(fitFilePath);
 	await page.click('button:has-text("Analyze Ride")');
 
@@ -62,26 +61,22 @@ test('Verify .fit upload unlocks new nodes on the map', async ({ page }) => {
 	await page.click('button:has-text("Confirm & Send")');
 	await expect(page.locator('text=Successfully validated')).toBeVisible({ timeout: 15000 });
 
-	// Wait for mock logic to trigger (0.5s timeout in ap.ts + DB roundtrip)
+	// Wait for mock logic to trigger
 	await page.waitForTimeout(2000);
 
 	// 5. Verify: Check the Route tab again
-	await page.getByRole('button', { name: /Route/i }).click();
-	const finalAvailableCount = await page.locator('.btn-waypoint-toggle').count();
+	await page.locator('button:has-text("Route")').filter({ visible: true }).click();
+	await page.waitForSelector('.node-item', { timeout: 10000 });
+	const finalAvailableCount = await page.locator('.node-item').count();
 	console.log(`[Test] Final available nodes listed: ${finalAvailableCount}`);
 
-	// In Mock Mode: 
-	// - 1 node was Checked (removed from Available list)
-	// - 1 node was Unlocked (added to Available list)
-	// Total count should stay the same (or change if logic differed, but our mock adds 1-for-1)
-	// Wait, actually if I check a location, it goes from Available -> Checked.
-	// Then the mock unlocks a Hidden -> Available.
-	// So count should remain the same.
+	// In Mock Mode: 1 node Checked, 1 node Unlocked -> count remains same
+	expect(finalAvailableCount).toBeGreaterThan(0);
 	expect(finalAvailableCount).toBe(initialAvailableCount);
 
-	// 6. Capture screenshot of the map with the new nodes
-	// Switch back to chat or just stay on route to see markers
-	const screenshotPath = path.join(process.cwd(), 'static/docs/screenshots/8_Unlocking_Nodes.png');
+	// 6. Capture screenshot
+	const suffix = testInfo.project.name === 'mobile' ? '_mobile' : '_desktop';
+	const screenshotPath = path.join(process.cwd(), `static/docs/screenshots/8_Unlocking_Nodes${suffix}.png`);
 	await page.screenshot({ path: screenshotPath, fullPage: true });
 	console.log(`[Test] Screenshot saved to ${screenshotPath}`);
 
