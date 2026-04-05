@@ -39,6 +39,7 @@
 	let myLocationMarker: any = null;
 	let activeWaypointIds = new Set<string>();
 	let isMounted = false;
+	let rideLayer: any = null;
 
 	// ── Route Optimization ───────────────────────────────────────────────────────
 
@@ -688,8 +689,36 @@
 	});
 
 	function handleValidated() {
+		clearRideLayer();
 		clearRoute();
 		dispatch('validated');
+	}
+
+	function handleRideParsed(event: CustomEvent<{ path: { lat: number; lon: number }[] }>) {
+		clearRideLayer();
+		if (!map || !L) return;
+
+		const latLngs = event.detail.path.map((p) => [p.lat, p.lon]);
+		rideLayer = L.polyline(latLngs, {
+			color: '#f97316', // orange-500
+			weight: 4,
+			opacity: 0.8,
+			dashArray: '5, 10'
+		}).addTo(map);
+
+		const bounds = L.latLngBounds(latLngs);
+		map.fitBounds(bounds, { padding: [50, 50] });
+	}
+
+	function handleRideCancelled() {
+		clearRideLayer();
+	}
+
+	function clearRideLayer() {
+		if (rideLayer) {
+			rideLayer.remove();
+			rideLayer = null;
+		}
 	}
 
 	function handleNodeTap(node: any) {
@@ -831,7 +860,12 @@
 					{#if activeTab === 'chat'}
 						<ChatClient />
 					{:else if activeTab === 'upload'}
-						<ApDropzone {sessionId} on:validated={handleValidated} />
+						<ApDropzone
+							{sessionId}
+							on:validated={handleValidated}
+							on:rideParsed={handleRideParsed}
+							on:rideCancelled={handleRideCancelled}
+						/>
 					{:else}
 						<button
 							on:click={routeToAvailable}
