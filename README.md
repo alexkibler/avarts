@@ -61,6 +61,13 @@ After your ride, drag and drop your `.fit` activity file. Review your ride stats
 
 
 
+### 7. Track Your Progress
+View your historical routes, elevation profiles, and overall stats as you work toward your goal. When you finally clear every node in your session, you're greeted with a well-deserved victory screen!
+<p align="center">
+  <img src="static/docs/screenshots/11_Victory_Screen_desktop.png" alt="Victory Screen Desktop" width="600">
+  <img src="static/docs/screenshots/11_Victory_Screen_mobile.png" alt="Victory Screen Mobile" width="200">
+</p>
+
 ---
 
 ## 🛠️ Infrastructure

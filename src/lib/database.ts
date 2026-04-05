@@ -18,6 +18,10 @@ export const pb = isMockMode
 	? (new MockPocketBase() as unknown as PocketBase)
 	: new PocketBase(url);
 
+if (browser && isMockMode) {
+	(window as any).pb = pb;
+}
+
 pb.autoCancellation(false);
 
 if (browser) {

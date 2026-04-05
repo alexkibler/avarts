@@ -121,19 +121,28 @@ export async function analyzeFitFile(file: File, sessionId: string): Promise<Rid
 		const newlyCheckedNodes: RideSummary['newlyCheckedNodes'] = [];
 
 		// For each available node, check if any point in the path is within 30 meters
+		console.log(`[Analyze] Checking ${availableNodes.length} nodes against ${path.length} path points.`);
 		for (const node of availableNodes) {
+			let minDistance = Infinity;
 			const isWithinRadius = path.some((point) => {
 				const distance = getDistance(node.lat, node.lon, point.lat, point.lon);
+				if (distance < minDistance) minDistance = distance;
 				return distance <= 30; // 30 meters threshold
 			});
 
 			if (isWithinRadius) {
+				console.log(`[Analyze] Node ${node.id} HIT (min dist: ${minDistance.toFixed(2)}m)`);
 				newlyCheckedNodes.push({
 					id: node.id,
 					ap_location_id: node.ap_location_id,
 					lat: node.lat,
 					lon: node.lon
 				});
+			} else {
+				// Only log every 10th miss to avoid flooding
+				if (Math.random() > 0.9) {
+					console.log(`[Analyze] Node ${node.id} MISS (min dist: ${minDistance.toFixed(2)}m)`);
+				}
 			}
 		}
 

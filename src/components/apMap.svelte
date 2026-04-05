@@ -9,8 +9,9 @@
 
 	import ChatClient from '$components/ChatClient.svelte';
 	import ApDropzone from '$components/apDropzone.svelte';
+	import VictoryScreen from '$components/VictoryScreen.svelte';
 	import { activeGameTab } from '$lib/stores';
-	import { locationSwaps } from '$lib/ap';
+	import { locationSwaps, isGoalReached } from '$lib/ap';
 
 	import '@raruto/leaflet-elevation/src/index.css';
 
@@ -40,6 +41,12 @@
 	let activeWaypointIds = new Set<string>();
 	let isMounted = false;
 	let rideLayer: any = null;
+	let showVictory = false;
+
+	// Drive victory screen from Archipelago goal state
+	$: if ($isGoalReached && isMounted) {
+		showVictory = true;
+	}
 
 	// ── Route Optimization ───────────────────────────────────────────────────────
 
@@ -585,12 +592,16 @@
 		setTimeout(updateWaypointCount, 500);
 		setTimeout(updateWaypointCount, 1000);
 
-		nodes = await pb.collection('map_nodes').getFullList({
-			filter: `session = "${sessionId}"`,
-			sort: '+ap_location_id',
-			requestKey: null
-		});
-		renderPins();
+		async function fetchNodes() {
+			nodes = await pb.collection('map_nodes').getFullList({
+				filter: `session = "${sessionId}"`,
+				sort: '+ap_location_id',
+				requestKey: null
+			});
+			renderPins();
+		}
+
+		await fetchNodes();
 
 		// Be smart about subscribing: only if we're authenticated and the component is still mounted.
 		// We use a small delay to ensure the page has finished its initial load sequence
@@ -1041,6 +1052,14 @@
 			</button>
 		</div>
 	</div>
+
+	{#if showVictory}
+		<VictoryScreen
+			{sessionName}
+			checkedCount={nodeStats.checked}
+			on:close={() => (showVictory = false)}
+		/>
+	{/if}
 </div>
 
 <style>
