@@ -1,7 +1,6 @@
 <script lang="ts">
 	// Form state
 	let slotName = '';
-	let radius = 5000;
 	let checkCount = 10;
 
 	let isGenerating = false;
@@ -83,7 +82,7 @@
 						<p class="text-xs text-neutral-400 mt-1">This is your player name in Archipelago.</p>
 					</div>
 
-					<div class="grid grid-cols-2 gap-4">
+					<div class="grid grid-cols-1 gap-4">
 						<div>
 							<label class="block text-sm font-medium mb-1" for="checkCount">Check Count</label>
 							<input
@@ -97,24 +96,6 @@
 								class="w-full bg-neutral-700 border border-neutral-600 rounded px-3 py-2 text-white focus:outline-none focus:border-orange-500 disabled:opacity-50"
 							/>
 							<p class="text-xs text-neutral-400 mt-1">How many bike intersections to collect.</p>
-						</div>
-
-						<div>
-							<label class="block text-sm font-medium mb-1" for="radius"
-								>Search Radius (meters)</label
-							>
-							<input
-								id="radius"
-								type="number"
-								bind:value={radius}
-								required
-								min="100"
-								max="50000"
-								step="100"
-								disabled={isGenerating}
-								class="w-full bg-neutral-700 border border-neutral-600 rounded px-3 py-2 text-white focus:outline-none focus:border-orange-500 disabled:opacity-50"
-							/>
-							<p class="text-xs text-neutral-400 mt-1">Search area around your starting point.</p>
 						</div>
 					</div>
 
