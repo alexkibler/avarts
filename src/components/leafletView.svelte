@@ -1,7 +1,7 @@
 <script lang="ts">
 	import { onMount, onDestroy, setContext, createEventDispatcher, tick } from 'svelte';
 	import 'leaflet/dist/leaflet.css';
-	import '@raruto/leaflet-elevation/src/index.css';
+	import '@raruto/leaflet-elevation/dist/leaflet-elevation.css';
 	import * as imageConversion from 'image-conversion';
 
 	let L: any;
@@ -31,7 +31,7 @@
 		const leafletMod = await import('leaflet');
 		L = leafletMod.default ?? leafletMod;
 		window.L = L;
-		await import('@raruto/leaflet-elevation/src/index.js');
+		await import('@raruto/leaflet-elevation');
 		await import('leaflet-simple-map-screenshoter');
 
 		if (!bounds && (!view || !zoom)) {
