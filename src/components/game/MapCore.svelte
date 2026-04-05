@@ -234,7 +234,10 @@
 		await import('leaflet-control-geocoder');
 		await import('lrm-graphhopper');
 
+		if (!mapElement) return;
+
 		map = L.map(mapElement, { zoomControl: false }).setView([centerLat, centerLon], 13);
+
 
 		// Custom "My Location" control
 		const MyLocationControl = (L as any).Control.extend({

@@ -10,6 +10,22 @@ vi.mock('@sports-alliance/sports-lib', () => ({
 	}
 }));
 
+vi.mock('fit-file-parser', () => {
+	return {
+		default: class {
+			parse(buffer: any, callback: any) {
+				callback(null, {
+					records: [
+						{ position_lat: 40, position_long: -80, timestamp: 1000 * 1000, distance: 10 },
+						{ position_lat: 40.0001, position_long: -80.0001, timestamp: 1001 * 1000, distance: 20 }
+					],
+					sessions: []
+				});
+			}
+		}
+	};
+});
+
 vi.mock('./database', () => ({
 	pb: {
 		collection: vi.fn(() => ({
@@ -132,7 +148,7 @@ describe('validation', () => {
 			getFullList: vi.fn().mockResolvedValue([])
 		});
 
-		const result = await analyzeFitFile(new File([], 'test.fit'), 'session');
+		const result = await analyzeFitFile(new File([new ArrayBuffer(10)], 'test.fit'), 'session');
 		expect(result.stats.avgPower).toBeUndefined();
 		expect(result.stats.avgHR).toBeUndefined();
 		expect(result.stats.distanceMeters).toBe(0);
@@ -153,5 +169,24 @@ describe('validation', () => {
 		expect(updateMock).toHaveBeenCalledWith('node1', { state: 'Checked' }, { requestKey: null });
 		expect(engine.sendLocationChecks).toHaveBeenCalledWith([101]);
 		expect(messages).toContain('Unlocked Location 101 at [40, -80]!');
+	});
+
+	it('analyzeFitFile should fallback to fit-file-parser if SportsLib reports empty file', async () => {
+		(SportsLib.importFromFit as any).mockRejectedValue(new Error('Empty fit file'));
+
+		(pb.collection as any).mockReturnValue({
+			getFullList: vi.fn().mockResolvedValue([
+				{ id: 'node1', ap_location_id: 101, lat: 40.0, lon: -80.0, state: 'Available' }
+			])
+		});
+
+		const mockFile = new File([new ArrayBuffer(10)], 'fallback.fit');
+		const result = await analyzeFitFile(mockFile, 'session123');
+
+		expect(result.path.length).toBe(2);
+		expect(result.path[0].lat).toBe(40);
+		expect(result.newlyCheckedNodes.length).toBe(1);
+		expect(result.stats.durationSeconds).toBe(1);
+		expect(result.stats.distanceMeters).toBe(20);
 	});
 });
