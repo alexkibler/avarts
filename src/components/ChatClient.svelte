@@ -1,9 +1,11 @@
 <script lang="ts">
-	import { afterUpdate } from 'svelte';
-	import { chatMessages, apClient } from '$lib/ap';
-	import type { ChatMessage } from '$lib/ap';
+	import { afterUpdate, getContext } from 'svelte';
+	import type { IGameEngine } from '$lib/engine/IGameEngine';
+	import type { ChatMessage } from '$lib/types';
 
 	let input = '';
+	let gameEngine = getContext<IGameEngine>('gameEngine');
+	let chatMessages = gameEngine.chatMessages;
 	let msgContainer: HTMLElement;
 
 	// Auto-scroll to bottom whenever messages update
@@ -13,11 +15,9 @@
 
 	function send() {
 		const text = input.trim();
-		if (!text || !apClient.authenticated) return;
+		if (!text) return;
 		input = '';
-		// Use socket.send directly so /commands don't hang waiting for a Chat echo
-		// that the server never sends (commands return CommandResult, not Chat).
-		apClient.socket.send({ cmd: 'Say', text });
+		gameEngine.say(text);
 	}
 
 	function onKeydown(e: KeyboardEvent) {
