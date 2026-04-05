@@ -15,7 +15,7 @@ test.describe('Visual UX Capture (Mock Mode)', () => {
 		// Wait for animations to settle
 		await page.waitForTimeout(1000);
 		const screenshotPath = path.join(testInfo.outputPath(), `${name}.png`);
-		await page.screenshot({ path: screenshotPath, fullPage: true });
+		await page.screenshot({ path: screenshotPath });
 		await testInfo.attach(name, {
 			path: screenshotPath,
 			contentType: 'image/png'
@@ -53,6 +53,12 @@ test.describe('Visual UX Capture (Mock Mode)', () => {
 		await page.click('button:has-text("Generate Session")');
 		await page.waitForURL('**/game/*');
 		await page.waitForLoadState('networkidle');
+		
+		// Assert map is visible
+		await expect(page.locator('.map-container')).toBeVisible();
+		// Wait for mock nodes to be rendered (circle markers)
+		await page.waitForSelector('.leaflet-interactive', { timeout: 10000 });
+		
 		await page.waitForTimeout(2000); // Wait for the game session to fully initialize
 		await captureAndAttach(page, testInfo, '4_Game_Initial_State');
 
@@ -63,13 +69,13 @@ test.describe('Visual UX Capture (Mock Mode)', () => {
 
 		if (isConnectVisible) {
 			await connectButton.click();
-			// Wait for the map to appear
-			await page.waitForSelector('.map-container', { timeout: 10000 });
+			// Wait for the connect form to disappear and map to appear
+			await expect(page.locator('.map-container')).toBeVisible();
 			await page.waitForTimeout(3000); // Give Leaflet and tiles extra time to settle
 			await captureAndAttach(page, testInfo, '5_Game_Connected_State');
 		} else {
 			// Already connected or transitioned
-			await page.waitForSelector('.map-container', { timeout: 10000 });
+			await expect(page.locator('.map-container')).toBeVisible();
 			await page.waitForTimeout(3000);
 			await captureAndAttach(page, testInfo, '5_Game_Connected_State');
 		}
@@ -78,6 +84,8 @@ test.describe('Visual UX Capture (Mock Mode)', () => {
 		const routeTab = page.getByRole('button', { name: /Route/i });
 		if (await routeTab.isVisible()) {
 			await routeTab.click();
+			// Assert Route Builder panel is open
+			await expect(page.locator('.panel-title:has-text("Route Builder")')).toBeVisible();
 			await page.waitForTimeout(1000);
 			await captureAndAttach(page, testInfo, '6_Game_Route_Tab');
 		}
@@ -86,6 +94,8 @@ test.describe('Visual UX Capture (Mock Mode)', () => {
 		const uploadTab = page.getByRole('button', { name: /Upload/i });
 		if (await uploadTab.isVisible()) {
 			await uploadTab.click();
+			// Assert Upload panel is open
+			await expect(page.locator('.panel-title:has-text("Upload .fit")')).toBeVisible();
 			await page.waitForTimeout(1000);
 			await captureAndAttach(page, testInfo, '7_Game_Upload_Tab');
 		}
@@ -94,6 +104,8 @@ test.describe('Visual UX Capture (Mock Mode)', () => {
 		const chatTab = page.getByRole('button', { name: /Chat/i });
 		if (await chatTab.isVisible()) {
 			await chatTab.click();
+			// Assert Chat panel is open
+			await expect(page.locator('.panel-title:has-text("Chat")')).toBeVisible();
 			await page.waitForTimeout(1000);
 			await captureAndAttach(page, testInfo, '8_Game_Chat_Tab');
 		}
