@@ -133,7 +133,7 @@
 							<p class="text-neutral-400 mb-10 max-w-sm mx-auto leading-relaxed">
 								You haven't started any Archipelago games yet. Connect to a multiworld server to track your progress and plan routes.
 							</p>
-							<a href="/setup-session" class="inline-block transition-transform active:scale-95">
+							<a href="/new-game" class="inline-block transition-transform active:scale-95">
 								<button
 									class="px-10 py-4 bg-orange-600 text-white font-black rounded-xl hover:bg-orange-500 transition-all shadow-xl shadow-orange-900/30 hover:shadow-orange-500/40 uppercase tracking-widest text-sm flex items-center gap-3"
 								>
