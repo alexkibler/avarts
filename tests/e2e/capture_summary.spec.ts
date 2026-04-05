@@ -60,8 +60,15 @@ test('Capture Ride Summary Screenshot', async ({ context, page }) => {
     fs.writeFileSync(fitFilePath, Buffer.from(fitData.buffer, fitData.byteOffset, fitData.byteLength));
 
     // Upload
-    await page.locator('button:has-text("Upload")').filter({ visible: true }).click();
-    await page.locator('input#file-upload').setInputFiles(fitFilePath);
+    const uploadTab = page.locator('button:has-text("Upload")').filter({ visible: true });
+    await uploadTab.click();
+    
+    // Ensure panel is open
+    await expect(page.locator('.panel-title')).toContainText('Upload', { timeout: 15000 });
+    
+    const fileInput = page.locator('input#file-upload');
+    await fileInput.setInputFiles(fitFilePath);
+    
     await page.click('button:has-text("Analyze Ride")');
 
     // Wait for summary UI

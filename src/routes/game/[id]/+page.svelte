@@ -162,7 +162,6 @@
 	<!-- ── Game layout: full-page ApMap (which now includes sidebar and bottom bar) ── -->
 	<ApMap
 		bind:this={apMapRef}
-		bind:nodeStats
 		sessionId={session.id}
 		sessionName={session.ap_seed_name}
 		apServerUrl={session.ap_server_url}

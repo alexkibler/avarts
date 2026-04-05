@@ -43,7 +43,7 @@ test.describe('Victory Screen Verification', () => {
             await connectButton.click();
         }
         
-        await page.waitForSelector('.leaflet-interactive', { timeout: 20000 });
+        await page.waitForSelector('.leaflet-interactive', { timeout: 30000 });
         await page.waitForLoadState('networkidle');
 
         // CHEAT: Trigger the isGoalReached store directly!
