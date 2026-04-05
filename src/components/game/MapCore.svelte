@@ -1,7 +1,6 @@
 <script lang="ts">
 	import { onMount, onDestroy, createEventDispatcher, tick } from 'svelte';
 	import 'leaflet/dist/leaflet.css';
-	import '@raruto/leaflet-elevation/dist/leaflet-elevation.css';
 	import { env } from '$env/dynamic/public';
 	import {
 		mapNodes,
@@ -28,7 +27,6 @@
 	let L: any;
 	const markerMap = new Map<string, any>();
 	let routingControl: any = null;
-	let elevationControl: any = null;
 	let myLocationMarker: any = null;
 	let rideLayer: any = null;
 	let locating = false;
@@ -104,7 +102,6 @@
 
 	export function clearRoute() {
 		routingControl?.setWaypoints([]);
-		elevationControl?.clear();
 		currentRoute.set(null);
 		routeDistance.set(0);
 		elevationGain.set(0);
@@ -229,7 +226,6 @@
 		const leafletMod = await import('leaflet');
 		L = leafletMod.default ?? leafletMod;
 		window.L = L;
-		await import('@raruto/leaflet-elevation');
 		await import('leaflet-routing-machine');
 		await import('leaflet-control-geocoder');
 		await import('lrm-graphhopper');
@@ -300,28 +296,21 @@
 			})
 			.addTo(map);
 
-		elevationControl = (L as any).control.elevation({
-			srcFolder: 'https://unpkg.com/@raruto/leaflet-elevation/src/',
-			detached: true,
-			elevationDiv: '#elevation-container',
-			followMarker: false,
-			theme: 'orange-theme'
-		});
-		elevationControl.addTo(map);
-
 		routingControl.on('routesfound', async (e: any) => {
 			const r = e.routes[0];
 			currentRoute.set(r);
 			routeDistance.set(r.summary.totalDistance);
 
 			const elevations = await getElevationData(r.coordinates);
-			const coordsWithEle = r.coordinates.map((c: any, i: number) => [
-				c.lat,
-				c.lng,
-				elevations[i] || 0
-			]);
-			elevationControl.clear();
-			elevationControl.addData(L.polyline(coordsWithEle));
+			const coordsWithEle = r.coordinates.map((c: any, i: number) => ({
+				...c,
+				meta: { elevation: elevations[i] || 0 }
+			}));
+
+			currentRoute.set({
+				...r,
+				coordinates: coordsWithEle
+			});
 
 			const gain = elevations.reduce((acc: number, cur: number, i: number) => {
 				if (i === 0) return 0;

@@ -15,3 +15,8 @@ export const routeDistance = writable<number>(0);
 export const elevationGain = writable<number>(0);
 
 export const userLocation = writable<{ lat: number; lon: number } | null>(null);
+
+// Global metadata for export logic
+export const sessionName = writable<string>('');
+export const apSlot = writable<string>('');
+

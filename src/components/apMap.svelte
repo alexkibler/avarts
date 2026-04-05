@@ -2,7 +2,13 @@
 	import { onMount, onDestroy, createEventDispatcher } from 'svelte';
 	import { pb } from '$lib/database';
 	import { userCookie } from '$lib/stores';
-	import { mapNodes, activeWaypointIds, currentRoute } from '$lib/mapState';
+	import {
+		mapNodes,
+		activeWaypointIds,
+		currentRoute,
+		sessionName as sessionNameStore,
+		apSlot as apSlotStore
+	} from '$lib/mapState';
 	import { fetchNodes, subscribeToNodes } from '$lib/sync';
 	import { findOptimalRoute, getDistance, generateGPX } from '$lib/routing';
 	import MapCore from './game/MapCore.svelte';
@@ -87,25 +93,11 @@
 		}
 	}
 
-	function handleExportToGPX() {
-		const routeData = get(currentRoute);
-		if (routeData) {
-			const user = get(userCookie)?.user;
-			const gpxData = generateGPX(
-				routeData,
-				user?.name || 'Player',
-				user?.id || '',
-				sessionName,
-				apSlot
-			);
-			const blob = new Blob([gpxData], { type: 'application/gpx+xml' });
-			const link = document.createElement('a');
-			link.href = window.URL.createObjectURL(blob);
-			const combinedName = `${sessionName}_${apSlot}`.replace(/\s+/g, '_');
-			link.download = `${combinedName}.gpx`;
-			link.click();
-		}
+	$: {
+		sessionNameStore.set(sessionName);
+		apSlotStore.set(apSlot);
 	}
+
 
 	onMount(async () => {
 		await fetchNodes(sessionId);
@@ -140,7 +132,6 @@
 		{apServerUrl}
 		on:routeToAvailable={handleRouteToAvailable}
 		on:clearRoute={() => mapCore.clearRoute()}
-		on:exportToGPX={handleExportToGPX}
 		on:rideParsed={(e) => mapCore.handleRideParsed(e.detail.path)}
 		on:rideCancelled={() => mapCore.handleRideCancelled()}
 		on:validated={() => dispatch('validated')}

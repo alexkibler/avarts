@@ -98,7 +98,10 @@
 		{/if}
 	</div>
 
-	<RouteStatsBar {panelOpen} {activeTab} on:exportToGPX={() => dispatch('exportToGPX')} />
+	<!-- On Desktop, render it here pinned below the sidebar area -->
+	<div class="hidden md:block">
+		<RouteStatsBar isSmall={false} />
+	</div>
 </div>
 
 <style>
