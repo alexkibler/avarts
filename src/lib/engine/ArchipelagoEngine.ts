@@ -169,9 +169,7 @@ export class ArchipelagoEngine implements IGameEngine {
 						`[AP Sync] Correcting node ${node.ap_location_id} from ${node.state} to ${newState}`
 					);
 					updates.push(
-						pb
-							.collection('map_nodes')
-							.update(node.id, { state: newState }, { requestKey: null })
+						pb.collection('map_nodes').update(node.id, { state: newState }, { requestKey: null })
 					);
 					updateCount++;
 				}
@@ -225,7 +223,9 @@ export class ArchipelagoEngine implements IGameEngine {
 							)
 						);
 						nodesToMarkChecked.forEach((node) =>
-							console.log(`[AP Mock] Marked node ${node.id} (loc ${node.ap_location_id}) as Checked`)
+							console.log(
+								`[AP Mock] Marked node ${node.id} (loc ${node.ap_location_id}) as Checked`
+							)
 						);
 					}
 
@@ -257,7 +257,9 @@ export class ArchipelagoEngine implements IGameEngine {
 
 					if (remaining.length === 0) {
 						console.log('[AP Mock] All nodes cleared! Triggering goal reached.');
-						await pb.collection('game_sessions').update(this._testSessionId, { status: 'Completed' });
+						await pb
+							.collection('game_sessions')
+							.update(this._testSessionId, { status: 'Completed' });
 						this.isGoalReached.set(true);
 					}
 				} catch (e) {
@@ -317,7 +319,10 @@ export class ArchipelagoEngine implements IGameEngine {
 		});
 
 		this.apClient.messages.on('message', (text: string) => {
-			this.chatMessages.update((msgs) => [...msgs, { id: ++this._msgId, text, type: this._pendingType }]);
+			this.chatMessages.update((msgs) => [
+				...msgs,
+				{ id: ++this._msgId, text, type: this._pendingType }
+			]);
 			this._pendingType = 'server';
 		});
 

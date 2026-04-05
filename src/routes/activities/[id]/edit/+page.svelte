@@ -65,7 +65,11 @@
 			<div class="flex flex-col w-11/12 lg:w-1/3">
 				<div class="flex flex-col bg-neutral-800 mt-4">
 					<div class="h-[250px]">
-						<img src={data.image ?? ''} alt="activity thumbnail" class="w-full h-full object-cover" />
+						<img
+							src={data.image ?? ''}
+							alt="activity thumbnail"
+							class="w-full h-full object-cover"
+						/>
 					</div>
 					<table class="w-full text-white">
 						<tr>

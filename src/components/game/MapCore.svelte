@@ -1,7 +1,13 @@
 <script lang="ts">
 	import { onMount, onDestroy, createEventDispatcher, tick } from 'svelte';
 	import { env } from '$env/dynamic/public';
-	import { mapNodes, activeWaypointIds, currentRoute, routeDistance, elevationGain } from '$lib/mapState';
+	import {
+		mapNodes,
+		activeWaypointIds,
+		currentRoute,
+		routeDistance,
+		elevationGain
+	} from '$lib/mapState';
 	import type { Coordinates, ElevationResponse, Route } from '$lib/types';
 	import { getElevationData } from '$lib/routing';
 
@@ -195,7 +201,7 @@
 	$: if ($activeWaypointIds && markerMap.size > 0) {
 		// Sync markers with active waypoint IDs
 		for (const [id, marker] of markerMap) {
-			const node = $mapNodes.find(n => n.id === id);
+			const node = $mapNodes.find((n) => n.id === id);
 			if (node) {
 				marker.setStyle(markerOptions(node.state, $activeWaypointIds.has(id)));
 			}
@@ -241,7 +247,8 @@
 
 		L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
 			maxZoom: 19,
-			attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+			attribution:
+				'&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
 		}).addTo(map);
 
 		const circle = L.circle([centerLat, centerLon], {
@@ -256,7 +263,9 @@
 		map.fitBounds(circle.getBounds(), { padding: [24, 24] });
 
 		const isPlayout = typeof window !== 'undefined' && (window as any).PLAYWRIGHT_TEST;
-		const effectiveUrl = env.PUBLIC_GRAPHHOPPER_URL || (isPlayout ? 'https://routing.alexkibler.com/route' : '/api/route');
+		const effectiveUrl =
+			env.PUBLIC_GRAPHHOPPER_URL ||
+			(isPlayout ? 'https://routing.alexkibler.com/route' : '/api/route');
 
 		const ghRouter = (L.Routing as any).graphHopper(undefined, {
 			serviceUrl: effectiveUrl,
@@ -287,7 +296,11 @@
 			routeDistance.set(r.summary.totalDistance);
 
 			const elevations = await getElevationData(r.coordinates);
-			const coordsWithEle = r.coordinates.map((c: any, i: number) => [c.lat, c.lng, elevations[i] || 0]);
+			const coordsWithEle = r.coordinates.map((c: any, i: number) => [
+				c.lat,
+				c.lng,
+				elevations[i] || 0
+			]);
 			elevationControl.clear();
 			elevationControl.addData(L.polyline(coordsWithEle));
 
@@ -302,7 +315,8 @@
 			routingControl.getWaypoints().forEach((wp: any) => {
 				if (!wp.latLng) return;
 				const matchedNode = $mapNodes.find(
-					(n) => Math.abs(n.lat - wp.latLng.lat) < 0.0001 && Math.abs(n.lon - wp.latLng.lng) < 0.0001
+					(n) =>
+						Math.abs(n.lat - wp.latLng.lat) < 0.0001 && Math.abs(n.lon - wp.latLng.lng) < 0.0001
 				);
 				if (matchedNode) newActive.add(matchedNode.id);
 			});

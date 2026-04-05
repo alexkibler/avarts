@@ -32,7 +32,9 @@
 			on:click={() => dispatch('exportToGPX')}
 			disabled={!$currentRoute}
 			class="btn-export mobile-hud-export"
-			style="opacity: {$currentRoute ? 1 : 0.4}; cursor: {$currentRoute ? 'pointer' : 'not-allowed'}"
+			style="opacity: {$currentRoute ? 1 : 0.4}; cursor: {$currentRoute
+				? 'pointer'
+				: 'not-allowed'}"
 		>
 			<svg
 				xmlns="http://www.w3.org/2000/svg"

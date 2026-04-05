@@ -2,7 +2,10 @@ import { env } from '$env/dynamic/public';
 import type { Coordinates, ElevationResponse, Route } from './types';
 
 // Haversine formula to calculate distance between two coordinates in km
-export function getDistance(coord1: { lat: number; lon: number }, coord2: { lat: number; lon: number }): number {
+export function getDistance(
+	coord1: { lat: number; lon: number },
+	coord2: { lat: number; lon: number }
+): number {
 	const R = 6371; // Radius of the earth in km
 	const dLat = (coord2.lat - coord1.lat) * (Math.PI / 180);
 	const dLon = (coord2.lon - coord1.lon) * (Math.PI / 180);
@@ -92,7 +95,13 @@ export async function getElevationData(coordinates: Coordinates) {
 	}
 }
 
-export function generateGPX(routeData: Route, userName: string, userId: string, sessionName: string, apSlot: string) {
+export function generateGPX(
+	routeData: Route,
+	userName: string,
+	userId: string,
+	sessionName: string,
+	apSlot: string
+) {
 	const combinedName = `${sessionName}_${apSlot}`;
 
 	const gpx = `<?xml version='1.0' encoding='UTF-8'?>

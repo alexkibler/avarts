@@ -170,10 +170,9 @@
 				sessionData.ap_slot_name = slotName;
 			}
 
-			const sessionRecord = await pb.collection('game_sessions').create(
-				sessionData,
-				{ requestKey: null }
-			);
+			const sessionRecord = await pb
+				.collection('game_sessions')
+				.create(sessionData, { requestKey: null });
 
 			// 4. Batch Insert Map Nodes into PocketBase
 			// To get the address names and not overwhelm the geocoder or cause rate limits,
@@ -242,18 +241,32 @@
 				<label class="block text-sm font-medium mb-1">Game Mode</label>
 				<div class="flex gap-4">
 					<label class="flex items-center gap-2 cursor-pointer">
-						<input type="radio" name="mode" value="archipelago" bind:group={gameMode} class="text-orange-500 focus:ring-orange-500" />
+						<input
+							type="radio"
+							name="mode"
+							value="archipelago"
+							bind:group={gameMode}
+							class="text-orange-500 focus:ring-orange-500"
+						/>
 						<span>Archipelago Multiworld</span>
 					</label>
 					<label class="flex items-center gap-2 cursor-pointer">
-						<input type="radio" name="mode" value="singleplayer" bind:group={gameMode} class="text-orange-500 focus:ring-orange-500" />
+						<input
+							type="radio"
+							name="mode"
+							value="singleplayer"
+							bind:group={gameMode}
+							class="text-orange-500 focus:ring-orange-500"
+						/>
 						<span>Single Player</span>
 					</label>
 				</div>
 			</div>
 
 			<div>
-				<label class="block text-sm font-medium mb-1" for="seedName">{gameMode === 'archipelago' ? 'Seed Name / Description' : 'Save Name'}</label>
+				<label class="block text-sm font-medium mb-1" for="seedName"
+					>{gameMode === 'archipelago' ? 'Seed Name / Description' : 'Save Name'}</label
+				>
 				<input
 					id="seedName"
 					bind:value={seedName}

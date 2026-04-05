@@ -117,17 +117,17 @@ export class MockPocketBase {
 					record = self._nodes.find((node) => node.id === id);
 					if (record) Object.assign(record, data);
 				}
-				
+
 				if (record) {
 					const topic = `${name}/${id}`;
 					const wildTopic = `${name}/*`;
 					const event = { action: 'update', record };
-					
-					(self._subscribers.get(topic) || []).forEach(cb => cb(event));
-					(self._subscribers.get(wildTopic) || []).forEach(cb => cb(event));
-					(self._subscribers.get('*') || []).forEach(cb => cb(event));
+
+					(self._subscribers.get(topic) || []).forEach((cb) => cb(event));
+					(self._subscribers.get(wildTopic) || []).forEach((cb) => cb(event));
+					(self._subscribers.get('*') || []).forEach((cb) => cb(event));
 				}
-				
+
 				return record || { id, ...data };
 			},
 			delete: async (id: string) => {
@@ -139,7 +139,10 @@ export class MockPocketBase {
 				self._subscribers.set(topic, subscribers);
 				return () => {
 					const subs = self._subscribers.get(topic) || [];
-					self._subscribers.set(topic, subs.filter(cb => cb !== callback));
+					self._subscribers.set(
+						topic,
+						subs.filter((cb) => cb !== callback)
+					);
 				};
 			},
 			authWithPassword: async (username: string, pass: string) => {
