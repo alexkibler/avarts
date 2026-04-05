@@ -9,6 +9,7 @@
 
 	import ChatClient from '$components/ChatClient.svelte';
 	import ApDropzone from '$components/apDropzone.svelte';
+	import VictoryScreen from '$components/VictoryScreen.svelte';
 	import { activeGameTab } from '$lib/stores';
 	import { locationSwaps } from '$lib/ap';
 
@@ -40,6 +41,8 @@
 	let activeWaypointIds = new Set<string>();
 	let isMounted = false;
 	let rideLayer: any = null;
+	let showVictory = false;
+	let wasFinished: boolean | null = null; // Use null to indicate uninitialized
 
 	// ── Route Optimization ───────────────────────────────────────────────────────
 
@@ -253,6 +256,15 @@
 			available: nodes.filter((n: any) => n.state === 'Available').length,
 			checked: nodes.filter((n: any) => n.state === 'Checked').length
 		};
+
+		// Check for victory
+		const isFinished =
+			nodeStats.checked > 0 && nodeStats.available === 0 && nodeStats.hidden === 0;
+
+		if (isFinished && wasFinished === false) {
+			showVictory = true;
+		}
+		wasFinished = isFinished;
 	}
 
 	// ── Routing & Elevation ──────────────────────────────────────────────────────
@@ -585,12 +597,20 @@
 		setTimeout(updateWaypointCount, 500);
 		setTimeout(updateWaypointCount, 1000);
 
-		nodes = await pb.collection('map_nodes').getFullList({
-			filter: `session = "${sessionId}"`,
-			sort: '+ap_location_id',
-			requestKey: null
-		});
-		renderPins();
+		async function fetchNodes() {
+			nodes = await pb.collection('map_nodes').getFullList({
+				filter: `session = "${sessionId}"`,
+				sort: '+ap_location_id',
+				requestKey: null
+			});
+			renderPins();
+		}
+
+		await fetchNodes();
+
+		if (env.PUBLIC_MOCK_MODE === 'true') {
+			(window as any).refreshNodes = fetchNodes;
+		}
 
 		// Be smart about subscribing: only if we're authenticated and the component is still mounted.
 		// We use a small delay to ensure the page has finished its initial load sequence
@@ -1041,6 +1061,14 @@
 			</button>
 		</div>
 	</div>
+
+	{#if showVictory}
+		<VictoryScreen
+			{sessionName}
+			checkedCount={nodeStats.checked}
+			on:close={() => (showVictory = false)}
+		/>
+	{/if}
 </div>
 
 <style>

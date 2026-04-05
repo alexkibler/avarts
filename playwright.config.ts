@@ -40,12 +40,13 @@ export default defineConfig({
 		? {
 				command: 'npm run dev -- --port 5174',
 				url: 'http://localhost:5174',
-				reuseExistingServer: false,
+				reuseExistingServer: true,
 				timeout: 120 * 1000,
 				env: {
 					PUBLIC_GRAPHHOPPER_URL: 'https://routing.alexkibler.com/route',
 					PUBLIC_DB_URL: 'https://pb.bikeapelago.alexkibler.com',
-					PUBLIC_MOCK_MODE: 'true'
+					PUBLIC_MOCK_MODE: 'true',
+					PLAYWRIGHT_TEST: 'true'
 				}
 			}
 		: undefined

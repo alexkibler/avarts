@@ -46,15 +46,14 @@ export class MockPocketBase {
 		}
 	];
 
-	private _nodes: any[] = Array.from({ length: 20 }, (_, i) => ({
+	private _nodes: any[] = Array.from({ length: 5 }, (_, i) => ({
 		id: `node_${i}`,
 		session: 'mock_session_123',
 		ap_location_id: 800001 + i,
 		name: `Intersection ${i + 1}`,
-		// Ensure first node is exactly at center for testing
-		lat: i === 0 ? 40.7128 : 40.7128 + (Math.random() - 0.5) * 0.05,
-		lon: i === 0 ? -74.006 : -74.006 + (Math.random() - 0.5) * 0.05,
-		state: i < 5 ? 'Available' : i < 10 ? 'Checked' : 'Hidden'
+		lat: 40.7128 + (i - 2) * 0.005,
+		lon: -74.006 + (i - 2) * 0.005,
+		state: i >= 2 ? 'Available' : 'Hidden'
 	}));
 
 	autoCancellation(cancel: boolean) {}
@@ -72,14 +71,13 @@ export class MockPocketBase {
 						if (options.filter.includes('state = "Available"')) {
 							filtered = filtered.filter(n => n.state === 'Available');
 						}
+						if (options.filter.includes('state = "Hidden"')) {
+							filtered = filtered.filter(n => n.state === 'Hidden');
+						}
 					}
 					return filtered;
 				}
-				if (name === 'activities') return [];
 				return [];
-			},
-			getList: async (page: number, perPage: number, options?: any) => {
-				return { items: [], totalItems: 0, totalPages: 0, page: 1, perPage };
 			},
 			getOne: async (id: string, options?: any) => {
 				if (name === 'game_sessions') {
@@ -90,15 +88,6 @@ export class MockPocketBase {
 					return this._nodes.find(n => n.id === id) || { id };
 				}
 				return { id };
-			},
-			getFirstListItem: async (filter: string, options?: any) => {
-				if (name === 'game_sessions') return this._sessions[0];
-				return { id: 'mock_id' };
-			},
-			create: async (data: any) => {
-				const newItem = { id: `mock_new_${Math.random()}`, ...data };
-				if (name === 'game_sessions') this._sessions.push(newItem);
-				return newItem;
 			},
 			update: async (id: string, data: any) => {
 				if (name === 'game_sessions') {
@@ -113,14 +102,8 @@ export class MockPocketBase {
 				}
 				return { id, ...data };
 			},
-			delete: async (id: string) => {
-				return true;
-			},
 			subscribe: async (topic: string, callback: (data: any) => void) => {
-				return () => {}; // Unsubscribe mock
-			},
-			authWithPassword: async (username: string, pass: string) => {
-				return { token: 'mock_token', record: this.authStore.model };
+				return () => {}; 
 			}
 		};
 	}
