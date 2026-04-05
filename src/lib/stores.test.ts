@@ -22,10 +22,25 @@ describe('stores.ts module', () => {
 	});
 
 	it('verifies userCookie stores and updates a value', () => {
-		userCookie.set('test_cookie_value');
-		expect(get(userCookie)).toBe('test_cookie_value');
+		const mockUser = {
+			user: {
+				id: '123',
+				name: 'Test User',
+				avatar: '',
+				collectionId: '',
+				collectionName: '',
+				created: '',
+				emailVisibility: false,
+				updated: '',
+				username: 'testuser',
+				verified: false,
+				weight: 70
+			}
+		};
+		userCookie.set(mockUser);
+		expect(get(userCookie)).toEqual(mockUser);
 
-		userCookie.set(undefined);
-		expect(get(userCookie)).toBeUndefined();
+		userCookie.set(null);
+		expect(get(userCookie)).toBeNull();
 	});
 });

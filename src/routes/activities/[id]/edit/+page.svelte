@@ -4,14 +4,14 @@
 	import type { Exercise } from '$lib/types';
 
 	export let data: Exercise;
-	let user = $userCookie.user;
+	let user = $userCookie?.user;
 
-	if (user.id != data.user) {
-		window.location.href = '/';
+	if (user?.id != data.user) {
+		if (typeof window !== 'undefined') window.location.href = '/';
 	}
 </script>
 
-{#if user.id == data.user}
+{#if user?.id == data.user}
 	<div class="px-5 pt-5">
 		<div class="flex flex-row justify-between border-b border-neutral-400 pb-5">
 			<h1 class="text-3xl text-white font-semibold p-1">Edit Activity</h1>
@@ -43,7 +43,7 @@
 					<p class="mt-3 font-semibold">Description</p>
 					<textarea
 						name="description"
-						value={data.description}
+						value={data.description ?? ''}
 						class="bg-neutral-800 border border-neutral-500 rounded-md text-white w-full placeholder-slate-300 placeholder-opacity-50 placeholder:italic p-1 mt-2"
 						rows="5"
 						placeholder="Activity Notes"
@@ -53,7 +53,7 @@
 					<p class="mt-3 font-semibold">Sport</p>
 					<select
 						name="sport"
-						value={data.sport}
+						value={data.sport ?? 'cycling'}
 						class="bg-neutral-800 border border-neutral-500 rounded-md text-white w-full mt-2 p-1"
 					>
 						<option value="cycling">Cycling</option>
@@ -65,13 +65,13 @@
 			<div class="flex flex-col w-11/12 lg:w-1/3">
 				<div class="flex flex-col bg-neutral-800 mt-4">
 					<div class="h-[250px]">
-						<img src={data.image} alt="activity thumbnail" class="w-full h-full object-cover" />
+						<img src={data.image ?? ''} alt="activity thumbnail" class="w-full h-full object-cover" />
 					</div>
 					<table class="w-full text-white">
 						<tr>
 							<td class="font-semibold px-5 p-1 pt-5"> Date </td>
 							<td class="text-sm pt-5">
-								{formatDate(data.start_time)}
+								{formatDate(data.start_time ? data.start_time.toString() : '')}
 							</td>
 						</tr>
 						<tr>

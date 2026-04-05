@@ -149,7 +149,20 @@ export async function connectToAp(options: ApConnectionOptions) {
 		connectionOptions.password = options.password;
 	}
 
-	const cleanUrl = options.url.replace(/^wss?:\/\//i, '').trim();
+	const cleanUrl = options.url.trim();
+	const isLocalhost = cleanUrl.toLowerCase().includes('localhost') || cleanUrl.includes('127.0.0.1');
+
+	let finalUrl = cleanUrl;
+	if (isLocalhost) {
+		// Prepend ws:// if no protocol is present, to avoid the library trying wss://
+		// which we know will fail on localhost and log a console error.
+		if (!cleanUrl.startsWith('ws://') && !cleanUrl.startsWith('wss://')) {
+			finalUrl = 'ws://' + cleanUrl;
+		}
+	} else {
+		// For remote servers, stripping protocol allows the library to try wss:// then ws://
+		finalUrl = cleanUrl.replace(/^wss?:\/\//i, '');
+	}
 
 	// Test environment bypass checks BOTH 'test' url and global test engine flag
 	const isTestForce =
@@ -157,7 +170,7 @@ export async function connectToAp(options: ApConnectionOptions) {
 		(typeof window !== 'undefined' && (window as any).PLAYWRIGHT_TEST);
 	const isMockMode = env.PUBLIC_MOCK_MODE === 'true';
 
-	if (cleanUrl === 'test' || isTestForce || isMockMode) {
+	if (finalUrl === 'test' || finalUrl === 'ws://test' || isTestForce || isMockMode) {
 		console.log('[AP] Test/Mock mode bypass engaged.');
 		_testMode = true;
 		_testSessionId = options.sessionId;
@@ -165,12 +178,11 @@ export async function connectToAp(options: ApConnectionOptions) {
 	}
 
 	try {
-		console.log(`[AP] Connecting to: ${cleanUrl} as ${options.name}`);
+		console.log(`[AP] Connecting to: ${finalUrl} as ${options.name}`);
 
-		await apClient.login(cleanUrl, options.name, options.game, connectionOptions);
+		await apClient.login(finalUrl, options.name, options.game, connectionOptions);
 
 		console.log('[AP] Connected successfully!');
-		console.log(`[AP] Slot Data:`, apClient.room.slotData);
 		console.log(
 			`[AP] Items received: ${apClient.items.received.length}, Checked locations: ${apClient.room.checkedLocations.length}`
 		);
@@ -217,8 +229,8 @@ async function syncArchipelagoState(sessionId: string) {
 	try {
 		do {
 			_hasPendingSync = false;
-			await _doSyncArchipelagoState(sessionId);
-		} while (_hasPendingSync && sessionId === _activeSessionId);
+			await _doSyncArchipelagoState(_activeSessionId);
+		} while (_hasPendingSync);
 	} finally {
 		_isSyncing = false;
 	}

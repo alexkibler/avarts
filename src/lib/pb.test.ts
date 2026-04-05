@@ -7,6 +7,7 @@ vi.mock('pocketbase', () => {
 		authStore = {
 			loadFromCookie: vi.fn()
 		};
+		autoCancellation = vi.fn();
 		constructor(url: string) {
 			this.url = url;
 		}
@@ -35,7 +36,7 @@ describe('pb.ts initialization', () => {
 		// Keep it undefined as mocked globally
 		(envModule.env as any).PUBLIC_DB_URL = undefined;
 
-		const { pb } = await import('./pb');
+		const { pb } = await import('./database');
 		expect((pb as any).url).toBe('http://127.0.0.1:8090');
 	});
 
@@ -44,13 +45,13 @@ describe('pb.ts initialization', () => {
 		// Change for this test
 		(envModule.env as any).PUBLIC_DB_URL = 'https://custom-db.example.com';
 
-		const { pb } = await import('./pb');
+		const { pb } = await import('./database');
 		expect((pb as any).url).toBe('https://custom-db.example.com');
 	});
 
 	it('loads authStore from cookie when in browser environment', async () => {
 		vi.stubGlobal('document', { cookie: 'test_cookie=value' });
-		const { pb } = await import('./pb');
+		const { pb } = await import('./database');
 		expect(pb.authStore.loadFromCookie).toHaveBeenCalledWith('test_cookie=value');
 	});
 });

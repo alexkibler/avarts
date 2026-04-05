@@ -53,10 +53,9 @@ describe('ap.ts module', () => {
 
 		// Reset client mocked values
 		(apClient.login as any).mockResolvedValue(true);
-		apClient.authenticated = false;
-		apClient.items.received = [];
-		apClient.room.checkedLocations = [];
-
+		(apClient as any).authenticated = false;
+		(apClient as any).items.received = [];
+		(apClient as any).room.checkedLocations = [];
 		// reset global PLAYWRIGHT_TEST
 		(globalThis as any).PLAYWRIGHT_TEST = false;
 	});
@@ -124,8 +123,8 @@ describe('ap.ts module', () => {
 
 	describe('syncArchipelagoState via connectToAp', () => {
 		it('queries map_nodes and game_sessions even when counts are 0', async () => {
-			apClient.items.received = [];
-			apClient.room.checkedLocations = [];
+			(apClient as any).items.received = [];
+			(apClient as any).room.checkedLocations = [];
 
 			await connectToAp({
 				url: 'archipelago.gg:38281',
@@ -140,8 +139,8 @@ describe('ap.ts module', () => {
 		});
 
 		it('corrects node states to match Archipelago ground truth (ID-based Available)', async () => {
-			apClient.items.received = [{ id: 800001 }, { id: 800003 }]; // Items for 1 and 3
-			apClient.room.checkedLocations = [];
+			(apClient as any).items.received = [{ id: 800001 }, { id: 800003 }]; // Items for 1 and 3
+			(apClient as any).room.checkedLocations = [];
 
 			getFullListMock.mockResolvedValue([
 				{ id: 'node1', ap_location_id: 800001, state: 'Hidden' }, // Has item -> Available
@@ -156,15 +155,15 @@ describe('ap.ts module', () => {
 				sessionId: 'session-id'
 			});
 
-			expect(updateMock).toHaveBeenCalledWith('node1', { state: 'Available' });
-			expect(updateMock).toHaveBeenCalledWith('node2', { state: 'Hidden' });
-			expect(updateMock).toHaveBeenCalledWith('node3', { state: 'Available' });
+			expect(updateMock).toHaveBeenCalledWith('node1', { state: 'Available' }, { requestKey: null });
+			expect(updateMock).toHaveBeenCalledWith('node2', { state: 'Hidden' }, { requestKey: null });
+			expect(updateMock).toHaveBeenCalledWith('node3', { state: 'Available' }, { requestKey: null });
 			expect(updateMock).toHaveBeenCalledTimes(3);
 		});
 
 		it('corrects node states to match Archipelago ground truth (Checked)', async () => {
-			apClient.items.received = [{ id: 800001 }];
-			apClient.room.checkedLocations = [800001, 800002]; // 800002 checked without item (e.g. admin/cheat)
+			(apClient as any).items.received = [{ id: 800001 }];
+			(apClient as any).room.checkedLocations = [800001, 800002]; // 800002 checked without item (e.g. admin/cheat)
 
 			getFullListMock.mockResolvedValue([
 				{ id: 'node1', ap_location_id: 800001, state: 'Available' }, // Should become Checked
@@ -179,9 +178,9 @@ describe('ap.ts module', () => {
 				sessionId: 'session-id'
 			});
 
-			expect(updateMock).toHaveBeenCalledWith('node1', { state: 'Checked' });
-			expect(updateMock).toHaveBeenCalledWith('node2', { state: 'Checked' });
-			expect(updateMock).toHaveBeenCalledWith('node3', { state: 'Hidden' });
+			expect(updateMock).toHaveBeenCalledWith('node1', { state: 'Checked' }, { requestKey: null });
+			expect(updateMock).toHaveBeenCalledWith('node2', { state: 'Checked' }, { requestKey: null });
+			expect(updateMock).toHaveBeenCalledWith('node3', { state: 'Hidden' }, { requestKey: null });
 		});
 
 		it('registers event listeners via setupListeners', async () => {
@@ -232,8 +231,8 @@ describe('ap.ts module', () => {
 
 			await vi.runAllTimersAsync();
 
-			expect(updateMock).toHaveBeenCalledWith('mock-node-1', { state: 'Checked' });
-			expect(updateMock).toHaveBeenCalledWith('mock-node-2', { state: 'Available' });
+			expect(updateMock).toHaveBeenCalledWith('mock-node-1', { state: 'Checked' }, { requestKey: null });
+			expect(updateMock).toHaveBeenCalledWith('mock-node-2', { state: 'Available' }, { requestKey: null });
 
 			vi.useRealTimers();
 		});
@@ -251,7 +250,7 @@ describe('ap.ts module', () => {
 				sessionId: 'session-id'
 			});
 
-			apModule.apClient.authenticated = true;
+			(apModule.apClient as any).authenticated = true;
 			apModule.sendLocationChecks([101, 102]);
 
 			expect(apModule.apClient.check).toHaveBeenCalledWith(101, 102);
@@ -269,7 +268,7 @@ describe('ap.ts module', () => {
 			});
 
 			const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
-			apModule.apClient.authenticated = false;
+			(apModule.apClient as any).authenticated = false;
 
 			apModule.sendLocationChecks([101]);
 
@@ -283,8 +282,8 @@ describe('ap.ts module', () => {
 		it('correctly unlocks only nodes matching non-sequential item IDs', async () => {
 			// AP grants items for locations 800001, 800003, 800005 (skipping 800002, 800004)
 			// This simulates non-linear item distribution in a multiworld
-			apClient.items.received = [{ id: 800001 }, { id: 800003 }, { id: 800005 }];
-			apClient.room.checkedLocations = [];
+			(apClient as any).items.received = [{ id: 800001 }, { id: 800003 }, { id: 800005 }];
+			(apClient as any).room.checkedLocations = [];
 
 			getFullListMock.mockResolvedValue([
 				{ id: 'node1', ap_location_id: 800001, state: 'Hidden' }, // Has item -> Available
@@ -302,18 +301,18 @@ describe('ap.ts module', () => {
 			});
 
 			// Only nodes 1, 3, 5 should be updated to Available (those with items)
-			expect(updateMock).toHaveBeenCalledWith('node1', { state: 'Available' });
-			expect(updateMock).toHaveBeenCalledWith('node3', { state: 'Available' });
-			expect(updateMock).toHaveBeenCalledWith('node5', { state: 'Available' });
+			expect(updateMock).toHaveBeenCalledWith('node1', { state: 'Available' }, { requestKey: null });
+			expect(updateMock).toHaveBeenCalledWith('node3', { state: 'Available' }, { requestKey: null });
+			expect(updateMock).toHaveBeenCalledWith('node5', { state: 'Available' }, { requestKey: null });
 			// Nodes 2 and 4 should NOT be unlocked
-			expect(updateMock).not.toHaveBeenCalledWith('node2', { state: 'Available' });
-			expect(updateMock).not.toHaveBeenCalledWith('node4', { state: 'Available' });
+			expect(updateMock).not.toHaveBeenCalledWith('node2', { state: 'Available' }, { requestKey: null });
+			expect(updateMock).not.toHaveBeenCalledWith('node4', { state: 'Available' }, { requestKey: null });
 		});
 
 		it('handles gaps in item distribution with sparse AP items', async () => {
 			// Extreme case: AP only grants items 800001 and 800050
-			apClient.items.received = [{ id: 800001 }, { id: 800050 }];
-			apClient.room.checkedLocations = [];
+			(apClient as any).items.received = [{ id: 800001 }, { id: 800050 }];
+			(apClient as any).room.checkedLocations = [];
 
 			getFullListMock.mockResolvedValue([
 				{ id: 'node1', ap_location_id: 800001, state: 'Hidden' },
@@ -329,8 +328,8 @@ describe('ap.ts module', () => {
 			});
 
 			// Only nodes with items should be updated
-			expect(updateMock).toHaveBeenCalledWith('node1', { state: 'Available' });
-			expect(updateMock).toHaveBeenCalledWith('node3', { state: 'Available' });
+			expect(updateMock).toHaveBeenCalledWith('node1', { state: 'Available' }, { requestKey: null });
+			expect(updateMock).toHaveBeenCalledWith('node3', { state: 'Available' }, { requestKey: null });
 			// Node 2 has no item and starts as Hidden, so no update needed
 			expect(updateMock).toHaveBeenCalledTimes(2);
 		});
@@ -339,8 +338,8 @@ describe('ap.ts module', () => {
 	describe('Node count mismatch scenarios', () => {
 		it('handles case where bikeapelago has fewer nodes than AP items', async () => {
 			// AP has items 800001-800050, but bikeapelago only created nodes for 800001-800010
-			apClient.items.received = Array.from({ length: 50 }, (_, i) => ({ id: 800001 + i }));
-			apClient.room.checkedLocations = [];
+			(apClient as any).items.received = Array.from({ length: 50 }, (_, i) => ({ id: 800001 + i }));
+			(apClient as any).room.checkedLocations = [];
 
 			// Only 10 nodes exist locally
 			getFullListMock.mockResolvedValue(
@@ -362,8 +361,8 @@ describe('ap.ts module', () => {
 
 			// All 10 local nodes should be unlocked (they match AP items)
 			expect(updateMock).toHaveBeenCalledTimes(10);
-			expect(updateMock).toHaveBeenCalledWith('node1', { state: 'Available' });
-			expect(updateMock).toHaveBeenCalledWith('node10', { state: 'Available' });
+			expect(updateMock).toHaveBeenCalledWith('node1', { state: 'Available' }, { requestKey: null });
+			expect(updateMock).toHaveBeenCalledWith('node10', { state: 'Available' }, { requestKey: null });
 
 			// Sync should log that AP has more items than local nodes
 			expect(consoleSpy).toHaveBeenCalledWith(
@@ -375,8 +374,8 @@ describe('ap.ts module', () => {
 
 		it('handles case where bikeapelago has more nodes than AP items', async () => {
 			// AP has items 800001-800010, but bikeapelago created nodes for 800001-800050
-			apClient.items.received = Array.from({ length: 10 }, (_, i) => ({ id: 800001 + i }));
-			apClient.room.checkedLocations = [];
+			(apClient as any).items.received = Array.from({ length: 10 }, (_, i) => ({ id: 800001 + i }));
+			(apClient as any).room.checkedLocations = [];
 
 			// 50 nodes exist locally
 			getFullListMock.mockResolvedValue(
@@ -397,7 +396,7 @@ describe('ap.ts module', () => {
 			// Only first 10 nodes should be updated (to Available - they have AP items)
 			// Nodes 11-50 already start as Hidden, so no update needed
 			for (let i = 0; i < 10; i++) {
-				expect(updateMock).toHaveBeenCalledWith(`node${i + 1}`, { state: 'Available' });
+				expect(updateMock).toHaveBeenCalledWith(`node${i + 1}`, { state: 'Available' }, { requestKey: null });
 			}
 
 			// Total calls should be 10 (only the unlockable nodes)
@@ -408,8 +407,8 @@ describe('ap.ts module', () => {
 	describe('Initial state and timing', () => {
 		it('handles sync when AP items are initially empty', async () => {
 			// Simulate AP not having items ready on first sync
-			apClient.items.received = [];
-			apClient.room.checkedLocations = [];
+			(apClient as any).items.received = [];
+			(apClient as any).room.checkedLocations = [];
 
 			getFullListMock.mockResolvedValue([{ id: 'node1', ap_location_id: 800001, state: 'Hidden' }]);
 
@@ -438,18 +437,18 @@ describe('ap.ts module', () => {
 			const { apClient: freshApClient } = apModule;
 
 			// Test 1: Exact match
-			freshApClient.items.received = Array.from({ length: 10 }, (_, i) => ({ id: 800001 + i }));
+			(freshApClient as any).items.received = Array.from({ length: 10 }, (_, i) => ({ id: 800001 + i }));
 			expect(validateNodeCountVsApItems(10)).toBeNull();
 
 			// Test 2: Significant mismatch (more nodes)
-			freshApClient.items.received = Array.from({ length: 10 }, (_, i) => ({ id: 800001 + i }));
+			(freshApClient as any).items.received = Array.from({ length: 10 }, (_, i) => ({ id: 800001 + i }));
 			const warning2 = validateNodeCountVsApItems(50);
 			expect(warning2).toContain('Significant mismatch');
 			expect(warning2).toContain('50 nodes');
 			expect(warning2).toContain('10 items');
 
 			// Test 3: Fewer nodes than items (but small difference)
-			freshApClient.items.received = Array.from({ length: 11 }, (_, i) => ({ id: 800001 + i }));
+			(freshApClient as any).items.received = Array.from({ length: 11 }, (_, i) => ({ id: 800001 + i }));
 			const warning3 = validateNodeCountVsApItems(10);
 			expect(warning3).toContain('10 nodes');
 			expect(warning3).toContain('11 items');
@@ -459,8 +458,8 @@ describe('ap.ts module', () => {
 
 	describe('Idempotency and resilience', () => {
 		it('does not perform unnecessary updates when state already matches', async () => {
-			apClient.items.received = [{ id: 800001 }];
-			apClient.room.checkedLocations = [];
+			(apClient as any).items.received = [{ id: 800001 }];
+			(apClient as any).room.checkedLocations = [];
 
 			getFullListMock.mockResolvedValue([
 				{ id: 'node1', ap_location_id: 800001, state: 'Available' } // Already in correct state
@@ -478,8 +477,8 @@ describe('ap.ts module', () => {
 		});
 
 		it('handles multiple rapid sync calls idempotently', async () => {
-			apClient.items.received = [{ id: 800001 }];
-			apClient.room.checkedLocations = [];
+			(apClient as any).items.received = [{ id: 800001 }];
+			(apClient as any).room.checkedLocations = [];
 
 			getFullListMock.mockResolvedValue([{ id: 'node1', ap_location_id: 800001, state: 'Hidden' }]);
 
@@ -491,7 +490,7 @@ describe('ap.ts module', () => {
 			});
 
 			expect(updateMock).toHaveBeenCalledTimes(1);
-			expect(updateMock).toHaveBeenCalledWith('node1', { state: 'Available' });
+			expect(updateMock).toHaveBeenCalledWith('node1', { state: 'Available' }, { requestKey: null });
 
 			// Get the itemsReceived callback before clearing mocks
 			const itemsReceivedCallback = (apClient.items.on as any).mock.calls.find(
