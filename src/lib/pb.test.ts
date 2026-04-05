@@ -7,6 +7,7 @@ vi.mock('pocketbase', () => {
 		authStore = {
 			loadFromCookie: vi.fn()
 		};
+		autoCancellation = vi.fn();
 		constructor(url: string) {
 			this.url = url;
 		}
