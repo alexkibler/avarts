@@ -66,14 +66,15 @@ export class SinglePlayerEngine implements IGameEngine {
 				if (nodesToMarkChecked.length > 0) {
 					await Promise.all(
 						nodesToMarkChecked.map((node) =>
-							pb
-								.collection('map_nodes')
-								.update(node.id, { state: 'Checked' }, { requestKey: null })
+							pb.collection('map_nodes').update(node.id, { state: 'Checked' }, { requestKey: null })
 						)
 					);
 
 					for (const node of nodesToMarkChecked) {
-						this.pushMessage(`Checked location: ${node.name || `Node ${node.ap_location_id}`}`, 'system');
+						this.pushMessage(
+							`Checked location: ${node.name || `Node ${node.ap_location_id}`}`,
+							'system'
+						);
 					}
 				}
 

@@ -50,12 +50,12 @@ export async function analyzeFitFile(file: File, sessionId: string): Promise<Rid
 		const event = await SportsLib.importFromFit(arrayBuffer);
 		const activities = event.getActivities();
 		if (activities.length === 0) throw new Error('No activities found in FIT file');
-		
+
 		const activity = activities[0];
 
 		// Extract path and stats
 		const path: { lat: number; lon: number; alt?: number }[] = [];
-		
+
 		let positions: any[] = [];
 		if (activity.hasStreamData('Position')) {
 			positions = activity.getStreamDataByTime('Position');
@@ -64,11 +64,15 @@ export async function analyzeFitFile(file: File, sessionId: string): Promise<Rid
 		}
 
 		if (positions.length > 0) {
-			const altitudes = activity.hasStreamData('Altitude') ? activity.getStreamDataByTime('Altitude') : [];
+			const altitudes = activity.hasStreamData('Altitude')
+				? activity.getStreamDataByTime('Altitude')
+				: [];
 			positions.forEach((pos: any, index: number) => {
 				if (pos.value) {
-					const lat = typeof pos.value === 'object' ? (pos.value.latitude || pos.value.lat) : undefined;
-					const lon = typeof pos.value === 'object' ? (pos.value.longitude || pos.value.lon) : undefined;
+					const lat =
+						typeof pos.value === 'object' ? pos.value.latitude || pos.value.lat : undefined;
+					const lon =
+						typeof pos.value === 'object' ? pos.value.longitude || pos.value.lon : undefined;
 					if (lat !== undefined && lon !== undefined) {
 						path.push({
 							lat,
@@ -121,7 +125,9 @@ export async function analyzeFitFile(file: File, sessionId: string): Promise<Rid
 		const newlyCheckedNodes: RideSummary['newlyCheckedNodes'] = [];
 
 		// For each available node, check if any point in the path is within 30 meters
-		console.log(`[Analyze] Checking ${availableNodes.length} nodes against ${path.length} path points.`);
+		console.log(
+			`[Analyze] Checking ${availableNodes.length} nodes against ${path.length} path points.`
+		);
 		for (const node of availableNodes) {
 			let minDistance = Infinity;
 			const isWithinRadius = path.some((point) => {
@@ -178,9 +184,7 @@ export async function commitValidation(
 		newlyCheckedNodes.forEach((node) => {
 			messages.push(`Unlocked Location ${node.ap_location_id} at [${node.lat}, ${node.lon}]!`);
 		});
-		messages.push(
-			`Successfully validated ${nodeIds.length} location(s) and notified Archipelago.`
-		);
+		messages.push(`Successfully validated ${nodeIds.length} location(s) and notified Archipelago.`);
 	} else {
 		messages.push('No available locations were reached in this ride.');
 	}

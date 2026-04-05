@@ -111,7 +111,6 @@
 				>
 				<span class="text-[10px] font-bold uppercase tracking-wider">Route</span>
 			</button>
-
 		{:else}
 			<!-- Standard Mode Navigation -->
 			<a
@@ -136,7 +135,6 @@
 				>
 				<span class="text-[10px] font-bold uppercase tracking-wider">Home</span>
 			</a>
-
 
 			<a
 				href="/game"

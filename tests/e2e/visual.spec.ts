@@ -15,7 +15,7 @@ test.describe('Visual UX Capture (Mock Mode)', () => {
 		// Wait for network to be idle and fonts to be loaded for visual stability
 		await page.waitForLoadState('networkidle');
 		await page.evaluate(() => document.fonts.ready);
-		
+
 		const screenshotPath = path.join(testInfo.outputPath(), `${name}.png`);
 		await page.screenshot({ path: screenshotPath });
 		await testInfo.attach(name, {
@@ -48,7 +48,7 @@ test.describe('Visual UX Capture (Mock Mode)', () => {
 		await page.fill('input#slotName', 'Player1');
 		await page.fill('input[placeholder="Search address or place…"]', 'New York');
 		await page.click('button:has-text("Search")');
-		
+
 		// Wait for the map to presumably move or geocode results to appear
 		// In mock mode this is near-instant, but we should wait for the network/UI
 		await page.waitForLoadState('networkidle');
@@ -58,12 +58,12 @@ test.describe('Visual UX Capture (Mock Mode)', () => {
 		await page.click('button:has-text("Generate Session")');
 		await page.waitForURL('**/game/*');
 		await page.waitForLoadState('networkidle');
-		
+
 		// Assert map is visible
 		await expect(page.locator('.map-container')).toBeVisible();
 		// Wait for mock nodes to be rendered (circle markers)
 		await page.waitForSelector('.leaflet-interactive', { timeout: 10000 });
-		
+
 		await captureAndAttach(page, testInfo, '4_Game_Initial_State');
 
 		// 3. Game UI Tabs (Since we mock AP, clicking Connect should immediately transition state)

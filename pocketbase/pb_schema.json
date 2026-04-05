@@ -631,7 +631,7 @@
 				"id": "gsfield0004",
 				"name": "ap_slot_name",
 				"type": "text",
-				"required": true,
+				"required": false,
 				"presentable": false,
 				"unique": false,
 				"options": { "min": null, "max": null, "pattern": "" }
@@ -735,7 +735,7 @@
 				"id": "mnfield0002",
 				"name": "ap_location_id",
 				"type": "number",
-				"required": true,
+				"required": false,
 				"presentable": false,
 				"unique": false,
 				"options": { "min": null, "max": null, "noDecimal": false }

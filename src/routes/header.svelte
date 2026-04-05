@@ -27,8 +27,7 @@
 
 	{#if data.user}
 		<div class="flex items-center gap-4">
-			<span
-				class="hidden text-sm font-medium text-neutral-300 sm:block"
+			<span class="hidden text-sm font-medium text-neutral-300 sm:block"
 				>{data.user.name || data.user.username}</span
 			>
 		</div>

@@ -109,7 +109,7 @@
 
 	onMount(async () => {
 		await fetchNodes(sessionId);
-		
+
 		// Small delay for stability
 		setTimeout(async () => {
 			if (pb.authStore.isValid) {
@@ -149,7 +149,7 @@
 	{#if showVictory}
 		<VictoryScreen
 			{sessionName}
-			checkedCount={$mapNodes.filter(n => n.state === 'Checked').length}
+			checkedCount={$mapNodes.filter((n) => n.state === 'Checked').length}
 			on:close={() => (showVictory = false)}
 		/>
 	{/if}
