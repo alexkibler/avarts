@@ -91,17 +91,14 @@
 							{sessionId}
 							on:routeToAvailable={() => dispatch('routeToAvailable')}
 							on:clearRoute={() => dispatch('clearRoute')}
-							on:nodeTap={(e) => dispatch('nodeTap', e.detail)}
 						/>
 					{/if}
 				</div>
-
-				{#if activeTab === 'route'}
-					<RouteStatsBar on:exportToGPX={() => dispatch('exportToGPX')} />
-				{/if}
 			</div>
 		{/if}
 	</div>
+
+	<RouteStatsBar {panelOpen} {activeTab} on:exportToGPX={() => dispatch('exportToGPX')} />
 </div>
 
 <style>

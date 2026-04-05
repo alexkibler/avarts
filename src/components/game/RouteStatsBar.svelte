@@ -2,12 +2,17 @@
 	import { routeDistance, elevationGain, currentRoute } from '$lib/mapState';
 	import { createEventDispatcher } from 'svelte';
 
+	export let panelOpen = false;
+	export let activeTab: 'chat' | 'upload' | 'route' | null = null;
+
 	const dispatch = createEventDispatcher<{
 		exportToGPX: void;
 	}>();
+
+	$: isVisible = $currentRoute && panelOpen && activeTab === 'route';
 </script>
 
-<div class="route-stats">
+<div class="route-stats" class:visible={isVisible}>
 	<div class="elevation-graph-container">
 		<div id="elevation-container"></div>
 	</div>
@@ -58,6 +63,10 @@
 
 <style>
 	.route-stats {
+		position: absolute;
+		bottom: 0;
+		right: 0;
+		width: 100%;
 		background: var(--bg-surface);
 		border-top: 1px solid var(--border);
 		display: flex;
@@ -65,8 +74,22 @@
 		padding: 12px 16px;
 		gap: 12px;
 		flex-shrink: 0;
-		position: relative;
-		z-index: 10;
+		z-index: 1000;
+		opacity: 0;
+		pointer-events: none;
+		transition: opacity 0.2s;
+	}
+
+	.route-stats.visible {
+		opacity: 1;
+		pointer-events: auto;
+	}
+
+	@media (min-width: 601px) {
+		.route-stats.visible {
+			width: var(--panel-w);
+			box-shadow: -4px 0 24px rgba(0, 0, 0, 0.3);
+		}
 	}
 
 	.stats-container {
