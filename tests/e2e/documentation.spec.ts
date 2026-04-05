@@ -11,8 +11,10 @@ test.describe('Walkthrough Documentation Screenshots', () => {
     const suffix = isMobile ? '_mobile' : '_desktop';
 
     async function capture(page: any, name: string) {
-        // Wait for animations/transitions
-        await page.waitForTimeout(2000);
+        // Wait for network/fonts to settle for visual capture
+        await page.waitForLoadState('networkidle');
+        await page.evaluate(() => document.fonts.ready);
+        
         const screenshotPath = path.join(process.cwd(), `static/docs/screenshots/${name}${suffix}.png`);
         // Ensure directory exists
         const dir = path.dirname(screenshotPath);
@@ -71,12 +73,16 @@ test.describe('Walkthrough Documentation Screenshots', () => {
         await addressInput.type('New York, NY', { delay: 20 });
         await addressInput.press('Enter');
         await expect(page.locator('button:has-text("Search")')).toHaveText('Search', { timeout: 15000 });
+        
+        // Wait for map or geocode results
+        await page.waitForLoadState('networkidle');
         await capture(page, '3_NewGame_Map_Selected');
 
         // Generate and go to game
         await page.click('button:has-text("Generate Session")');
         await page.waitForURL('**/game/*', { timeout: 60000 });
         await page.waitForSelector('.leaflet-interactive', { timeout: 20000 });
+        await page.waitForLoadState('networkidle');
 
         // Connect
         console.log('[Test] Connecting to session...');
@@ -125,7 +131,8 @@ test.describe('Walkthrough Documentation Screenshots', () => {
         // 7. Unlocking Nodes
         console.log('[Test] Capturing Unlocking Nodes...');
         await page.click('button:has-text("Confirm & Send")');
-        await page.waitForTimeout(4000); // Wait for mock unlock and map refresh
+        // Wait for network to settle after unlock and map refresh
+        await page.waitForLoadState('networkidle');
         await capture(page, '8_Unlocking_Nodes');
 
         if (fs.existsSync(fitFilePath)) fs.unlinkSync(fitFilePath);

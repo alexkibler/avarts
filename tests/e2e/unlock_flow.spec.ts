@@ -61,18 +61,17 @@ test('Verify .fit upload unlocks new nodes on the map', async ({ page }, testInf
 	await page.click('button:has-text("Confirm & Send")');
 	await expect(page.locator('text=Successfully validated')).toBeVisible({ timeout: 15000 });
 
-	// Wait for mock logic to trigger
-	await page.waitForTimeout(2000);
-
 	// 5. Verify: Check the Route tab again
 	await page.locator('button:has-text("Route")').filter({ visible: true }).click();
-	await page.waitForSelector('.node-item', { timeout: 10000 });
+	
+	// Wait for the mock unlock to complete by checking the count
+	// In Mock Mode: 1 node Checked, 1 node Unlocked -> count remains same
+	await expect(page.locator('.node-item')).toHaveCount(initialAvailableCount, { timeout: 10000 });
+	
 	const finalAvailableCount = await page.locator('.node-item').count();
 	console.log(`[Test] Final available nodes listed: ${finalAvailableCount}`);
 
-	// In Mock Mode: 1 node Checked, 1 node Unlocked -> count remains same
 	expect(finalAvailableCount).toBeGreaterThan(0);
-	expect(finalAvailableCount).toBe(initialAvailableCount);
 
 	// 6. Capture screenshot
 	const suffix = testInfo.project.name === 'mobile' ? '_mobile' : '_desktop';

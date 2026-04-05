@@ -44,9 +44,7 @@ test.describe('Victory Screen Verification', () => {
         }
         
         await page.waitForSelector('.leaflet-interactive', { timeout: 30000 });
-        
-        // Give it a moment to boot components
-        await page.waitForTimeout(3000);
+        await page.waitForLoadState('networkidle');
 
         // CHEAT: Trigger the isGoalReached store directly!
         console.log('[Test] Triggering victory via store cheat...');
@@ -63,8 +61,9 @@ test.describe('Victory Screen Verification', () => {
         const victoryHeading = page.locator('text=GOAL REACHED!');
         await expect(victoryHeading).toBeVisible({ timeout: 15000 });
         
-        // Wait for animations
-        await page.waitForTimeout(2000);
+        // Wait for network/animations to settle for visual capture
+        await page.waitForLoadState('networkidle');
+        await page.evaluate(() => document.fonts.ready);
 
         // Capture screenshot
         const screenshotPath = path.join(process.cwd(), `static/docs/screenshots/11_Victory_Screen${suffix}.png`);
