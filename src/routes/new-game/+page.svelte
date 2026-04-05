@@ -18,6 +18,7 @@
 	let checkCount = 10;
 	let seedName = '';
 	let slotName = '';
+	let gameMode: 'archipelago' | 'singleplayer' = 'archipelago';
 
 	let isGenerating = false;
 	let errorMsg = '';
@@ -156,16 +157,21 @@
 				throw new Error('Must be logged in to create a game session.');
 			}
 
+			const sessionData: any = {
+				user: userId,
+				center_lat: centerLat,
+				center_lon: centerLon,
+				radius: radius,
+				status: 'Active'
+			};
+
+			if (gameMode === 'archipelago') {
+				sessionData.ap_seed_name = seedName;
+				sessionData.ap_slot_name = slotName;
+			}
+
 			const sessionRecord = await pb.collection('game_sessions').create(
-				{
-					user: userId,
-					ap_seed_name: seedName,
-					ap_slot_name: slotName,
-					center_lat: centerLat,
-					center_lon: centerLon,
-					radius: radius,
-					status: 'Active'
-				},
+				sessionData,
 				{ requestKey: null }
 			);
 
@@ -229,11 +235,25 @@
 
 <div class="p-6 text-white max-w-6xl mx-auto grid grid-cols-1 md:grid-cols-2 gap-6">
 	<div class="bg-neutral-800 p-6 rounded-lg shadow-lg">
-		<h1 class="text-3xl font-bold mb-6 text-orange-500">Create New Archipelago Session</h1>
+		<h1 class="text-3xl font-bold mb-6 text-orange-500">Create New Game</h1>
 
 		<form on:submit|preventDefault={generateSeed} class="space-y-4">
 			<div>
-				<label class="block text-sm font-medium mb-1" for="seedName">Seed Name / Description</label>
+				<label class="block text-sm font-medium mb-1">Game Mode</label>
+				<div class="flex gap-4">
+					<label class="flex items-center gap-2 cursor-pointer">
+						<input type="radio" name="mode" value="archipelago" bind:group={gameMode} class="text-orange-500 focus:ring-orange-500" />
+						<span>Archipelago Multiworld</span>
+					</label>
+					<label class="flex items-center gap-2 cursor-pointer">
+						<input type="radio" name="mode" value="singleplayer" bind:group={gameMode} class="text-orange-500 focus:ring-orange-500" />
+						<span>Single Player</span>
+					</label>
+				</div>
+			</div>
+
+			<div>
+				<label class="block text-sm font-medium mb-1" for="seedName">{gameMode === 'archipelago' ? 'Seed Name / Description' : 'Save Name'}</label>
 				<input
 					id="seedName"
 					bind:value={seedName}
@@ -242,15 +262,17 @@
 				/>
 			</div>
 
-			<div>
-				<label class="block text-sm font-medium mb-1" for="slotName">Slot Name</label>
-				<input
-					id="slotName"
-					bind:value={slotName}
-					required
-					class="w-full bg-neutral-700 border border-neutral-600 rounded px-3 py-2 text-white focus:outline-none focus:border-orange-500"
-				/>
-			</div>
+			{#if gameMode === 'archipelago'}
+				<div>
+					<label class="block text-sm font-medium mb-1" for="slotName">Slot Name</label>
+					<input
+						id="slotName"
+						bind:value={slotName}
+						required
+						class="w-full bg-neutral-700 border border-neutral-600 rounded px-3 py-2 text-white focus:outline-none focus:border-orange-500"
+					/>
+				</div>
+			{/if}
 
 			<div class="grid grid-cols-2 gap-4">
 				<div>

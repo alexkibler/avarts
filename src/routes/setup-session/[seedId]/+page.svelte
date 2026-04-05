@@ -2,7 +2,6 @@
   import { onMount } from 'svelte';
   import { goto } from '$app/navigation';
   import { page } from '$app/stores';
-  import { apClient, getRoomInfoSessionKey } from '$lib/ap';
   import 'leaflet/dist/leaflet.css';
 
   const seedId = $page.params.seedId;
@@ -38,72 +37,23 @@
   // AP state
   let apItemCount = 0;
 
-  // AP state — make it reactive to multiple sources of truth
-  $: {
-    const room = apClient.room;
-    const slotData = (room as any).slotData;
-    
-    // 1. Try slot_data first (most explicit)
-    const slotCount = slotData?.check_count ?? slotData?.checkCount;
-    
-    // 2. Try total locations (missing + checked) - subtract 1 for the "Goal" event
-    const totalLocations = (room.missingLocations?.length ?? 0) + (room.checkedLocations?.length ?? 0);
-    const locationCount = totalLocations > 0 ? totalLocations - 1 : 0;
-
-    if (typeof slotCount === 'number' && slotCount > 0) {
-      apItemCount = slotCount;
-    } else if (locationCount > 0) {
-      apItemCount = locationCount;
-    } else {
-      apItemCount = apClient.items.received.length;
-    }
-    
-    console.log(`[Setup] Reactive count update: slot=${slotCount}, locations=${locationCount}, received=${apClient.items.received.length} -> Final: ${apItemCount}`);
-  }
+  // Default to 10 for Single Player since we aren't loading it from AP,
+  // but let the user confirm or let the backend fetch if it's AP.
+  // For AP, they should probably not be on this page anymore since it's removed,
+  // but if they are, we'll set apItemCount to 10 for now.
+  apItemCount = 10;
 
   let pollInterval: ReturnType<typeof setInterval>;
 
   onMount(() => {
     const init = async () => {
       try {
-        // Handle data updates from AP explicitly
-        const updateFromAp = () => {
-          const room = apClient.room;
-          const slotData = (room as any).slotData;
-          const totalLocations = (room.missingLocations?.length ?? 0) + (room.checkedLocations?.length ?? 0);
-          const locationCount = totalLocations > 0 ? totalLocations - 1 : 0; // -1 for Goal
-
-          if (slotData?.check_count) {
-            apItemCount = slotData.check_count;
-          } else if (locationCount > 0) {
-            apItemCount = locationCount;
-          } else {
-            apItemCount = apClient.items.received.length;
-          }
-          console.log(`[Setup] Event-driven count update: ${apItemCount}`);
-        };
-
-        // Listen for connection
-        apClient.messages.on('connected', updateFromAp);
-        // Also run it immediately in case we're already connected
-        updateFromAp();
-
-        // Verify AP is connected
-        if (!apClient.authenticated) {
-          loadError = 'Not connected to Archipelago. Please connect first.';
-          return;
-        }
-
-        console.log(`[Setup] AP state:`, { 
-          slotData: (apClient.room as any).slotData, 
-          received: apClient.items.received.length 
-        });
-
+        // Verify we have items (mocked or real)
         if (apItemCount === 0) {
           // Wait a brief moment if data hasn't synced yet
           await new Promise(resolve => setTimeout(resolve, 2000));
           if (apItemCount === 0) {
-             loadError = 'No locations found in Archipelago. Check your connection.';
+             loadError = 'No locations found. Check your settings.';
              return;
           }
         }
@@ -230,12 +180,8 @@
     generationStatus = 'Sending request to server...';
 
     try {
-      const roomKey = getRoomInfoSessionKey();
-      if (!roomKey) {
-        throw new Error('Archipelago connection lost. Please reconnect.');
-      }
-      
       // Step 1: Call API to start generation
+      // We pass the session id, and let the server look up the session details
       const res = await fetch('/api/nodes/generate', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -245,8 +191,8 @@
           radius,
           checkCount: apItemCount,
           seedName: seedId,
-          serverUrl: roomKey.server_url,
-          slotName: roomKey.slot_name
+          serverUrl: '',
+          slotName: ''
         })
       });
 

@@ -1,10 +1,12 @@
 <script lang="ts">
-	import { createEventDispatcher } from 'svelte';
+	import { createEventDispatcher, getContext, onMount } from 'svelte';
 	import { analyzeFitFile, commitValidation, type RideSummary } from '$lib/validation';
+	import type { IGameEngine } from '$lib/engine/IGameEngine';
 
 	export let sessionId: string;
 
 	const dispatch = createEventDispatcher();
+	let gameEngine = getContext<IGameEngine>('gameEngine');
 
 	let isHovering = false;
 	let file: File | null = null;
@@ -63,11 +65,11 @@
 	};
 
 	const confirmValidation = async () => {
-		if (!summary) return;
+		if (!summary || !gameEngine) return;
 
 		isProcessing = true;
 		try {
-			validationMessages = await commitValidation(summary.newlyCheckedNodes);
+			validationMessages = await commitValidation(summary.newlyCheckedNodes, gameEngine);
 			dispatch('validated');
 			summary = null;
 			file = null;

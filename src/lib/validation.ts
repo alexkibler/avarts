@@ -1,5 +1,5 @@
 import { pb } from '$lib/database';
-import { sendLocationChecks } from '$lib/ap';
+import type { IGameEngine } from '$lib/engine/IGameEngine';
 import { SportsLib } from '@sports-alliance/sports-lib';
 
 export interface RideSummary {
@@ -158,7 +158,8 @@ export async function analyzeFitFile(file: File, sessionId: string): Promise<Rid
 }
 
 export async function commitValidation(
-	newlyCheckedNodes: RideSummary['newlyCheckedNodes']
+	newlyCheckedNodes: RideSummary['newlyCheckedNodes'],
+	gameEngine: IGameEngine
 ): Promise<string[]> {
 	const messages: string[] = [];
 	const nodeIds = newlyCheckedNodes.map((n) => n.id);
@@ -172,7 +173,7 @@ export async function commitValidation(
 		await Promise.all(updatePromises);
 
 		// Send AP check
-		sendLocationChecks(apLocationIdsToCheck);
+		gameEngine.sendLocationChecks(apLocationIdsToCheck);
 
 		newlyCheckedNodes.forEach((node) => {
 			messages.push(`Unlocked Location ${node.ap_location_id} at [${node.lat}, ${node.lon}]!`);

@@ -2,7 +2,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { analyzeFitFile, commitValidation } from './validation';
 import { SportsLib } from '@sports-alliance/sports-lib';
 import { pb } from './database';
-import { sendLocationChecks } from './ap';
+import { SinglePlayerEngine } from './engine/SinglePlayerEngine';
 
 vi.mock('@sports-alliance/sports-lib', () => ({
 	SportsLib: {
@@ -17,10 +17,6 @@ vi.mock('./database', () => ({
 			update: vi.fn()
 		}))
 	}
-}));
-
-vi.mock('./ap', () => ({
-	sendLocationChecks: vi.fn()
 }));
 
 describe('validation', () => {
@@ -150,10 +146,12 @@ describe('validation', () => {
 			update: updateMock
 		});
 
-		const messages = await commitValidation(newlyCheckedNodes);
+		const engine = new SinglePlayerEngine();
+		engine.sendLocationChecks = vi.fn();
+		const messages = await commitValidation(newlyCheckedNodes, engine);
 
 		expect(updateMock).toHaveBeenCalledWith('node1', { state: 'Checked' }, { requestKey: null });
-		expect(sendLocationChecks).toHaveBeenCalledWith([101]);
+		expect(engine.sendLocationChecks).toHaveBeenCalledWith([101]);
 		expect(messages).toContain('Unlocked Location 101 at [40, -80]!');
 	});
 });

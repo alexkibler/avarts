@@ -2,7 +2,8 @@
 	import { createEventDispatcher } from 'svelte';
 	import { activeGameTab } from '$lib/stores';
 	import { nodeStats } from '$lib/mapState';
-	import { locationSwaps } from '$lib/ap';
+	import { getContext } from 'svelte';
+	import type { IGameEngine } from '$lib/engine/IGameEngine';
 	import ChatClient from '$components/ChatClient.svelte';
 	import ApDropzone from '$components/apDropzone.svelte';
 	import RoutePanel from './RoutePanel.svelte';
