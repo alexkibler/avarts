@@ -1,14 +1,14 @@
 <script lang="ts">
 	import { onMount, onDestroy, createEventDispatcher, tick } from 'svelte';
 	import 'leaflet/dist/leaflet.css';
-	import '@raruto/leaflet-elevation/dist/leaflet-elevation.css';
 	import { env } from '$env/dynamic/public';
 	import {
 		mapNodes,
 		activeWaypointIds,
 		currentRoute,
 		routeDistance,
-		elevationGain
+		elevationGain,
+		userLocation
 	} from '$lib/mapState';
 	import type { Coordinates, ElevationResponse, Route } from '$lib/types';
 	import { getElevationData } from '$lib/routing';
@@ -27,7 +27,6 @@
 	let L: any;
 	const markerMap = new Map<string, any>();
 	let routingControl: any = null;
-	let elevationControl: any = null;
 	let myLocationMarker: any = null;
 	let rideLayer: any = null;
 	let locating = false;
@@ -103,7 +102,6 @@
 
 	export function clearRoute() {
 		routingControl?.setWaypoints([]);
-		elevationControl?.clear();
 		currentRoute.set(null);
 		routeDistance.set(0);
 		elevationGain.set(0);
@@ -154,9 +152,16 @@
 		}
 	}
 
-	function handleMyLocation(callback?: (coords?: { lat: number; lon: number }) => void) {
+	function handleMyLocation(
+		options: {
+			silent?: boolean;
+			callback?: (coords?: { lat: number; lon: number }) => void;
+		} = {}
+	) {
+		const { silent = false, callback } = options;
+
 		if (!navigator.geolocation) {
-			alert('Geolocation is not supported by your browser.');
+			if (!silent) alert('Geolocation is not supported by your browser.');
 			callback?.();
 			return;
 		}
@@ -164,8 +169,11 @@
 		navigator.geolocation.getCurrentPosition(
 			(pos) => {
 				const coords = { lat: pos.coords.latitude, lon: pos.coords.longitude };
+				userLocation.set(coords);
+
 				if (map && L) {
-					map.setView([coords.lat, coords.lon], 16);
+					if (!silent) map.setView([coords.lat, coords.lon], 16);
+
 					if (myLocationMarker) myLocationMarker.remove();
 					myLocationMarker = L.circleMarker([coords.lat, coords.lon], {
 						radius: 10,
@@ -181,9 +189,11 @@
 				callback?.(coords);
 			},
 			(err) => {
-				const msg = 'Location request timed out. Using map center as fallback.';
-				console.error('Geolocation error:', err);
-				alert(msg);
+				if (!silent) {
+					const msg = 'Location request timed out. Using map center as fallback.';
+					console.error('Geolocation error:', err);
+					alert(msg);
+				}
 				callback?.();
 			},
 			{ enableHighAccuracy: true, timeout: 5000, maximumAge: 0 }
@@ -191,7 +201,7 @@
 	}
 
 	export function triggerMyLocation(cb?: any) {
-		handleMyLocation(cb);
+		handleMyLocation({ callback: cb });
 	}
 
 	// ── Reactivity ──────────────────────────────────────────────────────────────
@@ -216,12 +226,14 @@
 		const leafletMod = await import('leaflet');
 		L = leafletMod.default ?? leafletMod;
 		window.L = L;
-		await import('@raruto/leaflet-elevation');
 		await import('leaflet-routing-machine');
 		await import('leaflet-control-geocoder');
 		await import('lrm-graphhopper');
 
+		if (!mapElement) return;
+
 		map = L.map(mapElement, { zoomControl: false }).setView([centerLat, centerLon], 13);
+
 
 		// Custom "My Location" control
 		const MyLocationControl = (L as any).Control.extend({
@@ -232,7 +244,7 @@
 				btn.onclick = (e: any) => {
 					L.DomEvent.stopPropagation(e);
 					btn.classList.add('locating');
-					handleMyLocation(() => btn.classList.remove('locating'));
+					handleMyLocation({ callback: () => btn.classList.remove('locating') });
 				};
 				return btn;
 			}
@@ -284,28 +296,21 @@
 			})
 			.addTo(map);
 
-		elevationControl = (L as any).control.elevation({
-			srcFolder: 'https://unpkg.com/@raruto/leaflet-elevation/src/',
-			detached: true,
-			elevationDiv: '#elevation-container',
-			followMarker: false,
-			theme: 'orange-theme'
-		});
-		elevationControl.addTo(map);
-
 		routingControl.on('routesfound', async (e: any) => {
 			const r = e.routes[0];
 			currentRoute.set(r);
 			routeDistance.set(r.summary.totalDistance);
 
 			const elevations = await getElevationData(r.coordinates);
-			const coordsWithEle = r.coordinates.map((c: any, i: number) => [
-				c.lat,
-				c.lng,
-				elevations[i] || 0
-			]);
-			elevationControl.clear();
-			elevationControl.addData(L.polyline(coordsWithEle));
+			const coordsWithEle = r.coordinates.map((c: any, i: number) => ({
+				...c,
+				meta: { elevation: elevations[i] || 0 }
+			}));
+
+			currentRoute.set({
+				...r,
+				coordinates: coordsWithEle
+			});
 
 			const gain = elevations.reduce((acc: number, cur: number, i: number) => {
 				if (i === 0) return 0;
@@ -325,6 +330,9 @@
 			});
 			activeWaypointIds.set(newActive);
 		});
+
+		// Fetch user location into state on load
+		handleMyLocation({ silent: true });
 	});
 
 	onDestroy(() => {
@@ -343,5 +351,8 @@
 	}
 	:global(.leaflet-tile) {
 		border-style: none !important;
+	}
+	:global(.leaflet-routing-container) {
+		display: none !important;
 	}
 </style>

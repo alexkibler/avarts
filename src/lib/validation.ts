@@ -1,6 +1,7 @@
 import { pb } from '$lib/database';
 import type { IGameEngine } from '$lib/engine/IGameEngine';
 import { SportsLib } from '@sports-alliance/sports-lib';
+import FitParser from 'fit-file-parser';
 
 export interface RideSummary {
 	path: { lat: number; lon: number; alt?: number }[];
@@ -46,27 +47,162 @@ function getDistance(lat1: number, lon1: number, lat2: number, lon2: number): nu
 
 export async function analyzeFitFile(file: File, sessionId: string): Promise<RideSummary> {
 	try {
+		console.log('[AnalyzeFitFile] Starting analysis for file:', file.name);
+		console.log('[AnalyzeFitFile] File size:', file.size, 'bytes');
+		console.log('[AnalyzeFitFile] File type:', file.type);
+
+		if (file.size === 0) {
+			console.warn('[AnalyzeFitFile] File size is 0');
+			throw new Error('The FIT file is empty. Please upload a valid ride file.');
+		}
+
+		console.log('[AnalyzeFitFile] Reading array buffer...');
 		const arrayBuffer = await file.arrayBuffer();
-		const event = await SportsLib.importFromFit(arrayBuffer);
+		console.log('[AnalyzeFitFile] ArrayBuffer length:', arrayBuffer.byteLength, 'bytes');
+
+		let event;
+		try {
+			event = await SportsLib.importFromFit(arrayBuffer);
+			console.log('[AnalyzeFitFile] SportsLib.importFromFit success');
+		} catch (importErr: any) {
+			if (importErr.message === 'Empty fit file') {
+				console.warn('[AnalyzeFitFile] SportsLib reported empty file, attempting fallback recovery...');
+				const fitParser = new FitParser({
+					force: true,
+					speedUnit: 'm/s',
+					lengthUnit: 'm',
+					temperatureUnit: 'celsius',
+					elapsedRecordField: false,
+					mode: 'both'
+				});
+
+				const fitObject: any = await new Promise((resolve, reject) => {
+					fitParser.parse(arrayBuffer, (error: any, data: any) => {
+						if (error) reject(error);
+						else resolve(data);
+					});
+				});
+
+				console.log(
+					'[AnalyzeFitFile] Fallback parse complete. Records:',
+					fitObject.records?.length,
+					'Sessions:',
+					fitObject.sessions?.length
+				);
+
+				if (fitObject.records && fitObject.records.length > 0) {
+					// Synthesize path from records
+					const fallbackPath: { lat: number; lon: number; alt?: number }[] = [];
+					fitObject.records.forEach((record: any) => {
+						if (record.position_lat !== undefined && record.position_long !== undefined) {
+							fallbackPath.push({
+								lat: record.position_lat,
+								lon: record.position_long,
+								alt: record.altitude !== undefined ? record.altitude : undefined
+							});
+						}
+					});
+
+					if (fallbackPath.length > 0) {
+						console.log('[AnalyzeFitFile] Successfully synthesized path from', fallbackPath.length, 'records');
+						// Calculate basic stats
+						const firstRecord = fitObject.records[0];
+						const lastRecord = fitObject.records[fitObject.records.length - 1];
+						const durationMs = lastRecord.timestamp - firstRecord.timestamp;
+						const distanceMeters = lastRecord.distance || 0;
+
+						// Calculate elevation gain
+						let elevationGain = 0;
+						for (let i = 1; i < fitObject.records.length; i++) {
+							const prevAlt = fitObject.records[i - 1].altitude;
+							const currAlt = fitObject.records[i].altitude;
+							if (prevAlt !== undefined && currAlt !== undefined && currAlt > prevAlt) {
+								elevationGain += currAlt - prevAlt;
+							}
+						}
+
+						const stats = {
+							distanceMeters: distanceMeters,
+							elevationGainMeters: elevationGain,
+							durationSeconds: durationMs / 1000,
+							movingTimeSeconds: durationMs / 1000,
+							avgSpeedKph: distanceMeters > 0 && durationMs > 0 ? (distanceMeters / (durationMs / 1000)) * 3.6 : 0,
+							maxSpeedKph: 0
+						};
+
+						// Try to get distance more accurately if available
+						if (stats.distanceMeters === 0) {
+							// Simple haversine sum could go here if needed
+						}
+
+						// Fetch nodes and continue
+						const availableNodes = await pb.collection('map_nodes').getFullList({
+							filter: `session = "${sessionId}" && state = "Available"`,
+							requestKey: null
+						});
+
+						const newlyCheckedNodes: RideSummary['newlyCheckedNodes'] = [];
+						for (const node of availableNodes) {
+							let minDistance = Infinity;
+							const isWithinRadius = fallbackPath.some((point) => {
+								const distance = getDistance(node.lat, node.lon, point.lat, point.lon);
+								if (distance < minDistance) minDistance = distance;
+								return distance <= 30;
+							});
+
+							if (isWithinRadius) {
+								newlyCheckedNodes.push({
+									id: node.id,
+									ap_location_id: node.ap_location_id,
+									lat: node.lat,
+									lon: node.lon
+								});
+							}
+						}
+
+						return {
+							path: fallbackPath,
+							stats,
+							newlyCheckedNodes
+						};
+					}
+				}
+			}
+			throw new Error(`Failed to parse FIT file: ${importErr.message || importErr}`);
+		}
+
 		const activities = event.getActivities();
-		if (activities.length === 0) throw new Error('No activities found in FIT file');
+		console.log('[AnalyzeFitFile] Found activities:', activities.length);
+
+		if (activities.length === 0) {
+			console.warn('[AnalyzeFitFile] No activities found in FIT file');
+			throw new Error('No activities found in FIT file');
+		}
 
 		const activity = activities[0];
+		console.log('[AnalyzeFitFile] Analyzing activity 0');
 
 		// Extract path and stats
 		const path: { lat: number; lon: number; alt?: number }[] = [];
 
 		let positions: any[] = [];
 		if (activity.hasStreamData('Position')) {
+			console.log('[AnalyzeFitFile] Found Position data stream');
 			positions = activity.getStreamDataByTime('Position');
 		} else if (activity.hasStreamData('Location')) {
+			console.log('[AnalyzeFitFile] Found Location data stream');
 			positions = activity.getStreamDataByTime('Location');
+		} else {
+			console.log('[AnalyzeFitFile] No Position or Location data streams found');
 		}
 
 		if (positions.length > 0) {
+			console.log('[AnalyzeFitFile] Processing', positions.length, 'position points');
 			const altitudes = activity.hasStreamData('Altitude')
 				? activity.getStreamDataByTime('Altitude')
 				: [];
+			console.log('[AnalyzeFitFile] Found altitudes:', altitudes.length);
+
 			positions.forEach((pos: any, index: number) => {
 				if (pos.value) {
 					const lat =
@@ -83,14 +219,20 @@ export async function analyzeFitFile(file: File, sessionId: string): Promise<Rid
 				}
 			});
 		} else if (activity.hasPositionData()) {
+			console.log('[AnalyzeFitFile] activity.hasPositionData() is true');
 			const lats = activity.getSquashedStreamData('Latitude');
 			const lons = activity.getSquashedStreamData('Longitude');
+			console.log('[AnalyzeFitFile] Squashed lats:', lats.length, 'lons:', lons.length);
 			lats.forEach((lat, i) => {
 				path.push({ lat, lon: lons[i] });
 			});
+		} else {
+			console.log('[AnalyzeFitFile] No position data found in activity');
 		}
 
+		console.log('[AnalyzeFitFile] Final path length:', path.length);
 		if (path.length === 0) {
+			console.warn('[AnalyzeFitFile] No GPS data found in path');
 			throw new Error('No GPS data found in FIT file.');
 		}
 

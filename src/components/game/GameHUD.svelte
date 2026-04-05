@@ -91,7 +91,6 @@
 							{sessionId}
 							on:routeToAvailable={() => dispatch('routeToAvailable')}
 							on:clearRoute={() => dispatch('clearRoute')}
-							on:nodeTap={(e) => dispatch('nodeTap', e.detail)}
 						/>
 					{/if}
 				</div>
@@ -99,7 +98,10 @@
 		{/if}
 	</div>
 
-	<RouteStatsBar on:exportToGPX={() => dispatch('exportToGPX')} />
+	<!-- On Desktop, render it here pinned below the sidebar area -->
+	<div class="hidden md:block">
+		<RouteStatsBar isSmall={false} />
+	</div>
 </div>
 
 <style>
@@ -118,7 +120,16 @@
 		overflow: hidden;
 	}
 
-	.game-hud > :global(*) {
+	.game-hud :global(.top-nav),
+	.game-hud .main-hud-area {
+		pointer-events: none;
+	}
+
+	.game-hud .panel-overlay,
+	.game-hud .panel,
+	.game-hud :global(.nav-item),
+	.game-hud :global(.btn-export),
+	.game-hud :global(.route-stats.visible) {
 		pointer-events: auto;
 	}
 
@@ -131,6 +142,12 @@
 	}
 	.panel-overlay.open {
 		display: block;
+	}
+
+	@media (min-width: 601px) {
+		.panel-overlay {
+			display: none !important;
+		}
 	}
 
 	.panel {
@@ -194,6 +211,9 @@
 		.panel {
 			width: 100%;
 			border-left: none;
+		}
+		.panel-body {
+			padding-bottom: 160px; /* Account for BottomNav + possible RouteStatsBar */
 		}
 	}
 </style>

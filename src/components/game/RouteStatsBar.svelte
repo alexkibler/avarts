@@ -1,15 +1,85 @@
 <script lang="ts">
-	import { routeDistance, elevationGain, currentRoute } from '$lib/mapState';
-	import { createEventDispatcher } from 'svelte';
+	import { routeDistance, elevationGain, currentRoute, sessionName, apSlot } from '$lib/mapState';
+	import { generateGPX, getDistance } from '$lib/routing';
+	import { userCookie } from '$lib/stores';
+	import { get } from 'svelte/store';
 
-	const dispatch = createEventDispatcher<{
-		exportToGPX: void;
-	}>();
+	export let isSmall = false;
+
+	function handleExport() {
+		const routeData = get(currentRoute);
+		if (routeData) {
+			const user = get(userCookie)?.user;
+			const sName = get(sessionName);
+			const slot = get(apSlot);
+
+			const gpxData = generateGPX(
+				routeData,
+				user?.name || 'Player',
+				user?.id || '',
+				sName || 'Game Session',
+				slot || 'Player'
+			);
+
+			const blob = new Blob([gpxData], { type: 'application/gpx+xml' });
+			const url = window.URL.createObjectURL(blob);
+			const link = document.createElement('a');
+			link.href = url;
+			const combinedName = `${sName || 'Session'}_${slot || 'Route'}`.replace(/\s+/g, '_');
+			link.download = `${combinedName}.gpx`;
+			link.click();
+			window.URL.revokeObjectURL(url);
+		}
+	}
+
+	$: isVisible = !!$currentRoute;
+
+	// Custom Elevation Chart Logic
+	$: chartData = (() => {
+		if (!$currentRoute || !$currentRoute.coordinates || $currentRoute.coordinates.length < 2) return null;
+
+		const coords = $currentRoute.coordinates;
+		let cumulativeDist = 0;
+		const points = coords.map((c, i) => {
+			if (i > 0) {
+				const prev = coords[i - 1];
+				cumulativeDist += getDistance({ lat: prev.lat, lon: prev.lng }, { lat: c.lat, lon: c.lng });
+			}
+			return {
+				x: cumulativeDist,
+				y: c.meta?.elevation || 0
+			};
+		});
+
+		const xMax = points[points.length - 1].x || 1;
+		const yValues = points.map((p) => p.y);
+		const yMin = Math.min(...yValues);
+		const yMax = Math.max(...yValues);
+		const yRange = yMax - yMin || 1;
+
+		// Normalize to 100x100 for SVG
+		const normalizedPoints = points.map((p) => ({
+			x: (p.x / xMax) * 100,
+			y: 100 - ((p.y - yMin) / yRange) * 80 - 10 // Leave 10% padding top/bottom
+		}));
+
+		const pathData = normalizedPoints.map((p, i) => `${i === 0 ? 'M' : 'L'} ${p.x} ${p.y}`).join(' ');
+		const areaData = `${pathData} L 100 100 L 0 100 Z`;
+
+		return { pathData, areaData };
+	})();
 </script>
 
-<div class="route-stats">
+<div class="route-stats" class:visible={isVisible} class:small={isSmall}>
 	<div class="elevation-graph-container">
-		<div id="elevation-container"></div>
+		{#if chartData}
+			<svg viewBox="0 0 100 100" preserveAspectRatio="none" class="elevation-chart">
+				<path d={chartData.areaData} class="chart-area" />
+				<path d={chartData.pathData} class="chart-line" />
+			</svg>
+		{:else}
+			<div class="no-data">No elevation data</div>
+		{/if}
 	</div>
 
 	<div class="bottom-row-mobile">
@@ -29,7 +99,7 @@
 		</div>
 
 		<button
-			on:click={() => dispatch('exportToGPX')}
+			on:click={handleExport}
 			disabled={!$currentRoute}
 			class="btn-export mobile-hud-export"
 			style="opacity: {$currentRoute ? 1 : 0.4}; cursor: {$currentRoute
@@ -58,16 +128,54 @@
 
 <style>
 	.route-stats {
-		height: 60px;
+		width: 100%;
 		background: var(--bg-surface);
 		border-top: 1px solid var(--border);
 		display: flex;
-		align-items: center;
-		padding: 0 16px;
-		gap: 20px;
+		flex-direction: column;
+		padding: 12px 16px;
+		gap: 12px;
 		flex-shrink: 0;
-		position: relative;
-		z-index: 1;
+		z-index: 1000;
+		opacity: 0;
+		pointer-events: none;
+		transition: opacity 0.2s;
+	}
+
+	@media (min-width: 601px) {
+		.route-stats {
+			position: absolute;
+			bottom: 0;
+			right: 0;
+			width: var(--panel-w);
+		}
+	}
+
+	.route-stats.visible {
+		opacity: 1;
+		pointer-events: auto;
+	}
+
+	.route-stats.small {
+		padding: 8px 12px;
+		gap: 8px;
+	}
+
+	.route-stats.small .elevation-graph-container {
+		height: 40px;
+		min-height: 40px;
+	}
+
+	@media (min-width: 601px) {
+		.route-stats {
+			position: absolute;
+			bottom: 0;
+			right: 0;
+		}
+		.route-stats.visible {
+			width: var(--panel-w);
+			box-shadow: -4px 0 24px rgba(0, 0, 0, 0.3);
+		}
 	}
 
 	.stats-container {
@@ -86,46 +194,65 @@
 	.stat .stat-label {
 		font-size: 10px;
 		text-transform: uppercase;
-		letter-spacing: 0.5px;
-		color: var(--text-muted);
+		letter-spacing: 0.8px;
+		color: #ffffff;
+		opacity: 0.9;
+		font-weight: 700;
 		line-height: 1;
-		margin-bottom: 2px;
+		margin-bottom: 4px;
 	}
 	.stat .stat-value {
 		font-size: 16px;
 		font-weight: 600;
+		color: #ffffff;
 		white-space: nowrap;
 	}
 	.stat .stat-value .unit {
 		font-size: 11px;
-		font-weight: 400;
-		color: var(--text-secondary);
+		font-weight: 500;
+		color: #ffffff;
+		opacity: 0.8;
 		margin-left: 2px;
 	}
 
 	.elevation-graph-container {
-		flex: 1;
-		height: 100%;
-		min-width: 0;
+		width: 100%;
+		height: 80px;
+		min-height: 80px;
+		max-height: 80px;
 		display: flex;
 		align-items: center;
-	}
-
-	#elevation-container {
-		width: 100%;
-		height: 100%;
+		background: rgba(0, 0, 0, 0.2);
+		border-radius: 4px;
 		overflow: hidden;
 	}
 
-	/* Override internal leaflet-elevation styles when detached */
-	:global(#elevation-container .elevation-control) {
-		margin: 0 !important;
-		border: none !important;
-		background: transparent !important;
-		height: 100% !important;
+	.elevation-chart {
+		width: 100%;
+		height: 100%;
+		display: block;
 	}
-	:global(#elevation-container .elevation-control .background) {
-		background-color: transparent !important;
+
+	.chart-line {
+		fill: none;
+		stroke: var(--orange);
+		stroke-width: 1.25;
+		stroke-linejoin: round;
+		stroke-linecap: round;
+	}
+
+	.chart-area {
+		fill: var(--orange);
+		fill-opacity: 0.15;
+		stroke: none;
+	}
+
+	.no-data {
+		width: 100%;
+		text-align: center;
+		font-size: 12px;
+		color: var(--text-muted);
+		font-style: italic;
 	}
 
 	.btn-export {
@@ -156,20 +283,6 @@
 	}
 
 	@media (max-width: 600px) {
-		.route-stats {
-			flex-direction: column;
-			height: auto;
-			padding: 8px 12px;
-			gap: 8px;
-			align-items: stretch;
-		}
-		.elevation-graph-container {
-			width: 100%;
-			height: 80px;
-			min-height: 80px;
-			max-height: 80px;
-			overflow: hidden;
-		}
 		.stats-container {
 			gap: 12px;
 		}
@@ -177,8 +290,8 @@
 			font-size: 13px;
 		}
 		.btn-export {
-			padding: 6px 10px;
-			font-size: 11px;
+			padding: 8px 12px;
+			font-size: 12px;
 		}
 	}
 </style>
