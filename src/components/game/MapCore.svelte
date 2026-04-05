@@ -352,4 +352,7 @@
 	:global(.leaflet-tile) {
 		border-style: none !important;
 	}
+	:global(.leaflet-routing-container) {
+		display: none !important;
+	}
 </style>

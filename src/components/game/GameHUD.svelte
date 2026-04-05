@@ -120,7 +120,16 @@
 		overflow: hidden;
 	}
 
-	.game-hud > :global(*) {
+	.game-hud :global(.top-nav),
+	.game-hud .main-hud-area {
+		pointer-events: none;
+	}
+
+	.game-hud .panel-overlay,
+	.game-hud .panel,
+	.game-hud :global(.nav-item),
+	.game-hud :global(.btn-export),
+	.game-hud :global(.route-stats.visible) {
 		pointer-events: auto;
 	}
 
@@ -133,6 +142,12 @@
 	}
 	.panel-overlay.open {
 		display: block;
+	}
+
+	@media (min-width: 601px) {
+		.panel-overlay {
+			display: none !important;
+		}
 	}
 
 	.panel {
