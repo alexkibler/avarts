@@ -42,10 +42,6 @@
 	}
 </script>
 
-{#if !ready}
-	<p class="ml-5 mt-10 text-white text-2xl">Loading activities...</p>
-{/if}
-
 {#if data.user}
 	<div class="flex justify-center min-h-screen bg-neutral-900/50">
 		{#if ready}
