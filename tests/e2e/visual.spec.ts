@@ -1,4 +1,4 @@
-import { test, expect } from '@playwright/test';
+import { test, expect, Page, TestInfo } from '@playwright/test';
 import * as fs from 'fs';
 import * as path from 'path';
 
@@ -11,9 +11,11 @@ test.describe('Visual UX Capture (Mock Mode)', () => {
 		// We can also inject context or rely on the server environment.
 	});
 
-	async function captureAndAttach(page: any, testInfo: any, name: string) {
-		// Wait for animations to settle
-		await page.waitForTimeout(1000);
+	async function captureAndAttach(page: Page, testInfo: TestInfo, name: string) {
+		// Wait for network to be idle and fonts to be loaded for visual stability
+		await page.waitForLoadState('networkidle');
+		await page.evaluate(() => document.fonts.ready);
+		
 		const screenshotPath = path.join(testInfo.outputPath(), `${name}.png`);
 		await page.screenshot({ path: screenshotPath });
 		await testInfo.attach(name, {
@@ -46,7 +48,10 @@ test.describe('Visual UX Capture (Mock Mode)', () => {
 		await page.fill('input#slotName', 'Player1');
 		await page.fill('input[placeholder="Search address or place…"]', 'New York');
 		await page.click('button:has-text("Search")');
-		await page.waitForTimeout(1000); // Wait for mock geocode
+		
+		// Wait for the map to presumably move or geocode results to appear
+		// In mock mode this is near-instant, but we should wait for the network/UI
+		await page.waitForLoadState('networkidle');
 		await captureAndAttach(page, testInfo, '3_NewGame_Map_Selected');
 
 		// Submit the form
@@ -59,7 +64,6 @@ test.describe('Visual UX Capture (Mock Mode)', () => {
 		// Wait for mock nodes to be rendered (circle markers)
 		await page.waitForSelector('.leaflet-interactive', { timeout: 10000 });
 		
-		await page.waitForTimeout(2000); // Wait for the game session to fully initialize
 		await captureAndAttach(page, testInfo, '4_Game_Initial_State');
 
 		// 3. Game UI Tabs (Since we mock AP, clicking Connect should immediately transition state)
@@ -71,12 +75,12 @@ test.describe('Visual UX Capture (Mock Mode)', () => {
 			await connectButton.click();
 			// Wait for the connect form to disappear and map to appear
 			await expect(page.locator('.map-container')).toBeVisible();
-			await page.waitForTimeout(3000); // Give Leaflet and tiles extra time to settle
+			await page.waitForLoadState('networkidle');
 			await captureAndAttach(page, testInfo, '5_Game_Connected_State');
 		} else {
 			// Already connected or transitioned
 			await expect(page.locator('.map-container')).toBeVisible();
-			await page.waitForTimeout(3000);
+			await page.waitForLoadState('networkidle');
 			await captureAndAttach(page, testInfo, '5_Game_Connected_State');
 		}
 
@@ -86,7 +90,6 @@ test.describe('Visual UX Capture (Mock Mode)', () => {
 			await routeTab.click();
 			// Assert Route Builder panel is open
 			await expect(page.locator('.panel-title:has-text("Route Builder")')).toBeVisible();
-			await page.waitForTimeout(1000);
 			await captureAndAttach(page, testInfo, '6_Game_Route_Tab');
 		}
 
@@ -96,7 +99,6 @@ test.describe('Visual UX Capture (Mock Mode)', () => {
 			await uploadTab.click();
 			// Assert Upload panel is open
 			await expect(page.locator('.panel-title:has-text("Upload .fit")')).toBeVisible();
-			await page.waitForTimeout(1000);
 			await captureAndAttach(page, testInfo, '7_Game_Upload_Tab');
 		}
 
@@ -106,7 +108,6 @@ test.describe('Visual UX Capture (Mock Mode)', () => {
 			await chatTab.click();
 			// Assert Chat panel is open
 			await expect(page.locator('.panel-title:has-text("Chat")')).toBeVisible();
-			await page.waitForTimeout(1000);
 			await captureAndAttach(page, testInfo, '8_Game_Chat_Tab');
 		}
 

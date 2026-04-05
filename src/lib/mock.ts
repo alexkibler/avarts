@@ -60,12 +60,15 @@ export class MockPocketBase {
 		return this;
 	}
 
+	private _subscribers: Map<string, Array<(data: any) => void>> = new Map();
+
 	collection(name: string) {
+		const self = this;
 		return {
 			getFullList: async (options?: any) => {
-				if (name === 'game_sessions') return this._sessions;
+				if (name === 'game_sessions') return self._sessions;
 				if (name === 'map_nodes') {
-					let filtered = [...this._nodes];
+					let filtered = [...self._nodes];
 					if (options?.filter) {
 						if (options.filter.includes('session = "mock_session_123"')) {
 							filtered = filtered.filter((n) => n.session === 'mock_session_123');
@@ -86,45 +89,61 @@ export class MockPocketBase {
 			},
 			getOne: async (id: string, options?: any) => {
 				if (name === 'game_sessions') {
-					const s = this._sessions.find((s) => s.id === id);
-					return s || this._sessions[0];
+					const s = self._sessions.find((s) => s.id === id);
+					return s || self._sessions[0];
 				}
 				if (name === 'map_nodes') {
-					return this._nodes.find((n) => n.id === id) || { id };
+					return self._nodes.find((n) => n.id === id) || { id };
 				}
 				return { id };
 			},
 			getFirstListItem: async (filter: string, options?: any) => {
-				if (name === 'game_sessions') return this._sessions[0];
+				if (name === 'game_sessions') return self._sessions[0];
 				return { id: 'mock_id' };
 			},
 			create: async (data: any) => {
 				const newItem = { id: `mock_new_${Math.random()}`, ...data };
-				if (name === 'game_sessions') this._sessions.push(newItem);
-				if (name === 'map_nodes') this._nodes.push(newItem);
+				if (name === 'game_sessions') self._sessions.push(newItem);
+				if (name === 'map_nodes') self._nodes.push(newItem);
 				return newItem;
 			},
 			update: async (id: string, data: any) => {
+				let record: any;
 				if (name === 'game_sessions') {
-					const s = this._sessions.find((s) => s.id === id);
-					if (s) Object.assign(s, data);
-					return s || { id, ...data };
+					record = self._sessions.find((s) => s.id === id);
+					if (record) Object.assign(record, data);
 				}
 				if (name === 'map_nodes') {
-					const n = this._nodes.find((node) => node.id === id);
-					if (n) Object.assign(n, data);
-					return n || { id, ...data };
+					record = self._nodes.find((node) => node.id === id);
+					if (record) Object.assign(record, data);
 				}
-				return { id, ...data };
+				
+				if (record) {
+					const topic = `${name}/${id}`;
+					const wildTopic = `${name}/*`;
+					const event = { action: 'update', record };
+					
+					(self._subscribers.get(topic) || []).forEach(cb => cb(event));
+					(self._subscribers.get(wildTopic) || []).forEach(cb => cb(event));
+					(self._subscribers.get('*') || []).forEach(cb => cb(event));
+				}
+				
+				return record || { id, ...data };
 			},
 			delete: async (id: string) => {
 				return true;
 			},
 			subscribe: async (topic: string, callback: (data: any) => void) => {
-				return () => {};
+				const subscribers = self._subscribers.get(topic) || [];
+				subscribers.push(callback);
+				self._subscribers.set(topic, subscribers);
+				return () => {
+					const subs = self._subscribers.get(topic) || [];
+					self._subscribers.set(topic, subs.filter(cb => cb !== callback));
+				};
 			},
 			authWithPassword: async (username: string, pass: string) => {
-				return { token: 'mock_token', record: this.authStore.model };
+				return { token: 'mock_token', record: self.authStore.model };
 			}
 		};
 	}

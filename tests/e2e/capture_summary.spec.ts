@@ -66,7 +66,10 @@ test('Capture Ride Summary Screenshot', async ({ context, page }) => {
 
     // Wait for summary UI
     await expect(page.locator('text=Distance')).toBeVisible({ timeout: 15000 });
-    await page.waitForTimeout(2000); // Wait for map zoom/polyline animations
+    
+    // Wait for map zoom/polyline animations and network to settle
+    await page.waitForLoadState('networkidle');
+    await page.evaluate(() => document.fonts.ready);
 
     // Capture screenshot
     const screenshotPath = path.join(process.cwd(), 'static/docs/screenshots/7_Ride_Summary.png');
