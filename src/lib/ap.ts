@@ -14,6 +14,13 @@ export interface ChatMessage {
 
 export const chatMessages = writable<ChatMessage[]>([]);
 
+// Goal reached state from Archipelago server
+export const isGoalReached = writable<boolean>(false);
+
+if (typeof window !== 'undefined' && (env.PUBLIC_MOCK_MODE === 'true' || (window as any).PLAYWRIGHT_TEST)) {
+	(window as any).isGoalReached = isGoalReached;
+}
+
 // Location Swap has ID START_ID + MAX_CHECKS + 3 = 802003
 export const locationSwaps = writable<number>(0);
 
@@ -70,12 +77,18 @@ function setupListeners() {
 	});
 	apClient.messages.on('connected', () => {
 		_pendingType = 'system';
+		isGoalReached.set(false); // Reset goal state on new connection
 	});
 	apClient.messages.on('disconnected', () => {
 		_pendingType = 'system';
 	});
-	apClient.messages.on('goaled', () => {
+	apClient.messages.on('goaled', (text, player) => {
 		_pendingType = 'system';
+		// If the player reaching the goal is the local player, trigger victory!
+		if (player.slot === apClient.data.slot) {
+			console.log('[AP] Local player reached the goal!');
+			isGoalReached.set(true);
+		}
 	});
 	apClient.messages.on('released', () => {
 		_pendingType = 'system';
@@ -449,6 +462,18 @@ export function sendLocationChecks(locationIds: number[]) {
 					nodesToUnlockMock.forEach((node) =>
 						console.log(`[AP Mock] Unlocked node ${node.id} to Available`)
 					);
+				}
+
+				// Check if session is now fully complete (0 Hidden, 0 Available)
+				const remaining = await pb.collection('map_nodes').getFullList({
+					filter: `session = "${_testSessionId}" && state != "Checked"`,
+					requestKey: null
+				});
+
+				if (remaining.length === 0) {
+					console.log('[AP Mock] All nodes cleared! Triggering goal reached.');
+					await pb.collection('game_sessions').update(_testSessionId, { status: 'Completed' });
+					isGoalReached.set(true);
 				}
 			} catch (e) {
 				console.error('Mock unlock failed', e);

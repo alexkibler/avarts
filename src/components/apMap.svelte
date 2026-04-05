@@ -11,7 +11,7 @@
 	import ApDropzone from '$components/apDropzone.svelte';
 	import VictoryScreen from '$components/VictoryScreen.svelte';
 	import { activeGameTab } from '$lib/stores';
-	import { locationSwaps } from '$lib/ap';
+	import { locationSwaps, isGoalReached } from '$lib/ap';
 
 	import '@raruto/leaflet-elevation/src/index.css';
 
@@ -42,7 +42,11 @@
 	let isMounted = false;
 	let rideLayer: any = null;
 	let showVictory = false;
-	let wasFinished: boolean | null = null; // Use null to indicate uninitialized
+
+	// Drive victory screen from Archipelago goal state
+	$: if ($isGoalReached && isMounted) {
+		showVictory = true;
+	}
 
 	// ── Route Optimization ───────────────────────────────────────────────────────
 
@@ -256,15 +260,6 @@
 			available: nodes.filter((n: any) => n.state === 'Available').length,
 			checked: nodes.filter((n: any) => n.state === 'Checked').length
 		};
-
-		// Check for victory
-		const isFinished =
-			nodeStats.checked > 0 && nodeStats.available === 0 && nodeStats.hidden === 0;
-
-		if (isFinished && wasFinished === false) {
-			showVictory = true;
-		}
-		wasFinished = isFinished;
 	}
 
 	// ── Routing & Elevation ──────────────────────────────────────────────────────
@@ -607,10 +602,6 @@
 		}
 
 		await fetchNodes();
-
-		if (env.PUBLIC_MOCK_MODE === 'true') {
-			(window as any).refreshNodes = fetchNodes;
-		}
 
 		// Be smart about subscribing: only if we're authenticated and the component is still mounted.
 		// We use a small delay to ensure the page has finished its initial load sequence
