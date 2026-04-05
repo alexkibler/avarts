@@ -21,7 +21,7 @@
 </script>
 
 <div
-	class="fixed bottom-0 left-0 right-0 z-[1000] border-t border-white/10 bg-neutral-900/80 backdrop-blur-md px-0 pb-safe pt-0 md:hidden"
+	class="fixed bottom-0 left-0 right-0 z-[2000] border-t border-white/10 bg-neutral-900/80 backdrop-blur-md px-0 pb-safe pt-0 md:hidden"
 >
 	{#if isGamePage && $currentRoute}
 		<RouteStatsBar isSmall={true} />

@@ -212,5 +212,8 @@
 			width: 100%;
 			border-left: none;
 		}
+		.panel-body {
+			padding-bottom: 160px; /* Account for BottomNav + possible RouteStatsBar */
+		}
 	}
 </style>

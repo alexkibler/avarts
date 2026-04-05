@@ -204,6 +204,7 @@
 	.stat .stat-value {
 		font-size: 16px;
 		font-weight: 600;
+		color: #ffffff;
 		white-space: nowrap;
 	}
 	.stat .stat-value .unit {
@@ -282,9 +283,6 @@
 	}
 
 	@media (max-width: 600px) {
-		.route-stats {
-			padding-bottom: calc(72px + env(safe-area-inset-bottom, 0px));
-		}
 		.stats-container {
 			gap: 12px;
 		}

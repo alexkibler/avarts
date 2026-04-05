@@ -162,7 +162,7 @@
 	/* Account for the layout's fixed BottomNav */
 	@media (max-width: 767px) {
 		.mockup-app-root {
-			padding-bottom: 64px;
+			padding-bottom: 160px;
 		}
 	}
 </style>
