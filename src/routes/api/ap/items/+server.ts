@@ -1,8 +1,10 @@
 import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
-import { pb } from '$lib/database';
+import { createPbClient } from '$lib/database';
 
 export const GET: RequestHandler = async ({ request, url }) => {
+	const pb = createPbClient();
+
 	const seed = url.searchParams.get('seed');
 
 	if (!seed) {
