@@ -51,7 +51,8 @@
 					</div>
 
 					<p class="text-neutral-300 mb-6 leading-relaxed">
-						You already have an active session for this Archipelago seed. Multiple users cannot share the same seed in this system. Would you like to resume your previous progress?
+						You already have an active session for this Archipelago seed. Multiple users cannot
+						share the same seed in this system. Would you like to resume your previous progress?
 					</p>
 
 					<div class="flex flex-col gap-3">
@@ -89,7 +90,9 @@
 					</div>
 
 					<p class="text-neutral-300 mb-6 leading-relaxed">
-						This Archipelago seed is already in use by another user. To protect user privacy and session isolation, you cannot join or create a session with a seed that is already claimed.
+						This Archipelago seed is already in use by another user. To protect user privacy and
+						session isolation, you cannot join or create a session with a seed that is already
+						claimed.
 					</p>
 
 					<div class="flex flex-col gap-3">

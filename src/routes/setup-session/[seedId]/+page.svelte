@@ -11,6 +11,8 @@
 	const serverUrl = $page.url.searchParams.get('serverUrl') || '';
 	const slotName = $page.url.searchParams.get('slotName') || '';
 	const sessionId = $page.url.searchParams.get('sessionId') || '';
+	const mode = $page.url.searchParams.get('mode') || 'archipelago';
+	const seedName = $page.url.searchParams.get('seedName') || '';
 
 	let mapElement: HTMLElement;
 	let map: any;
@@ -19,9 +21,10 @@
 	let L: any;
 
 	// Form state
-	let centerLat = 40.4406; // Default Pittsburgh
-	let centerLon = -79.9959;
-	let radius = 5000;
+	let centerLat = parseFloat($page.url.searchParams.get('centerLat') || '40.4406');
+	let centerLon = parseFloat($page.url.searchParams.get('centerLon') || '-79.9959');
+	let radius = parseInt($page.url.searchParams.get('radius') || '5000', 10);
+	let checkCount = parseInt($page.url.searchParams.get('checkCount') || '10', 10);
 	let addressQuery = '';
 
 	// UI state
@@ -41,7 +44,7 @@
 	let generationCompleted = 0;
 
 	// AP state
-	let apItemCount = data.apItemCount || 10;
+	let apItemCount = data.apItemCount || checkCount;
 
 	let pollInterval: ReturnType<typeof setInterval>;
 
@@ -181,22 +184,26 @@
 		generationStatus = 'Sending request to server...';
 
 		try {
-			// Step 1: Call API to start generation
-			// We pass the session id, and let the server look up the session details
+			const payload: Record<string, any> = {
+				centerLat,
+				centerLon,
+				radius,
+				checkCount: apItemCount,
+				seedName: seedName || seedId,
+				mode
+			};
+
+			// Add mode-specific fields
+			if (mode === 'archipelago') {
+				payload.serverUrl = serverUrl;
+				payload.slotName = slotName;
+				payload.sessionId = sessionId;
+			}
+
 			const res = await fetch('/api/nodes/generate', {
 				method: 'POST',
 				headers: { 'Content-Type': 'application/json' },
-				body: JSON.stringify({
-					centerLat,
-					centerLon,
-					radius,
-					checkCount: apItemCount,
-					seedName: seedId,
-					serverUrl,
-					slotName,
-					sessionId,
-					mode: 'archipelago'
-				})
+				body: JSON.stringify(payload)
 			});
 
 			if (res.status === 202) {
@@ -284,7 +291,12 @@
 	<div class="bg-neutral-800 p-6 rounded-lg shadow-lg">
 		<h1 class="text-3xl font-bold mb-2 text-orange-500">Set Up Your Session</h1>
 		<p class="text-neutral-400 text-sm mb-6">
-			Choose your center point on the map to generate {apItemCount} intersections
+			{#if mode === 'archipelago'}
+				Choose your center point to generate {apItemCount} intersections for {seedId}
+			{:else}
+				Choose your center point to generate {apItemCount} intersections for {seedName ||
+					'your session'}
+			{/if}
 		</p>
 
 		{#if loadError}
@@ -342,6 +354,9 @@
 					</svg>
 					{isLocating ? 'Locating…' : 'Use My Location'}
 				</button>
+				{#if locationError}
+					<p class="mt-1 text-xs text-red-400">{locationError}</p>
+				{/if}
 
 				<!-- Radius control -->
 				<div>
