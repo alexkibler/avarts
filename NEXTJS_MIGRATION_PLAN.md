@@ -37,7 +37,7 @@ This document outlines the step-by-step plan for porting the existing Bikeapelag
 
 ## 5. Archipelago Integration
 
-- [ ] Port Archipelago client logic from SvelteKit `src/lib/ap.ts` (and related files) to a React Context or custom hooks to maintain persistent WebSocket connections across the app.
+- [ ] Port Archipelago client logic to a React Context or custom hooks. Ensure the implementation handles React Strict Mode to prevent duplicate connections.
 - [ ] Ensure item processing logic properly interacts with the PocketBase database as it currently does.
 
 ## 6. Capacitor Setup
