@@ -18,6 +18,7 @@ export interface BaseGenerationRequest {
 
 export abstract class GeneratorService {
 	protected pb: PocketBase;
+	public static readonly BASE_LOCATION_ID = 800000;
 
 	constructor(pb: PocketBase) {
 		this.pb = pb;
