@@ -36,7 +36,8 @@
 
 	// Custom Elevation Chart Logic
 	$: chartData = (() => {
-		if (!$currentRoute || !$currentRoute.coordinates || $currentRoute.coordinates.length < 2) return null;
+		if (!$currentRoute || !$currentRoute.coordinates || $currentRoute.coordinates.length < 2)
+			return null;
 
 		const coords = $currentRoute.coordinates;
 		let cumulativeDist = 0;
@@ -63,7 +64,9 @@
 			y: 100 - ((p.y - yMin) / yRange) * 80 - 10 // Leave 10% padding top/bottom
 		}));
 
-		const pathData = normalizedPoints.map((p, i) => `${i === 0 ? 'M' : 'L'} ${p.x} ${p.y}`).join(' ');
+		const pathData = normalizedPoints
+			.map((p, i) => `${i === 0 ? 'M' : 'L'} ${p.x} ${p.y}`)
+			.join(' ');
 		const areaData = `${pathData} L 100 100 L 0 100 Z`;
 
 		return { pathData, areaData };

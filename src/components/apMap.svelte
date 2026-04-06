@@ -98,7 +98,6 @@
 		apSlotStore.set(apSlot);
 	}
 
-
 	onMount(async () => {
 		await fetchNodes(sessionId);
 

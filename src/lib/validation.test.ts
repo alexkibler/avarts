@@ -175,9 +175,11 @@ describe('validation', () => {
 		(SportsLib.importFromFit as any).mockRejectedValue(new Error('Empty fit file'));
 
 		(pb.collection as any).mockReturnValue({
-			getFullList: vi.fn().mockResolvedValue([
-				{ id: 'node1', ap_location_id: 101, lat: 40.0, lon: -80.0, state: 'Available' }
-			])
+			getFullList: vi
+				.fn()
+				.mockResolvedValue([
+					{ id: 'node1', ap_location_id: 101, lat: 40.0, lon: -80.0, state: 'Available' }
+				])
 		});
 
 		const mockFile = new File([new ArrayBuffer(10)], 'fallback.fit');
