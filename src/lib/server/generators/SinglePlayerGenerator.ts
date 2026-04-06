@@ -25,7 +25,7 @@ export class SinglePlayerGenerator extends GeneratorService {
 		nodes: any[]
 	): Promise<{ id: number; name: string }[]> {
 		return nodes.map((node, i) => ({
-			id: 800000 + (i + 1),
+			id: GeneratorService.BASE_LOCATION_ID + (i + 1),
 			name: `OSM Node ${node.id}`
 		}));
 	}
