@@ -18,10 +18,19 @@
 	let checkCount = 10;
 	let seedName = '';
 	let slotName = '';
+	let serverUrl = 'archipelago.gg:';
+	let password = '';
 	let gameMode: 'archipelago' | 'singleplayer' = 'archipelago';
 
 	let isGenerating = false;
 	let errorMsg = '';
+
+	let generationProgress = 0;
+	let generationTotal = 0;
+	let generationCompleted = 0;
+	let generationStatus = '';
+	let jobId = '';
+	let pollInterval: any;
 
 	// Address search
 	let addressQuery = '';
@@ -138,80 +147,81 @@
 		errorMsg = '';
 
 		try {
-			// 1. Fetch Intersections from OSM Overpass
-			const intersections = await fetchCyclingIntersections(centerLat, centerLon, radius);
-
-			if (intersections.length < checkCount) {
-				throw new Error(
-					`Found only ${intersections.length} intersections, but requested ${checkCount}. Increase radius or decrease check count.`
-				);
-			}
-
-			// 2. Shuffle and Select the required number
-			const selectedNodes = shuffleArray(intersections).slice(0, checkCount);
-
-			// 3. Create Game Session in PocketBase
-			// Assuming a logged in user via the store ($userCookie)
-			const userId = $userCookie?.user?.id;
-			if (!userId) {
-				throw new Error('Must be logged in to create a game session.');
-			}
-
-			const sessionData: any = {
-				user: userId,
-				center_lat: centerLat,
-				center_lon: centerLon,
-				radius: radius,
-				status: 'Active'
-			};
-
 			if (gameMode === 'archipelago') {
-				sessionData.ap_seed_name = seedName;
-				sessionData.ap_slot_name = slotName;
-			}
+				// 1. Connect to Archipelago
+				const response = await fetch('/api/ap/connect', {
+					method: 'POST',
+					headers: { 'Content-Type': 'application/json' },
+					body: JSON.stringify({
+						serverUrl,
+						slotName,
+						password
+					})
+				});
 
-			const sessionRecord = await pb
-				.collection('game_sessions')
-				.create(sessionData, { requestKey: null });
-
-			// 4. Batch Insert Map Nodes into PocketBase
-			// To get the address names and not overwhelm the geocoder or cause rate limits,
-			// we'll run the creation sequentially with a small delay for geocoding
-			for (let i = 0; i < selectedNodes.length; i++) {
-				const node = selectedNodes[i];
-				let nodeName = `OSM Node ${node.id}`;
-
-				try {
-					const res = await fetch(`/api/geocode?q=${node.lat},${node.lon}&limit=1&locale=en`);
-					if (res.ok) {
-						const data = await res.json();
-						if (data.hits && data.hits.length > 0) {
-							nodeName = data.hits[0].name;
-						}
-					}
-				} catch (e) {
-					console.warn('Reverse geocode failed for node', node.id, e);
+				if (!response.ok) {
+					const errorData = await response.json();
+					throw new Error(errorData.message || 'Failed to connect to Archipelago.');
 				}
 
-				await pb.collection('map_nodes').create(
-					{
-						session: sessionRecord.id,
-						ap_location_id: 800000 + (i + 1), // Assuming START_ID from items.py
-						osm_node_id: node.id.toString(),
-						name: nodeName,
-						lat: node.lat,
-						lon: node.lon,
-						state: 'Hidden'
-					},
-					{ requestKey: `map_node_${i}` }
-				);
+				const apData = await response.json();
+				const seedId = apData.roomInfo?.seed_name;
 
-				// Add a tiny delay to not slam the geocoder api
-				await new Promise((r) => setTimeout(r, 200));
+				if (!seedId) {
+					throw new Error('Archipelago connection successful but no seed name returned.');
+				}
+
+				// 2. Check if a session already exists for this AP seed
+				const userId = $userCookie?.user?.id;
+				if (!userId) {
+					throw new Error('Must be logged in to create or join a game session.');
+				}
+
+				const existingSessions = await pb.collection('game_sessions').getList(1, 1, {
+					filter: `user = "${userId}" && ap_seed_name = "${seedId}"`,
+					sort: '-created'
+				});
+
+				if (existingSessions.items.length > 0) {
+					// Session exists, redirect to it
+					window.location.href = `/game/${existingSessions.items[0].id}`;
+				} else {
+					// No session exists, redirect to setup
+					window.location.href = `/setup-session/${seedId}?serverUrl=${encodeURIComponent(
+						serverUrl
+					)}&slotName=${encodeURIComponent(slotName)}&password=${encodeURIComponent(password)}`;
+				}
+			} else {
+				generationProgress = 0;
+				generationStatus = 'Sending request to server...';
+
+				const res = await fetch('/api/nodes/generate', {
+					method: 'POST',
+					headers: { 'Content-Type': 'application/json' },
+					body: JSON.stringify({
+						centerLat,
+						centerLon,
+						radius,
+						checkCount,
+						seedName: seedName || 'Single Player',
+						serverUrl: '',
+						slotName: '',
+						mode: 'singleplayer'
+					})
+				});
+
+				if (res.status === 202) {
+					const data = await res.json();
+					jobId = data.jobId;
+					generationStatus = 'Job queued, waiting to start...';
+					pollProgress();
+				} else {
+					const error = await res.json();
+					throw new Error(error.message || `HTTP ${res.status}`);
+				}
 			}
-
-			window.location.href = `/game/${sessionRecord.id}`;
 		} catch (err: any) {
+			isGenerating = false;
 			console.error('[GenerateSession Error]', err);
 			if (err.response?.data) {
 				const data = err.response.data;
@@ -222,9 +232,62 @@
 			} else {
 				errorMsg = err.message || 'An error occurred during generation.';
 			}
-		} finally {
-			isGenerating = false;
 		}
+	}
+
+	async function pollProgress() {
+		let consecutiveErrors = 0;
+		const MAX_ERRORS = 10;
+
+		pollInterval = setInterval(async () => {
+			try {
+				const res = await fetch(`/api/nodes/generate/${jobId}`);
+
+				if (!res.ok) {
+					consecutiveErrors++;
+					if (consecutiveErrors > MAX_ERRORS) {
+						throw new Error(`Server error: ${res.status}`);
+					}
+					return;
+				}
+
+				consecutiveErrors = 0;
+				const data = await res.json();
+
+				// Update progress
+				generationProgress = data.progress.percentage;
+				generationTotal = data.progress.total;
+				generationCompleted = data.progress.completed;
+
+				switch (data.status) {
+					case 'pending':
+						generationStatus = 'Waiting in queue...';
+						break;
+					case 'processing':
+						generationStatus = `Creating nodes: ${generationCompleted}/${generationTotal}`;
+						break;
+					case 'completed':
+						generationStatus = 'Setup complete!';
+						clearInterval(pollInterval);
+						console.log(`[Setup] Generation complete, session: ${data.sessionId}`);
+						setTimeout(() => {
+							window.location.href = `/game/${data.sessionId}`;
+						}, 500);
+						break;
+					case 'failed':
+						clearInterval(pollInterval);
+						throw new Error(data.error || 'Generation failed');
+					case 'cancelled':
+						clearInterval(pollInterval);
+						throw new Error('Generation was cancelled');
+				}
+			} catch (error: any) {
+				clearInterval(pollInterval);
+				console.error('[Setup] Poll error:', error);
+				errorMsg = error?.message || 'Lost connection to server.';
+				isGenerating = false;
+			}
+		}, 2000); // Poll every 2 seconds
 	}
 </script>
 
@@ -263,19 +326,112 @@
 				</div>
 			</div>
 
-			<div>
-				<label class="block text-sm font-medium mb-1" for="seedName"
-					>{gameMode === 'archipelago' ? 'Seed Name / Description' : 'Save Name'}</label
-				>
-				<input
-					id="seedName"
-					bind:value={seedName}
-					required
-					class="w-full bg-neutral-700 border border-neutral-600 rounded px-3 py-2 text-white focus:outline-none focus:border-orange-500"
-				/>
-			</div>
+			{#if gameMode === 'singleplayer'}
+				<div>
+					<label class="block text-sm font-medium mb-1" for="seedName">Save Name</label>
+					<input
+						id="seedName"
+						bind:value={seedName}
+						required
+						class="w-full bg-neutral-700 border border-neutral-600 rounded px-3 py-2 text-white focus:outline-none focus:border-orange-500"
+					/>
+				</div>
+
+				<div class="grid grid-cols-2 gap-4">
+					<div>
+						<label class="block text-sm font-medium mb-1" for="radius">Radius (meters)</label>
+						<input
+							id="radius"
+							type="number"
+							bind:value={radius}
+							required
+							min="100"
+							max="50000"
+							class="w-full bg-neutral-700 border border-neutral-600 rounded px-3 py-2 text-white focus:outline-none focus:border-orange-500"
+						/>
+					</div>
+					<div>
+						<label class="block text-sm font-medium mb-1" for="checkCount">Check Count</label>
+						<input
+							id="checkCount"
+							type="number"
+							bind:value={checkCount}
+							required
+							min="1"
+							max="1000"
+							class="w-full bg-neutral-700 border border-neutral-600 rounded px-3 py-2 text-white focus:outline-none focus:border-orange-500"
+						/>
+					</div>
+				</div>
+
+				<div>
+					<label class="block text-sm font-medium mb-2">Center Point</label>
+
+					<div class="flex gap-2">
+						<input
+							type="text"
+							placeholder="Search address or place…"
+							bind:value={addressQuery}
+							on:keydown={(e) => e.key === 'Enter' && (e.preventDefault(), searchAddress())}
+							disabled={isGeocoding}
+							class="flex-1 bg-neutral-700 border border-neutral-600 rounded px-3 py-2 text-white placeholder-neutral-400 focus:outline-none focus:border-orange-500 disabled:opacity-50"
+						/>
+						<button
+							type="button"
+							on:click={searchAddress}
+							disabled={isGeocoding || !addressQuery.trim()}
+							class="bg-neutral-700 hover:bg-neutral-600 border border-neutral-600 text-white font-medium px-4 py-2 rounded transition disabled:opacity-50 whitespace-nowrap"
+						>
+							{isGeocoding ? 'Searching…' : 'Search'}
+						</button>
+					</div>
+
+					{#if geocodeError}
+						<p class="mt-1 text-xs text-red-400">{geocodeError}</p>
+					{/if}
+
+					<button
+						type="button"
+						on:click={useMyLocation}
+						disabled={isLocating}
+						class="mt-2 flex items-center gap-2 bg-neutral-700 hover:bg-neutral-600 border border-neutral-600 text-white text-sm font-medium px-4 py-2 rounded transition disabled:opacity-50"
+					>
+						<svg
+							xmlns="http://www.w3.org/2000/svg"
+							class="w-4 h-4 text-orange-400 shrink-0"
+							viewBox="0 0 24 24"
+							fill="none"
+							stroke="currentColor"
+							stroke-width="2"
+							stroke-linecap="round"
+							stroke-linejoin="round"
+						>
+							<circle cx="12" cy="12" r="3" />
+							<path d="M12 2v3M12 19v3M2 12h3M19 12h3" />
+						</svg>
+						{isLocating ? 'Locating…' : 'Use My Location'}
+					</button>
+
+					{#if locationError}
+						<p class="mt-1 text-xs text-red-400">{locationError}</p>
+					{/if}
+				</div>
+
+				<p class="text-xs text-neutral-400">
+					Click on the map to set the center point for node generation.
+				</p>
+			{/if}
 
 			{#if gameMode === 'archipelago'}
+				<div>
+					<label class="block text-sm font-medium mb-1" for="serverUrl">Server URL</label>
+					<input
+						id="serverUrl"
+						bind:value={serverUrl}
+						required
+						class="w-full bg-neutral-700 border border-neutral-600 rounded px-3 py-2 text-white focus:outline-none focus:border-orange-500"
+					/>
+				</div>
 				<div>
 					<label class="block text-sm font-medium mb-1" for="slotName">Slot Name</label>
 					<input
@@ -285,91 +441,26 @@
 						class="w-full bg-neutral-700 border border-neutral-600 rounded px-3 py-2 text-white focus:outline-none focus:border-orange-500"
 					/>
 				</div>
+				<div>
+					<label class="block text-sm font-medium mb-1" for="password">Password (Optional)</label>
+					<input
+						id="password"
+						bind:value={password}
+						class="w-full bg-neutral-700 border border-neutral-600 rounded px-3 py-2 text-white focus:outline-none focus:border-orange-500"
+					/>
+				</div>
 			{/if}
 
-			<div class="grid grid-cols-2 gap-4">
-				<div>
-					<label class="block text-sm font-medium mb-1" for="radius">Radius (meters)</label>
-					<input
-						id="radius"
-						type="number"
-						bind:value={radius}
-						required
-						min="100"
-						max="50000"
-						class="w-full bg-neutral-700 border border-neutral-600 rounded px-3 py-2 text-white focus:outline-none focus:border-orange-500"
-					/>
+			<!-- Generation progress -->
+			{#if isGenerating && gameMode === 'singleplayer'}
+				<div class="space-y-2 mt-4">
+					<p class="text-sm text-orange-400">{generationStatus}</p>
+					<div class="w-full bg-neutral-700 rounded h-2 overflow-hidden">
+						<div class="bg-orange-500 h-full transition-all" style="width: {generationProgress}%" />
+					</div>
+					<p class="text-xs text-neutral-400 text-right">{Math.round(generationProgress)}%</p>
 				</div>
-				<div>
-					<label class="block text-sm font-medium mb-1" for="checkCount">Check Count</label>
-					<input
-						id="checkCount"
-						type="number"
-						bind:value={checkCount}
-						required
-						min="1"
-						max="1000"
-						class="w-full bg-neutral-700 border border-neutral-600 rounded px-3 py-2 text-white focus:outline-none focus:border-orange-500"
-					/>
-				</div>
-			</div>
-
-			<div>
-				<label class="block text-sm font-medium mb-2">Center Point</label>
-
-				<div class="flex gap-2">
-					<input
-						type="text"
-						placeholder="Search address or place…"
-						bind:value={addressQuery}
-						on:keydown={(e) => e.key === 'Enter' && (e.preventDefault(), searchAddress())}
-						disabled={isGeocoding}
-						class="flex-1 bg-neutral-700 border border-neutral-600 rounded px-3 py-2 text-white placeholder-neutral-400 focus:outline-none focus:border-orange-500 disabled:opacity-50"
-					/>
-					<button
-						type="button"
-						on:click={searchAddress}
-						disabled={isGeocoding || !addressQuery.trim()}
-						class="bg-neutral-700 hover:bg-neutral-600 border border-neutral-600 text-white font-medium px-4 py-2 rounded transition disabled:opacity-50 whitespace-nowrap"
-					>
-						{isGeocoding ? 'Searching…' : 'Search'}
-					</button>
-				</div>
-
-				{#if geocodeError}
-					<p class="mt-1 text-xs text-red-400">{geocodeError}</p>
-				{/if}
-
-				<button
-					type="button"
-					on:click={useMyLocation}
-					disabled={isLocating}
-					class="mt-2 flex items-center gap-2 bg-neutral-700 hover:bg-neutral-600 border border-neutral-600 text-white text-sm font-medium px-4 py-2 rounded transition disabled:opacity-50"
-				>
-					<svg
-						xmlns="http://www.w3.org/2000/svg"
-						class="w-4 h-4 text-orange-400 shrink-0"
-						viewBox="0 0 24 24"
-						fill="none"
-						stroke="currentColor"
-						stroke-width="2"
-						stroke-linecap="round"
-						stroke-linejoin="round"
-					>
-						<circle cx="12" cy="12" r="3" />
-						<path d="M12 2v3M12 19v3M2 12h3M19 12h3" />
-					</svg>
-					{isLocating ? 'Locating…' : 'Use My Location'}
-				</button>
-
-				{#if locationError}
-					<p class="mt-1 text-xs text-red-400">{locationError}</p>
-				{/if}
-			</div>
-
-			<p class="text-xs text-neutral-400">
-				Click on the map to set the center point for node generation.
-			</p>
+			{/if}
 
 			<div class="pt-4">
 				<button
@@ -377,7 +468,13 @@
 					disabled={isGenerating}
 					class="w-full bg-orange-600 hover:bg-orange-500 text-white font-bold py-3 px-4 rounded transition disabled:opacity-50"
 				>
-					{isGenerating ? 'Generating Nodes & Session...' : 'Generate Session'}
+					{#if gameMode === 'archipelago'}
+						{isGenerating ? 'Connecting...' : 'Connect & Play'}
+					{:else}
+						{isGenerating
+							? `Generating... (${generationCompleted}/${generationTotal})`
+							: 'Generate Session'}
+					{/if}
 				</button>
 			</div>
 

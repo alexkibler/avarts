@@ -234,7 +234,6 @@
 
 		map = L.map(mapElement, { zoomControl: false }).setView([centerLat, centerLon], 13);
 
-
 		// Custom "My Location" control
 		const MyLocationControl = (L as any).Control.extend({
 			onAdd: function () {

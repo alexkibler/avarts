@@ -1,4 +1,4 @@
-import { test, expect, Page, TestInfo } from '@playwright/test';
+import { test, expect, type Page, type TestInfo } from '@playwright/test';
 import * as fs from 'fs';
 import * as path from 'path';
 

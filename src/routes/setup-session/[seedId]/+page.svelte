@@ -3,8 +3,13 @@
 	import { goto } from '$app/navigation';
 	import { page } from '$app/stores';
 	import 'leaflet/dist/leaflet.css';
+	import type { PageData } from './$types';
+
+	export let data: PageData;
 
 	const seedId = $page.params.seedId;
+	const serverUrl = $page.url.searchParams.get('serverUrl') || '';
+	const slotName = $page.url.searchParams.get('slotName') || '';
 
 	let mapElement: HTMLElement;
 	let map: any;
@@ -35,13 +40,7 @@
 	let generationCompleted = 0;
 
 	// AP state
-	let apItemCount = 0;
-
-	// Default to 10 for Single Player since we aren't loading it from AP,
-	// but let the user confirm or let the backend fetch if it's AP.
-	// For AP, they should probably not be on this page anymore since it's removed,
-	// but if they are, we'll set apItemCount to 10 for now.
-	apItemCount = 10;
+	let apItemCount = data.apItemCount || 10;
 
 	let pollInterval: ReturnType<typeof setInterval>;
 
@@ -192,8 +191,9 @@
 					radius,
 					checkCount: apItemCount,
 					seedName: seedId,
-					serverUrl: '',
-					slotName: ''
+					serverUrl,
+					slotName,
+					mode: 'archipelago'
 				})
 			});
 

@@ -66,7 +66,9 @@ export async function analyzeFitFile(file: File, sessionId: string): Promise<Rid
 			console.log('[AnalyzeFitFile] SportsLib.importFromFit success');
 		} catch (importErr: any) {
 			if (importErr.message === 'Empty fit file') {
-				console.warn('[AnalyzeFitFile] SportsLib reported empty file, attempting fallback recovery...');
+				console.warn(
+					'[AnalyzeFitFile] SportsLib reported empty file, attempting fallback recovery...'
+				);
 				const fitParser = new FitParser({
 					force: true,
 					speedUnit: 'm/s',
@@ -104,7 +106,11 @@ export async function analyzeFitFile(file: File, sessionId: string): Promise<Rid
 					});
 
 					if (fallbackPath.length > 0) {
-						console.log('[AnalyzeFitFile] Successfully synthesized path from', fallbackPath.length, 'records');
+						console.log(
+							'[AnalyzeFitFile] Successfully synthesized path from',
+							fallbackPath.length,
+							'records'
+						);
 						// Calculate basic stats
 						const firstRecord = fitObject.records[0];
 						const lastRecord = fitObject.records[fitObject.records.length - 1];
@@ -126,7 +132,10 @@ export async function analyzeFitFile(file: File, sessionId: string): Promise<Rid
 							elevationGainMeters: elevationGain,
 							durationSeconds: durationMs / 1000,
 							movingTimeSeconds: durationMs / 1000,
-							avgSpeedKph: distanceMeters > 0 && durationMs > 0 ? (distanceMeters / (durationMs / 1000)) * 3.6 : 0,
+							avgSpeedKph:
+								distanceMeters > 0 && durationMs > 0
+									? (distanceMeters / (durationMs / 1000)) * 3.6
+									: 0,
 							maxSpeedKph: 0
 						};
 

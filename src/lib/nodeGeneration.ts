@@ -1,23 +1,10 @@
 import PocketBase from 'pocketbase';
 import { env } from '$env/dynamic/public';
-import { fetchCyclingIntersections, shuffleArray } from './osm';
 import { updateJob, completeJob, failJob, startJob } from './jobTracker';
+import { getGeneratorService } from './server/generators';
+import type { BaseGenerationRequest } from './server/generators/GeneratorService';
 
-/**
- * Parameters for starting a node generation job.
- */
-export interface GenerateNodesRequest {
-	centerLat: number;
-	centerLon: number;
-	radius: number;
-	checkCount: number;
-	seedName: string;
-	serverUrl: string;
-	slotName: string;
-	userId: string;
-	authToken: string;
-	appUrl: string;
-}
+export type GenerateNodesRequest = BaseGenerationRequest;
 
 /**
  * Main async node generation function.
@@ -44,7 +31,9 @@ export async function generateNodes(jobId: string, request: GenerateNodesRequest
 		// Mark job as started
 		await startJob(jobId);
 
-		// Step 1: Fetch intersections
+		const generator = getGeneratorService(request.mode, pb);
+
+		// Step 1: Fetch and select nodes
 		await updateJob(jobId, {
 			progress: { completed: 0, total: 0 }
 		});
@@ -53,51 +42,26 @@ export async function generateNodes(jobId: string, request: GenerateNodesRequest
 			`[NodeGen] Fetching intersections around (${request.centerLat}, ${request.centerLon}), radius ${request.radius}m`
 		);
 
-		let intersections: any[];
+		let selectedNodes: any[];
 		try {
-			intersections = await fetchCyclingIntersections(
-				request.centerLat,
-				request.centerLon,
-				request.radius
-			);
+			selectedNodes = await generator.fetchNodes(request);
 		} catch (error) {
-			throw new Error(`Failed to fetch OSM intersections: ${error}`);
+			throw new Error(`Failed to fetch and select nodes: ${error}`);
 		}
-
-		console.log(`[NodeGen] Found ${intersections.length} intersections`);
-
-		// Validate count
-		if (intersections.length < request.checkCount) {
-			throw new Error(
-				`Found only ${intersections.length} intersections, need ${request.checkCount}. Increase radius or decrease check count.`
-			);
-		}
-
-		// Step 2: Select random nodes
-		const selectedNodes = shuffleArray(intersections).slice(0, request.checkCount);
 
 		await updateJob(jobId, {
 			progress: { completed: 0, total: selectedNodes.length }
 		});
 
-		// Step 3: Create game session
-		console.log(`[NodeGen] Creating game session: ${request.seedName}`);
+		// Step 2: Create game session
+		console.log(`[NodeGen] Creating game session for seed: ${request.seedName}`);
 
-		const sessionRecord = await pb.collection('game_sessions').create(
-			{
-				user: request.userId,
-				ap_seed_name: request.seedName,
-				ap_server_url: request.serverUrl,
-				ap_slot_name: request.slotName,
-				center_lat: request.centerLat,
-				center_lon: request.centerLon,
-				radius: request.radius,
-				status: 'SetupInProgress'
-			},
-			{ requestKey: null }
-		);
+		const sessionRecord = await generator.createSession(request);
 
 		console.log(`[NodeGen] Created session: ${sessionRecord.id}`);
+
+		// Step 3: Get location mapping
+		const mappedLocations = await generator.getLocations(request, selectedNodes);
 
 		// Step 4: Create map nodes with reverse geocoding
 		console.log(`[NodeGen] Creating ${selectedNodes.length} nodes`);
@@ -106,7 +70,8 @@ export async function generateNodes(jobId: string, request: GenerateNodesRequest
 
 		for (let i = 0; i < selectedNodes.length; i++) {
 			const node = selectedNodes[i];
-			let nodeName = `OSM Node ${node.id}`;
+			const loc = mappedLocations[i];
+			let nodeName = loc.name;
 
 			// Attempt reverse geocoding with retries
 			const maxRetries = 3;
@@ -142,7 +107,7 @@ export async function generateNodes(jobId: string, request: GenerateNodesRequest
 				await pb.collection('map_nodes').create(
 					{
 						session: sessionRecord.id,
-						ap_location_id: 800000 + (i + 1),
+						ap_location_id: loc.id,
 						osm_node_id: node.id.toString(),
 						name: nodeName,
 						lat: node.lat,

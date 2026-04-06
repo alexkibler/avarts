@@ -35,7 +35,7 @@ export const POST: RequestHandler = async ({ request, locals, url }) => {
 
 		// Parse request body
 		const body = await request.json();
-		const { centerLat, centerLon, radius, checkCount, seedName, serverUrl, slotName } = body;
+		const { centerLat, centerLon, radius, checkCount, seedName, serverUrl, slotName, mode } = body;
 
 		// Validate required fields
 		const validation = validateGenerateRequest({
@@ -45,7 +45,8 @@ export const POST: RequestHandler = async ({ request, locals, url }) => {
 			checkCount,
 			seedName,
 			serverUrl,
-			slotName
+			slotName,
+			mode
 		});
 
 		if (!validation.valid) {
@@ -86,10 +87,11 @@ export const POST: RequestHandler = async ({ request, locals, url }) => {
 			seedName,
 			serverUrl,
 			slotName,
+			mode,
 			userId: locals.user.id,
 			authToken: locals.pb.authStore.token,
 			appUrl: url.origin
-		}).catch((error) => {
+		}).catch((error: any) => {
 			console.error(`[API] Background job error: ${error}`);
 		});
 
@@ -139,16 +141,27 @@ function validateGenerateRequest(body: any): {
 		errors.checkCount = 'Check count must be between 1 and 2000';
 	}
 
-	if (!body.seedName || typeof body.seedName !== 'string') {
-		errors.seedName = 'Seed name is required';
+	if (body.mode !== 'singleplayer' && body.mode !== 'archipelago') {
+		errors.mode = 'Invalid mode, must be singleplayer or archipelago';
 	}
 
-	if (!body.serverUrl || typeof body.serverUrl !== 'string') {
-		errors.serverUrl = 'Server URL is required';
-	}
+	if (body.mode === 'archipelago') {
+		if (!body.seedName || typeof body.seedName !== 'string') {
+			errors.seedName = 'Seed name is required';
+		}
 
-	if (!body.slotName || typeof body.slotName !== 'string') {
-		errors.slotName = 'Slot name is required';
+		if (!body.serverUrl || typeof body.serverUrl !== 'string') {
+			errors.serverUrl = 'Server URL is required';
+		}
+
+		if (!body.slotName || typeof body.slotName !== 'string') {
+			errors.slotName = 'Slot name is required';
+		}
+	} else {
+		// singleplayer
+		if (!body.seedName || typeof body.seedName !== 'string') {
+			errors.seedName = 'Save name is required';
+		}
 	}
 
 	if (Object.keys(errors).length > 0) {
