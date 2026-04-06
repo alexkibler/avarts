@@ -35,7 +35,17 @@ export const POST: RequestHandler = async ({ request, locals, url }) => {
 
 		// Parse request body
 		const body = await request.json();
-		const { centerLat, centerLon, radius, checkCount, seedName, serverUrl, slotName, mode } = body;
+		const {
+			centerLat,
+			centerLon,
+			radius,
+			checkCount,
+			seedName,
+			serverUrl,
+			slotName,
+			sessionId,
+			mode
+		} = body;
 
 		// Validate required fields
 		const validation = validateGenerateRequest({
@@ -46,6 +56,7 @@ export const POST: RequestHandler = async ({ request, locals, url }) => {
 			seedName,
 			serverUrl,
 			slotName,
+			sessionId,
 			mode
 		});
 
@@ -87,6 +98,7 @@ export const POST: RequestHandler = async ({ request, locals, url }) => {
 			seedName,
 			serverUrl,
 			slotName,
+			sessionId,
 			mode,
 			userId: locals.user.id,
 			authToken: locals.pb.authStore.token,

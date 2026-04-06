@@ -10,6 +10,7 @@
 	const seedId = $page.params.seedId;
 	const serverUrl = $page.url.searchParams.get('serverUrl') || '';
 	const slotName = $page.url.searchParams.get('slotName') || '';
+	const sessionId = $page.url.searchParams.get('sessionId') || '';
 
 	let mapElement: HTMLElement;
 	let map: any;
@@ -193,6 +194,7 @@
 					seedName: seedId,
 					serverUrl,
 					slotName,
+					sessionId,
 					mode: 'archipelago'
 				})
 			});

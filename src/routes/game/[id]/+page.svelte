@@ -12,14 +12,21 @@
 
 	onMount(async () => {
 		try {
-			const fetchedSession = await pb.collection('game_sessions').getOne(data.sessionId);
+			const fetchedSession = (await pb
+				.collection('game_sessions')
+				.getOne(data.sessionId)) as unknown as GameSession;
 			if (!fetchedSession) throw new Error('Session not found');
 
 			if (fetchedSession.status === 'SetupInProgress' && fetchedSession.ap_seed_name) {
 				console.log(
 					`[Game] Session ${fetchedSession.id} needs setup. Redirecting to setup-session/${fetchedSession.ap_seed_name}...`
 				);
-				await goto(`/setup-session/${fetchedSession.ap_seed_name}`);
+				const params = new URLSearchParams();
+				if (fetchedSession.ap_server_url) params.append('serverUrl', fetchedSession.ap_server_url);
+				if (fetchedSession.ap_slot_name) params.append('slotName', fetchedSession.ap_slot_name);
+				params.append('sessionId', fetchedSession.id);
+
+				await goto(`/setup-session/${fetchedSession.ap_seed_name}?${params.toString()}`);
 				return;
 			}
 

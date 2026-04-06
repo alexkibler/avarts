@@ -14,6 +14,7 @@ export interface BaseGenerationRequest {
 	// AP specific fields
 	serverUrl?: string;
 	slotName?: string;
+	sessionId?: string;
 }
 
 export abstract class GeneratorService {

@@ -7,17 +7,23 @@ export class SinglePlayerGenerator extends GeneratorService {
 	}
 
 	async createSession(request: BaseGenerationRequest): Promise<any> {
-		return await this.pb.collection('game_sessions').create(
-			{
-				user: request.userId,
-				ap_seed_name: request.seedName || 'Single Player',
-				center_lat: request.centerLat,
-				center_lon: request.centerLon,
-				radius: request.radius,
-				status: 'Active' // SP immediately goes active
-			},
-			{ requestKey: null }
-		);
+		const data = {
+			user: request.userId,
+			ap_seed_name: request.seedName || 'Single Player',
+			center_lat: request.centerLat,
+			center_lon: request.centerLon,
+			radius: request.radius,
+			status: 'Active' // SP immediately goes active
+		};
+
+		if (request.sessionId) {
+			console.log(`[SinglePlayerGenerator] Updating existing session: ${request.sessionId}`);
+			return await this.pb
+				.collection('game_sessions')
+				.update(request.sessionId, data, { requestKey: null });
+		}
+
+		return await this.pb.collection('game_sessions').create(data, { requestKey: null });
 	}
 
 	async getLocations(

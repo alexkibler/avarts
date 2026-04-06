@@ -18,37 +18,17 @@ export const POST: RequestHandler = async ({ request }) => {
 		}
 
 		const client = new Client();
-
-		const connectInfo = {
-			hostname: url.split('://')[1].split(':')[0],
-			port: parseInt(url.split(':')[url.split(':').length - 1] || '38281'),
-			name: slotName,
-			game: '', // Leave empty to connect to any game
-			password: password || '',
-			items_handling: itemsHandlingFlags.all,
-			tags: ['AP'],
-			version: {
-				major: 0,
-				minor: 4,
-				build: 4,
-				class: 'Version'
-			}
-		};
-
-		// We only want roomInfo to extract seed_name
 		let roomInfo = null;
-		client.addListener('roomInfo', (packet) => {
-			roomInfo = packet;
-		});
 
 		try {
-			await client.connect(connectInfo);
+			// In archipelago.js v2, socket.connect returns the RoomInfoPacket directly
+			roomInfo = await client.socket.connect(url);
 		} catch (err: any) {
 			console.error('AP connect error:', err);
 			return json({ message: err.message || 'Failed to connect to AP server' }, { status: 400 });
 		}
 
-		client.disconnect();
+		client.socket.disconnect();
 
 		if (!roomInfo) {
 			return json({ message: 'Connected but no room info received' }, { status: 400 });

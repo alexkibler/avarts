@@ -11,19 +11,25 @@ export class ArchipelagoGenerator extends GeneratorService {
 			throw new Error('Archipelago mode requires serverUrl and slotName');
 		}
 
-		return await this.pb.collection('game_sessions').create(
-			{
-				user: request.userId,
-				ap_seed_name: request.seedName,
-				ap_server_url: request.serverUrl,
-				ap_slot_name: request.slotName,
-				center_lat: request.centerLat,
-				center_lon: request.centerLon,
-				radius: request.radius,
-				status: 'SetupInProgress'
-			},
-			{ requestKey: null }
-		);
+		const data = {
+			user: request.userId,
+			ap_seed_name: request.seedName,
+			ap_server_url: request.serverUrl,
+			ap_slot_name: request.slotName,
+			center_lat: request.centerLat,
+			center_lon: request.centerLon,
+			radius: request.radius,
+			status: 'SetupInProgress'
+		};
+
+		if (request.sessionId) {
+			console.log(`[ArchipelagoGenerator] Updating existing session: ${request.sessionId}`);
+			return await this.pb
+				.collection('game_sessions')
+				.update(request.sessionId, data, { requestKey: null });
+		}
+
+		return await this.pb.collection('game_sessions').create(data, { requestKey: null });
 	}
 
 	async getLocations(
