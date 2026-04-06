@@ -44,7 +44,7 @@ This document outlines the step-by-step plan for porting the existing Bikeapelag
 
 - [ ] Install `@capacitor/core`, `@capacitor/cli`, `@capacitor/ios`, and `@capacitor/android`.
 - [ ] Initialize Capacitor (`npx cap init`).
-- [ ] Configure `capacitor.config.ts` to point the `webDir` to Next.js's output directory (`out`).
+- [ ] Configure capacitor.config.ts (set webDir to 'out' and androidScheme to 'https' for API compatibility).
 - [ ] Add platform targets (`npx cap add android`, `npx cap add ios`).
 - [ ] Set up any necessary Capacitor plugins (e.g., Geolocation, FileSystem).
 
