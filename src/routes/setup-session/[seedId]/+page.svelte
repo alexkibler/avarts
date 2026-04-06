@@ -3,8 +3,16 @@
 	import { goto } from '$app/navigation';
 	import { page } from '$app/stores';
 	import 'leaflet/dist/leaflet.css';
+	import type { PageData } from './$types';
+
+	export let data: PageData;
 
 	const seedId = $page.params.seedId;
+	const serverUrl = $page.url.searchParams.get('serverUrl') || '';
+	const slotName = $page.url.searchParams.get('slotName') || '';
+	const sessionId = $page.url.searchParams.get('sessionId') || '';
+	const mode = $page.url.searchParams.get('mode') || 'archipelago';
+	const seedName = $page.url.searchParams.get('seedName') || '';
 
 	let mapElement: HTMLElement;
 	let map: any;
@@ -13,9 +21,10 @@
 	let L: any;
 
 	// Form state
-	let centerLat = 40.4406; // Default Pittsburgh
-	let centerLon = -79.9959;
-	let radius = 5000;
+	let centerLat = parseFloat($page.url.searchParams.get('centerLat') || '40.4406');
+	let centerLon = parseFloat($page.url.searchParams.get('centerLon') || '-79.9959');
+	let radius = parseInt($page.url.searchParams.get('radius') || '5000', 10);
+	let checkCount = parseInt($page.url.searchParams.get('checkCount') || '10', 10);
 	let addressQuery = '';
 
 	// UI state
@@ -34,14 +43,8 @@
 	let generationTotal = 0;
 	let generationCompleted = 0;
 
-	// AP state
-	let apItemCount = 0;
-
-	// Default to 10 for Single Player since we aren't loading it from AP,
-	// but let the user confirm or let the backend fetch if it's AP.
-	// For AP, they should probably not be on this page anymore since it's removed,
-	// but if they are, we'll set apItemCount to 10 for now.
-	apItemCount = 10;
+	// AP/Single Player state
+	let apItemCount = parseInt((data.apItemCount || checkCount).toString(), 10);
 
 	let pollInterval: ReturnType<typeof setInterval>;
 
@@ -181,20 +184,26 @@
 		generationStatus = 'Sending request to server...';
 
 		try {
-			// Step 1: Call API to start generation
-			// We pass the session id, and let the server look up the session details
+			const payload: Record<string, any> = {
+				centerLat,
+				centerLon,
+				radius,
+				checkCount: apItemCount,
+				seedName: seedName || seedId,
+				mode
+			};
+
+			// Add mode-specific fields
+			if (mode === 'archipelago') {
+				payload.serverUrl = serverUrl;
+				payload.slotName = slotName;
+				payload.sessionId = sessionId;
+			}
+
 			const res = await fetch('/api/nodes/generate', {
 				method: 'POST',
 				headers: { 'Content-Type': 'application/json' },
-				body: JSON.stringify({
-					centerLat,
-					centerLon,
-					radius,
-					checkCount: apItemCount,
-					seedName: seedId,
-					serverUrl: '',
-					slotName: ''
-				})
+				body: JSON.stringify(payload)
 			});
 
 			if (res.status === 202) {
@@ -277,12 +286,24 @@
 	<title>Set Up Bikeapelago Session</title>
 </svelte:head>
 
-<div class="p-6 text-white max-w-6xl mx-auto grid grid-cols-1 md:grid-cols-2 gap-6">
-	<!-- Left panel: Form -->
+<div class="p-6 text-white max-w-6xl mx-auto">
+	<!-- Form with map inside -->
 	<div class="bg-neutral-800 p-6 rounded-lg shadow-lg">
+		<!-- Map inside form -->
+		<div
+			class="bg-neutral-800 rounded-lg overflow-hidden h-[200px] border border-neutral-700 mb-6"
+		>
+			<div bind:this={mapElement} class="w-full h-full" />
+		</div>
+
 		<h1 class="text-3xl font-bold mb-2 text-orange-500">Set Up Your Session</h1>
 		<p class="text-neutral-400 text-sm mb-6">
-			Choose your center point on the map to generate {apItemCount} intersections
+			{#if mode === 'archipelago'}
+				Choose your center point to generate {apItemCount} intersections for {seedId}
+			{:else}
+				Choose your center point to generate {apItemCount} intersections for {seedName ||
+					'your session'}
+			{/if}
 		</p>
 
 		{#if loadError}
@@ -294,7 +315,7 @@
 				<!-- Address search -->
 				<div>
 					<label class="block text-sm font-medium mb-1" for="address-input">Search Address</label>
-					<div class="flex gap-2">
+					<div class="flex flex-col md:flex-row gap-2">
 						<input
 							id="address-input"
 							type="text"
@@ -308,7 +329,7 @@
 							type="button"
 							on:click={searchAddress}
 							disabled={isGeocoding || !addressQuery.trim() || isGenerating}
-							class="bg-neutral-700 hover:bg-neutral-600 border border-neutral-600 text-white font-medium px-4 py-2 rounded transition disabled:opacity-50 whitespace-nowrap"
+							class="w-full md:w-auto bg-neutral-700 hover:bg-neutral-600 border border-neutral-600 text-white font-medium px-4 py-2 rounded transition disabled:opacity-50 whitespace-nowrap"
 						>
 							{isGeocoding ? 'Searching…' : 'Search'}
 						</button>
@@ -340,6 +361,9 @@
 					</svg>
 					{isLocating ? 'Locating…' : 'Use My Location'}
 				</button>
+				{#if locationError}
+					<p class="mt-1 text-xs text-red-400">{locationError}</p>
+				{/if}
 
 				<!-- Radius control -->
 				<div>
@@ -357,11 +381,30 @@
 					<p class="text-xs text-neutral-400 mt-1">{radius.toLocaleString()} meters</p>
 				</div>
 
-				<!-- Status -->
+				<!-- Node count control (single player only) or status (archipelago) -->
 				<div class="pt-2 border-t border-neutral-600">
-					<p class="text-sm text-neutral-300 mb-2">
-						Intersections needed: <strong>{apItemCount}</strong>
-					</p>
+					{#if mode === 'archipelago'}
+						<p class="text-sm text-neutral-300 mb-2">
+							Intersections needed: <strong>{apItemCount}</strong>
+						</p>
+					{:else}
+						<div>
+							<label class="block text-sm font-medium mb-2" for="node-count">Number of Nodes</label>
+							<input
+								id="node-count"
+								type="range"
+								min="10"
+								max="1000"
+								step="10"
+								bind:value={apItemCount}
+								disabled={isGenerating}
+								class="w-full"
+							/>
+							<p class="text-xs text-neutral-400 mt-1">
+								{apItemCount} nodes ({((apItemCount / 1000) * 100).toFixed(0)}% of max)
+							</p>
+						</div>
+					{/if}
 				</div>
 
 				<!-- Generation progress -->
@@ -400,13 +443,6 @@
 				</p>
 			</div>
 		{/if}
-	</div>
-
-	<!-- Right panel: Map -->
-	<div
-		class="bg-neutral-800 rounded-lg shadow-lg overflow-hidden h-[600px] border border-neutral-700"
-	>
-		<div bind:this={mapElement} class="w-full h-full" />
 	</div>
 </div>
 

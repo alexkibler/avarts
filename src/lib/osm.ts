@@ -57,7 +57,9 @@ export async function fetchCyclingIntersections(
 		}));
 	}
 
-	const overpassUrl = 'https://overpass-api.de/api/interpreter';
+	// Prefer local Overpass instance, fall back to public
+	const localOverpass = env.PUBLIC_OVERPASS_URL;
+	const publicOverpass = 'https://overpass-api.de/api/interpreter';
 
 	// The Overpass QL query:
 	// 1. Finds ways matching the cycling whitelist within the bounding box.
@@ -69,16 +71,83 @@ export async function fetchCyclingIntersections(
     out;
   `;
 
-	const response = await fetch(overpassUrl, {
-		method: 'POST',
-		body: query
-	});
+	// Try local Overpass first, then public with retries
+	const overpassUrls = [
+		...(localOverpass ? [localOverpass] : []),
+		publicOverpass
+	];
 
-	if (!response.ok) {
-		throw new Error(`Overpass API request failed: ${response.statusText}`);
+	let lastError: Error | null = null;
+
+	for (const overpassUrl of overpassUrls) {
+		try {
+			const data = await fetchWithRetry(overpassUrl, query);
+			return processOverpassResponse(data, lat, lon, radius);
+		} catch (error) {
+			lastError = error instanceof Error ? error : new Error(String(error));
+			console.warn(`[OSM] Overpass API failed (${overpassUrl}):`, lastError.message);
+			// Continue to next URL
+		}
 	}
 
-	const data: OSMResponse = await response.json();
+	// All URLs exhausted
+	throw lastError || new Error('Failed to fetch intersections from all Overpass sources');
+}
+
+/**
+ * Fetch with exponential backoff retry logic
+ */
+async function fetchWithRetry(
+	url: string,
+	query: string,
+	maxRetries: number = 3
+): Promise<OSMResponse> {
+	let lastError: Error | null = null;
+
+	for (let attempt = 0; attempt < maxRetries; attempt++) {
+		try {
+			const response = await fetch(url, {
+				method: 'POST',
+				body: query,
+				signal: AbortSignal.timeout(30000) // 30s timeout
+			});
+
+			if (!response.ok) {
+				throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+			}
+
+			return await response.json();
+		} catch (error) {
+			lastError = error instanceof Error ? error : new Error(String(error));
+
+			// Don't retry on auth errors
+			if (lastError.message.includes('401') || lastError.message.includes('403')) {
+				throw lastError;
+			}
+
+			// Calculate exponential backoff with jitter
+			if (attempt < maxRetries - 1) {
+				const baseDelay = Math.pow(2, attempt) * 1000; // 1s, 2s, 4s
+				const jitter = Math.random() * 0.1 * baseDelay; // ±10% jitter
+				const delay = baseDelay + jitter;
+				console.log(`[OSM] Retry attempt ${attempt + 1}/${maxRetries} after ${Math.round(delay)}ms`);
+				await new Promise((resolve) => setTimeout(resolve, delay));
+			}
+		}
+	}
+
+	throw lastError || new Error('Failed to fetch from Overpass API');
+}
+
+/**
+ * Process Overpass API response and extract intersections
+ */
+function processOverpassResponse(
+	data: OSMResponse,
+	lat: number,
+	lon: number,
+	radius: number
+): OSMNode[] {
 
 	const nodes = new Map<number, OSMNode>();
 	const ways: OSMWay[] = [];

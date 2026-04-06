@@ -99,15 +99,13 @@
 	}
 
 	onMount(async () => {
-		await fetchNodes(sessionId);
+		// Subscribe first to catch any updates that happen while we're fetching
+		if (pb.authStore.isValid) {
+			const unsub = await subscribeToNodes(sessionId);
+			if (unsub) unsubscribePb = unsub;
+		}
 
-		// Small delay for stability
-		setTimeout(async () => {
-			if (pb.authStore.isValid) {
-				const unsub = await subscribeToNodes(sessionId);
-				if (unsub) unsubscribePb = unsub;
-			}
-		}, 250);
+		await fetchNodes(sessionId);
 	});
 
 	onDestroy(() => {

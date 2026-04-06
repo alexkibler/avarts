@@ -12,17 +12,25 @@
 
 	onMount(async () => {
 		try {
-			session = await pb.collection('game_sessions').getOne(data.sessionId);
-			if (!session) throw new Error('Session not found');
+			const fetchedSession = (await pb
+				.collection('game_sessions')
+				.getOne(data.sessionId)) as unknown as GameSession;
+			if (!fetchedSession) throw new Error('Session not found');
 
-			// Immediate redirect if we know setup is needed and have the seed name
-			if (session.status === 'SetupInProgress' && session.ap_seed_name) {
+			if (fetchedSession.status === 'SetupInProgress' && fetchedSession.ap_seed_name) {
 				console.log(
-					`[Game] Session ${session.id} needs setup. Redirecting to setup-session/${session.ap_seed_name}...`
+					`[Game] Session ${fetchedSession.id} needs setup. Redirecting to setup-session/${fetchedSession.ap_seed_name}...`
 				);
-				goto(`/setup-session/${session.ap_seed_name}`);
+				const params = new URLSearchParams();
+				if (fetchedSession.ap_server_url) params.append('serverUrl', fetchedSession.ap_server_url);
+				if (fetchedSession.ap_slot_name) params.append('slotName', fetchedSession.ap_slot_name);
+				params.append('sessionId', fetchedSession.id);
+
+				await goto(`/setup-session/${fetchedSession.ap_seed_name}?${params.toString()}`);
 				return;
 			}
+
+			session = fetchedSession;
 		} catch (e: unknown) {
 			loadError = e instanceof Error ? e.message : 'Failed to load session.';
 		}

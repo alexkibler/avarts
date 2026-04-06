@@ -28,6 +28,7 @@ export class ArchipelagoEngine implements IGameEngine {
 	// Sync state management to prevent concurrent reconciliation and auto-cancellation
 	private _isSyncing = false;
 	private _hasPendingSync = false;
+	private _syncPromise: Promise<void> | null = null;
 
 	constructor() {
 		this.apClient = new Client();
@@ -93,6 +94,7 @@ export class ArchipelagoEngine implements IGameEngine {
 				`[AP] Items received: ${this.apClient.items.received.length}, Checked locations: ${this.apClient.room.checkedLocations.length}`
 			);
 
+			// Await full synchronization before returning
 			await this.syncState(options.sessionId);
 
 			return true;
@@ -114,18 +116,23 @@ export class ArchipelagoEngine implements IGameEngine {
 
 		if (this._isSyncing) {
 			this._hasPendingSync = true;
-			return;
+			return this._syncPromise || Promise.resolve();
 		}
 
 		this._isSyncing = true;
-		try {
-			do {
-				this._hasPendingSync = false;
-				await this._doSyncArchipelagoState(this._activeSessionId);
-			} while (this._hasPendingSync);
-		} finally {
-			this._isSyncing = false;
-		}
+		this._syncPromise = (async () => {
+			try {
+				do {
+					this._hasPendingSync = false;
+					await this._doSyncArchipelagoState(this._activeSessionId);
+				} while (this._hasPendingSync);
+			} finally {
+				this._isSyncing = false;
+				this._syncPromise = null;
+			}
+		})();
+
+		return this._syncPromise;
 	}
 
 	private async _doSyncArchipelagoState(sessionId: string) {
