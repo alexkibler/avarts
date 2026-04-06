@@ -11,7 +11,7 @@ This document outlines the step-by-step plan for porting the existing Bikeapelag
   - `canvas-confetti`
   - Charting libraries for elevation (equivalent to `@raruto/leaflet-elevation` but for React).
 - [ ] Setup global CSS (`app/globals.css`), migrating SvelteKit's `app.css`.
-- [ ] Configure `next.config.js` to ensure static HTML export compatibility, as Capacitor requires a fully static build (using `output: 'export'`).
+- [ ] Configure next.config.js for static export (output: 'export') and disable default image optimization (images: { unoptimized: true }).
 
 ## 2. Authentication & Database Integration (PocketBase)
 
