@@ -33,7 +33,7 @@ export class ArchipelagoGenerator extends GeneratorService {
 		// Fetch AP items from PocketBase mapping table
 		// This simulates the behavior where Archipelago has specific location IDs
 		return nodes.map((node, i) => ({
-			id: GeneratorService.BASE_LOCATION_ID + (i + 1), // Standard start for Archipelago locations if not fully mapped, just mimicking previous behavior
+			id: 800000 + (i + 1), // Standard start for Archipelago locations if not fully mapped, just mimicking previous behavior
 			name: `OSM Node ${node.id}`
 		}));
 	}
