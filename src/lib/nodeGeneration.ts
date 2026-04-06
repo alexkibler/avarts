@@ -112,7 +112,7 @@ export async function generateNodes(jobId: string, request: GenerateNodesRequest
 						name: nodeName,
 						lat: node.lat,
 						lon: node.lon,
-						state: 'Hidden'
+						state: request.mode === 'singleplayer' && i < 3 ? 'Available' : 'Hidden'
 					},
 					{ requestKey: null }
 				);

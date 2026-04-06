@@ -43,8 +43,8 @@
 	let generationTotal = 0;
 	let generationCompleted = 0;
 
-	// AP state
-	let apItemCount = data.apItemCount || checkCount;
+	// AP/Single Player state
+	let apItemCount = parseInt((data.apItemCount || checkCount).toString(), 10);
 
 	let pollInterval: ReturnType<typeof setInterval>;
 
@@ -286,9 +286,16 @@
 	<title>Set Up Bikeapelago Session</title>
 </svelte:head>
 
-<div class="p-6 text-white max-w-6xl mx-auto grid grid-cols-1 md:grid-cols-2 gap-6">
-	<!-- Left panel: Form -->
+<div class="p-6 text-white max-w-6xl mx-auto">
+	<!-- Form with map inside -->
 	<div class="bg-neutral-800 p-6 rounded-lg shadow-lg">
+		<!-- Map inside form -->
+		<div
+			class="bg-neutral-800 rounded-lg overflow-hidden h-[200px] border border-neutral-700 mb-6"
+		>
+			<div bind:this={mapElement} class="w-full h-full" />
+		</div>
+
 		<h1 class="text-3xl font-bold mb-2 text-orange-500">Set Up Your Session</h1>
 		<p class="text-neutral-400 text-sm mb-6">
 			{#if mode === 'archipelago'}
@@ -308,7 +315,7 @@
 				<!-- Address search -->
 				<div>
 					<label class="block text-sm font-medium mb-1" for="address-input">Search Address</label>
-					<div class="flex gap-2">
+					<div class="flex flex-col md:flex-row gap-2">
 						<input
 							id="address-input"
 							type="text"
@@ -322,7 +329,7 @@
 							type="button"
 							on:click={searchAddress}
 							disabled={isGeocoding || !addressQuery.trim() || isGenerating}
-							class="bg-neutral-700 hover:bg-neutral-600 border border-neutral-600 text-white font-medium px-4 py-2 rounded transition disabled:opacity-50 whitespace-nowrap"
+							class="w-full md:w-auto bg-neutral-700 hover:bg-neutral-600 border border-neutral-600 text-white font-medium px-4 py-2 rounded transition disabled:opacity-50 whitespace-nowrap"
 						>
 							{isGeocoding ? 'Searching…' : 'Search'}
 						</button>
@@ -374,11 +381,30 @@
 					<p class="text-xs text-neutral-400 mt-1">{radius.toLocaleString()} meters</p>
 				</div>
 
-				<!-- Status -->
+				<!-- Node count control (single player only) or status (archipelago) -->
 				<div class="pt-2 border-t border-neutral-600">
-					<p class="text-sm text-neutral-300 mb-2">
-						Intersections needed: <strong>{apItemCount}</strong>
-					</p>
+					{#if mode === 'archipelago'}
+						<p class="text-sm text-neutral-300 mb-2">
+							Intersections needed: <strong>{apItemCount}</strong>
+						</p>
+					{:else}
+						<div>
+							<label class="block text-sm font-medium mb-2" for="node-count">Number of Nodes</label>
+							<input
+								id="node-count"
+								type="range"
+								min="10"
+								max="1000"
+								step="10"
+								bind:value={apItemCount}
+								disabled={isGenerating}
+								class="w-full"
+							/>
+							<p class="text-xs text-neutral-400 mt-1">
+								{apItemCount} nodes ({((apItemCount / 1000) * 100).toFixed(0)}% of max)
+							</p>
+						</div>
+					{/if}
 				</div>
 
 				<!-- Generation progress -->
@@ -417,13 +443,6 @@
 				</p>
 			</div>
 		{/if}
-	</div>
-
-	<!-- Right panel: Map -->
-	<div
-		class="bg-neutral-800 rounded-lg shadow-lg overflow-hidden h-[600px] border border-neutral-700"
-	>
-		<div bind:this={mapElement} class="w-full h-full" />
 	</div>
 </div>
 
