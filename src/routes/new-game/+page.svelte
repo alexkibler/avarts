@@ -4,6 +4,7 @@
 	import { fetchCyclingIntersections, shuffleArray } from '$lib/osm';
 	import { pb } from '$lib/database';
 	import { userCookie } from '$lib/stores';
+	import SessionDialog from '../../components/SessionDialog.svelte';
 
 	let mapElement: HTMLElement;
 	let map: any;
@@ -33,7 +34,8 @@
 	let pollInterval: any;
 
 	// Existing session detection
-	let showExistingSessionDialog = false;
+	let showSessionDialog = false;
+	let sessionDialogType: 'resume' | 'collision' = 'resume';
 	let existingSessionId = '';
 
 	// Address search
@@ -175,21 +177,35 @@
 					throw new Error('Archipelago connection successful but no seed name returned.');
 				}
 
-				// 2. Check if a session already exists for this AP seed
+				// 2. Check if a session already exists for this AP seed (by anyone, via server-side check)
 				const userId = $userCookie?.user?.id;
 				if (!userId) {
 					throw new Error('Must be logged in to create or join a game session.');
 				}
 
-				const existingSessions = await pb.collection('game_sessions').getList(1, 1, {
-					filter: `user = "${userId}" && ap_seed_name = "${seedId}"`,
-					sort: '-created'
-				});
+				// Call the secure check-session endpoint to verify seed availability
+				const checkResponse = await fetch(`/api/ap/check-session?seedId=${seedId}`);
+				if (!checkResponse.ok) {
+					const errorData = await checkResponse.json().catch(() => ({}));
+				throw new Error(
+					errorData.message || 'Failed to verify session availability. Please try again later.'
+				);
+				}
 
-				if (existingSessions.items.length > 0) {
-					// Session exists, show the dialog instead of redirecting immediately
-					existingSessionId = existingSessions.items[0].id;
-					showExistingSessionDialog = true;
+				const checkData = await checkResponse.json();
+
+				if (checkData.exists) {
+					existingSessionId = checkData.sessionId;
+
+					if (checkData.isOwner) {
+						// It's the user's own session, let them resume
+						sessionDialogType = 'resume';
+					} else {
+						// It belongs to someone else, block access
+						sessionDialogType = 'collision';
+					}
+
+					showSessionDialog = true;
 					isGenerating = false;
 					return;
 				}
@@ -500,58 +516,13 @@
 	</div>
 </div>
 
-<!-- Existing Session Confirmation Modal -->
-{#if showExistingSessionDialog}
-	<div
-		class="fixed inset-0 z-[1000] flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm"
-	>
-		<div
-			class="bg-neutral-900 border border-neutral-700 rounded-xl shadow-2xl max-w-md w-full overflow-hidden"
-		>
-			<div class="p-6">
-				<div class="flex items-center gap-4 mb-4 text-orange-500">
-					<div class="p-3 bg-orange-500/10 rounded-full">
-						<svg
-							xmlns="http://www.w3.org/2000/svg"
-							class="w-6 h-6"
-							viewBox="0 0 24 24"
-							fill="none"
-							stroke="currentColor"
-							stroke-width="2"
-							stroke-linecap="round"
-							stroke-linejoin="round"
-						>
-							<path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z" />
-							<line x1="12" y1="9" x2="12" y2="13" />
-							<line x1="12" y1="17" x2="12.01" y2="17" />
-						</svg>
-					</div>
-					<h3 class="text-xl font-bold text-white">Existing Session Found</h3>
-				</div>
-
-				<p class="text-neutral-300 mb-6 leading-relaxed">
-					You already have an active session for this Archipelago seed. Would you like to resume your
-					previous progress?
-				</p>
-
-				<div class="flex flex-col gap-3">
-					<button
-						class="w-full bg-orange-600 hover:bg-orange-500 text-white font-bold py-3 rounded-lg transition"
-						on:click={() => (window.location.href = `/game/${existingSessionId}`)}
-					>
-						Resume Session
-					</button>
-					<button
-						class="w-full bg-neutral-800 hover:bg-neutral-700 text-neutral-300 font-medium py-3 rounded-lg border border-neutral-700 transition"
-						on:click={() => {
-							showExistingSessionDialog = false;
-							isGenerating = false;
-						}}
-					>
-						Cancel
-					</button>
-				</div>
-			</div>
-		</div>
-	</div>
-{/if}
+<!-- Session Management Dialogs -->
+<SessionDialog
+	show={showSessionDialog}
+	type={sessionDialogType}
+	sessionId={existingSessionId}
+	on:close={() => {
+		showSessionDialog = false;
+		isGenerating = false;
+	}}
+/>
